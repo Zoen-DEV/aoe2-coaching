@@ -113,6 +113,15 @@ def test_build_valida():
         except B.BuildOrderError as e:
             ok = "exploradores" in str(e)
         comprobar(ok, "una unidad desconocida da error con la lista de las válidas")
+        datos = json.loads(json.dumps(base))
+        del datos["pasos"][2]["texto_en"]
+        p.write_text(json.dumps(datos), encoding="utf-8")
+        try:
+            B.load_build_order(p)
+            ok = False
+        except B.BuildOrderError as e:
+            ok = "texto_en" in str(e)
+        comprobar(ok, "un paso sin su texto en inglés da error")
 
 
 # --- Lector ---------------------------------------------------------------------
@@ -237,7 +246,9 @@ def test_instalador(tmp: Path):
 def test_config(tmp: Path):
     print("Preferencias compartidas")
     a = tmp / "c.json"
-    comprobar(C.cargar(a) == C.DEFECTO, "sin archivo: valores por defecto")
+    defecto = {**C.DEFECTO, "idioma": textos.idioma_de_windows()}
+    comprobar(C.cargar(a) == defecto and defecto["idioma"] in ("es", "en"),
+              "sin archivo: valores por defecto, con el idioma de Windows")
     a.write_text('{"posicion": "izquierda", "plegado": false, "pestana_historial": true, "raro": 1}', encoding="utf-8")
     cfg = C.cargar(a)
     comprobar(cfg["posicion"] == "izquierda" and "raro" not in cfg and cfg["guia_activa"] == "fast_castle",
@@ -246,7 +257,10 @@ def test_config(tmp: Path):
     C.guardar(cfg, a)
     comprobar(C.cargar(a)["guia_activa"] == "scouts", "se guarda y se vuelve a leer")
     a.write_text("[1, 2", encoding="utf-8")
-    comprobar(C.cargar(a) == C.DEFECTO, "un archivo roto no rompe nada")
+    comprobar(C.cargar(a) == defecto, "un archivo roto no rompe nada")
+    otro = "en" if textos.idioma_de_windows() == "es" else "es"
+    a.write_text('{"idioma": "%s"}' % otro, encoding="utf-8")
+    comprobar(C.cargar(a)["idioma"] == otro, "el idioma elegido se respeta aunque Windows esté en otro")
 
 
 def test_textos():
@@ -254,9 +268,9 @@ def test_textos():
     es, en = textos.TEXTOS["es"], textos.TEXTOS["en"]
     comprobar(set(es) == set(en), f"mismas claves en los dos idiomas (faltan en inglés: {sorted(set(es) - set(en))})")
     usadas = set()
-    for archivo in ("dashboard.py", "overlay.py"):
+    for archivo in ("dashboard.py", "overlay.py", "historial.py", "historial_ui.py"):
         codigo = (OVERLAY / archivo).read_text(encoding="utf-8")
-        usadas |= set(re.findall(r'\bt\("([a-z0-9_]+)"', codigo))
+        usadas |= set(re.findall(r'\bt[x]?\("([a-z0-9_]+)"', codigo))
     # Claves que se arman con f-strings.
     from dashboard import PAGINAS, PROXIMAS
     usadas |= {f"pagina_{p}" for p in PAGINAS} | {f"sub_{p}" for p in PAGINAS}
@@ -278,6 +292,51 @@ def test_textos():
     comprobar(textos.t("menu_cerrar") == "Quit AoE2C", "inglés")
     textos.poner_idioma("xx")
     comprobar(textos.t("menu_cerrar") == "Cerrar AoE2C", "un idioma desconocido vuelve al español")
+
+
+def test_ingles(tmp: Path):
+    print("Guías, tarjeta e historial en inglés")
+    import overlay as O
+    for guia in (FC, SC):
+        faltan = [n for n, p in enumerate(guia["pasos"], 1) if not p.get("titulo_en") or not p.get("texto_en")
+                  or not all(c.get("etiqueta_en") for c in p["condiciones"])]
+        comprobar(not faltan and guia.get("titulo_final_en") and guia.get("mensaje_final_en"),
+                  f"{guia['nombre']}: cada paso trae su título, instrucción y condiciones en inglés")
+    horas = [p["referencia"] + 30 if i < 4 else -1 for i, p in enumerate(FC["pasos"])]
+    estado = estado_de(FC, 340, horas)
+    textos.poner_idioma("en")
+    try:
+        v = O.construir_vista(FC, estado)
+        comprobar(v.titulo == FC["pasos"][4]["titulo_en"] and v.texto.startswith("With villager 12"),
+                  f"la tarjeta muestra el paso en inglés: {v.titulo!r}")
+        comprobar([c.etiqueta for c in v.condiciones] == ["Houses", "Mill", "Berries"],
+                  "y sus condiciones (Houses, Mill, Berries)")
+        comprobar(v.siguientes[0][1] == FC["pasos"][5]["titulo_en"] and v.ritmo[0] == "+30 s",
+                  "«Up next» y el ritmo también")
+        fin = O.construir_vista(FC, estado_de(FC, 1000, [p["referencia"] for p in FC["pasos"]], edad=2))
+        comprobar(fin.titulo_final == "You reached the Castle Age!" and fin.final.startswith("Next:")
+                  and " at " in fin.resumen, "la tarjeta final en inglés")
+        h = H.Historial(tmp / "en.json")
+        s = H.Seguimiento(h)
+        ultimo = None
+        for n, e in enumerate(partida_scouts(), 1):
+            s.observar(SC, e, 0.5, "[AoE2C] Arabia", float(n))
+            ultimo = e
+        s.observar(SC, ultimo, 10.0, "[AoE2C] Arabia", 1000.0)
+        r = h.registros[0]
+        comprobar(H.nombre_hito(r, "meta") == "6 scouts" and H.nombre_hito(r, "feudal") == "Feudal"
+                  and H.nombre_hito(r, "clic_feudal") == "Feudal click", "los hitos del historial en inglés")
+        comprobar(H.tramos(r)[0]["titulo"] == "2 houses", "y los pasos de la partida")
+        comprobar(H.comparacion_final(h, r).startswith("First game"), "y la línea de la tarjeta final")
+        textos.poner_idioma("es")
+        comprobar(H.nombre_hito(r, "meta") == "6 exploradores" and H.tramos(r)[0]["titulo"] == "2 casas"
+                  and O.construir_vista(FC, estado).titulo == FC["pasos"][4]["titulo"],
+                  "al volver al español, todo sale en español")
+        viejo = {"titulo": "Telar"}
+        textos.poner_idioma("en")
+        comprobar(textos.de(viejo, "titulo") == "Telar", "un texto sin versión en inglés (guía vieja) sale en español")
+    finally:
+        textos.poner_idioma("es")
 
 
 # --- Panel ---------------------------------------------------------------------------
@@ -424,6 +483,7 @@ def main():
         test_instalador(tmp)
         test_config(tmp)
         test_textos()
+        test_ingles(tmp)
         test_panel(tmp)
         test_overlay_con_panel(tmp)
     print("\nTodo bien.")

@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 import rutas  # noqa: E402
+from textos import de, t as tx  # noqa: E402
 
 ARCHIVO = rutas.HISTORIAL  # en %APPDATA%\AoE2Coaching\
 SIN_DATOS = 4.0  # segundos sin datos nuevos para dar la partida por parada (pausa o fin)
@@ -29,12 +30,12 @@ HITOS = [  # clave, nombre, edad y si es el clic (iniciada) o la llegada (termin
 TECH_EDAD = {"feudal": "edad_feudal", "castillos": "edad_castillos"}
 INVESTIGACION = {"feudal": 130, "castillos": 160}  # segundos que tarda cada edad en el centro urbano
 ETIQUETA_EDAD = {"feudal": "Edad Feudal", "castillos": "Edad de los Castillos"}
-NOMBRES_HITO = {clave: nombre for clave, nombre, *_ in HITOS}
 
 # Qué hitos enseña cada guía. "meta" es la hora del último paso de la guía (en
 # Scouts, los 6 exploradores). Las partidas antiguas, sin "vista", son de Fast Castle.
 VISTA_FAST_CASTLE = {"hitos": ["clic_feudal", "feudal", "clic_castillos", "castillos"],
-                     "series": ["feudal", "castillos"], "principal": "castillos", "nombre_meta": "Edad de los Castillos"}
+                     "series": ["feudal", "castillos"], "principal": "castillos", "nombre_meta": "Edad de los Castillos",
+                     "nombre_meta_en": "Castle Age"}
 
 
 def vista_de_guia(guia: dict) -> dict:
@@ -43,6 +44,7 @@ def vista_de_guia(guia: dict) -> dict:
         "series": list(guia.get("series") or VISTA_FAST_CASTLE["series"]),
         "principal": guia.get("hito_principal") or "castillos",
         "nombre_meta": guia.get("nombre_meta") or guia["pasos"][-1]["titulo"],
+        "nombre_meta_en": guia.get("nombre_meta_en") or guia["pasos"][-1].get("titulo_en", ""),
     }
 
 
@@ -51,7 +53,8 @@ def vista(registro: dict) -> dict:
 
 
 def nombre_hito(registro: dict, clave: str) -> str:
-    return vista(registro)["nombre_meta"] if clave == "meta" else NOMBRES_HITO[clave]
+    """Nombre del hito en el idioma elegido ("Castillos", "6 exploradores"...)."""
+    return de(vista(registro), "nombre_meta") if clave == "meta" else tx(f"hito_{clave}")
 
 
 def principal(registro: dict) -> str:
@@ -131,7 +134,8 @@ def nuevo_registro(guia: dict, mapa: str, fecha: datetime) -> dict:
         "guia": guia["nombre"],
         "duracion": 0,
         "completada": False,
-        "pasos": [{"titulo": p["titulo"], "referencia": p["referencia"], "hora": None} for p in guia["pasos"]],
+        "pasos": [{"titulo": p["titulo"], "titulo_en": p.get("titulo_en", ""), "referencia": p["referencia"],
+                   "hora": None} for p in guia["pasos"]],
         "hitos": {**{clave: None for clave, *_ in HITOS}, "meta": None},
         "referencias": referencias_hitos(guia),
         "vista": vista_de_guia(guia),
@@ -358,7 +362,7 @@ def tramos(registro: dict) -> list[dict]:
     out = []
     desfase_anterior = 0
     for i, p in enumerate(registro["pasos"]):
-        fila = {"n": i + 1, "titulo": p["titulo"], "referencia": p["referencia"], "hora": p["hora"],
+        fila = {"n": i + 1, "titulo": de(p, "titulo"), "referencia": p["referencia"], "hora": p["hora"],
                 "saltado": p.get("saltado", False), "desfase": None, "tramo": None}
         if p["hora"] is not None:
             fila["desfase"] = p["hora"] - p["referencia"]
@@ -394,14 +398,15 @@ def comparacion_final(historial: Historial, registro: dict | None) -> str:
     anteriores = [r for r in historial.de_guia(registro["guia"]) if r["id"] != registro["id"]]
     res = resumen_hito(anteriores, principal(registro))
     if res["cuenta"] == 0:
-        return "Primera partida guardada en el historial."
+        return tx("hi_primera")
     partes = []
     if t < res["mejor"]:
-        partes.append(f"¡Nueva mejor marca! (antes {reloj(res['mejor'])})")
+        partes.append(tx("hi_nueva_mejor", hora=reloj(res["mejor"])))
     else:
-        partes.append(f"Tu mejor: {reloj(res['mejor'])}")
+        partes.append(tx("hi_tu_mejor", hora=reloj(res["mejor"])))
     dif = round(t - res["media"])
-    partes.append(f"media {reloj(round(res['media']))} ({'+' if dif > 0 else '−' if dif < 0 else '±'}{duracion(abs(dif))})")
+    signo = "+" if dif > 0 else "−" if dif < 0 else "±"
+    partes.append(tx("hi_media", hora=reloj(round(res["media"])), dif=f"{signo}{duracion(abs(dif))}"))
     return " · ".join(partes)
 
 

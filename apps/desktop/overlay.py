@@ -30,7 +30,7 @@ from estilo import (ACENTO, APAGADO, ATENCION, BANDERAS_CLIC, BIEN, BORDE, EMOJI
 from historial import Historial, Seguimiento, comparacion_final, historial_de_ejemplo  # noqa: E402
 from historial_ui import VentanaHistorial  # noqa: E402
 from lector import Estado, Lector, cargar_guias, mapas_de  # noqa: E402
-from textos import t  # noqa: E402
+from textos import de, t  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 CONFIG = rutas.CONFIG  # %APPDATA%\AoE2Coaching\config.json
@@ -91,7 +91,7 @@ class Vista:
     resumen: str = ""
     final: str = ""
     comparacion: str = ""  # esta partida frente al historial (tarjeta final)
-    titulo_final: str = "¡Llegaste a Castillos!"
+    titulo_final: str = ""
     icono_final: str = "castillo"
 
 
@@ -100,7 +100,7 @@ def ritmo(diferencia: int, margen: int) -> tuple[str, QColor]:
         return f"+{duracion(diferencia)}", ATENCION
     if diferencia < -margen:
         return f"−{duracion(-diferencia)}", ACENTO
-    return "A tiempo", BIEN
+    return t("ov_a_tiempo"), BIEN
 
 
 def construir_vista(guia: dict, e: Estado, siguientes: int | None = None, aviso_casas: bool = True) -> Vista:
@@ -111,36 +111,37 @@ def construir_vista(guia: dict, e: Estado, siguientes: int | None = None, aviso_
     ultimo = max((i for i in range(min(e.paso, total)) if e.horas[i] >= 0), default=None)
     r = ritmo(e.horas[ultimo] - pasos[ultimo]["referencia"], guia["margen_segundos"]) if ultimo is not None else None
     v = Vista(guia["nombre"], e.tiempo, e.paso, total, hechos, r, e.paso >= total)
-    v.titulo_final = guia.get("titulo_final", v.titulo_final)
+    v.titulo_final = de(guia, "titulo_final") or t("ov_titulo_final")
     v.icono_final = guia.get("icono_final", v.icono_final)
 
     if v.terminada:
         ult = total - 1
         if e.horas[ult] >= 0:
             texto, _ = ritmo(e.horas[ult] - pasos[ult]["referencia"], guia["margen_segundos"])
-            v.resumen = f"{pasos[ult]['titulo']} a las {reloj(e.horas[ult])} · objetivo {reloj(pasos[ult]['referencia'])} ({texto.lower()})"
-        saltados = [p["titulo"] for p, h in zip(pasos, e.horas) if h == -2]
+            v.resumen = t("ov_resumen", paso=de(pasos[ult], "titulo"), hora=reloj(e.horas[ult]),
+                          ref=reloj(pasos[ult]["referencia"]), ritmo=texto.lower())
+        saltados = [de(p, "titulo") for p, h in zip(pasos, e.horas) if h == -2]
         if saltados:
-            v.resumen += "\nSin hacer: " + ", ".join(saltados)
-        v.final = guia["mensaje_final"]
+            v.resumen += "\n" + t("ov_sin_hacer", pasos=", ".join(saltados))
+        v.final = de(guia, "mensaje_final")
         return v
 
     p = pasos[e.paso]
-    v.titulo, v.texto, v.icono, v.referencia = p["titulo"], p["texto"], p["icono"], p["referencia"]
+    v.titulo, v.texto, v.icono, v.referencia = de(p, "titulo"), de(p, "texto"), p["icono"], p["referencia"]
     for c in p["condiciones"]:
         if c["tipo"] == "contador":
             n = e.datos[c["indice"]]
-            v.condiciones.append(Condicion(c["etiqueta"], f"{min(n, c['min'])}/{c['min']}", min(1.0, n / c["min"]), n >= c["min"]))
+            v.condiciones.append(Condicion(de(c, "etiqueta"), f"{min(n, c['min'])}/{c['min']}", min(1.0, n / c["min"]), n >= c["min"]))
         else:
             estado = e.techs[c["indice"]]
             hecha = (e.edad >= c["objetivo"]) if c["tipo"] == "edad" else estado >= c["objetivo"]
-            texto = "Hecha" if hecha else ("En curso" if estado >= 1 else "Pendiente")
-            v.condiciones.append(Condicion(c["etiqueta"], texto, 1.0 if hecha else (0.5 if estado >= 1 else 0.0), hecha))
+            texto = t("ov_hecha") if hecha else (t("ov_en_curso") if estado >= 1 else t("ov_pendiente"))
+            v.condiciones.append(Condicion(de(c, "etiqueta"), texto, 1.0 if hecha else (0.5 if estado >= 1 else 0.0), hecha))
     n_siguientes = guia["pasos_siguientes_visibles"] if siguientes is None else siguientes
     for i in range(e.paso + 1, min(total, e.paso + 1 + n_siguientes)):
-        v.siguientes.append((i + 1, pasos[i]["titulo"], pasos[i]["referencia"]))
+        v.siguientes.append((i + 1, de(pasos[i], "titulo"), pasos[i]["referencia"]))
     if aviso_casas and guia["aviso_casas"] and e.tiempo >= 20 and e.libre <= 2 and e.casas_en_obra == 0:
-        v.aviso = f"Población {e.poblacion}/{e.poblacion + e.libre} · construye una casa"
+        v.aviso = t("ov_aviso_casas", pob=e.poblacion, max=e.poblacion + e.libre)
     return v
 
 
@@ -205,12 +206,13 @@ class Pintor:
 
         # Paso y ritmo.
         if v.terminada:
-            self.texto(x0, y, w, "Guía completada", fuente(14, QFont.Weight.Bold), TEXTO, h=24)
+            self.texto(x0, y, w, t("ov_completada"), fuente(14, QFont.Weight.Bold), TEXTO, h=24)
         else:
             f1, f2 = fuente(14, QFont.Weight.Bold), fuente(14, QFont.Weight.Normal)
-            t1 = f"Paso {v.paso + 1}"
+            t1 = t("ov_paso", n=v.paso + 1)
             self.texto(x0, y, w, t1, f1, TEXTO, h=24)
-            self.texto(x0 + QFontMetricsF(f1).horizontalAdvance(t1) + 4, y, w, f"de {v.total}", f2, APAGADO, h=24)
+            self.texto(x0 + QFontMetricsF(f1).horizontalAdvance(t1) + 4, y, w, t("ov_de", total=v.total), f2, APAGADO,
+                       h=24)
         if v.ritmo:
             self.pastilla(x0 + w, y + 1, *v.ritmo)
         y += 32
@@ -272,9 +274,9 @@ class Pintor:
         self.texto(tx, iy - 1, tw, v.titulo, fuente(12, QFont.Weight.Bold), TEXTO, h=22)
         restante = v.referencia - v.tiempo
         if restante >= 0:
-            sub, c = f"Objetivo {reloj(v.referencia)} · faltan {reloj(restante)}", APAGADO
+            sub, c = t("ov_faltan", ref=reloj(v.referencia), resto=reloj(restante)), APAGADO
         else:
-            sub, c = f"Objetivo {reloj(v.referencia)} · {duracion(-restante)} tarde", ATENCION
+            sub, c = t("ov_tarde", ref=reloj(v.referencia), tarde=duracion(-restante)), ATENCION
         self.texto(tx, iy + 21, tw, sub, fuente(9, QFont.Weight.Medium), c, h=18)
         y = iy + 50
         # Instrucción.
@@ -292,7 +294,7 @@ class Pintor:
         return y - iy - 4
 
     def _siguientes(self, v: Vista, x0, y, w) -> float:
-        self.texto(x0 + 2, y, w, "A CONTINUACIÓN", fuente(8, QFont.Weight.Bold, 1.3), APAGADO, h=16)
+        self.texto(x0 + 2, y, w, t("ov_a_continuacion"), fuente(8, QFont.Weight.Bold, 1.3), APAGADO, h=16)
         y += 22
         for n, titulo, ref in v.siguientes:
             if self.p:
@@ -437,7 +439,7 @@ class Pestana(VentanaClic):
     ANCHO, ALTO = 34, 82
 
     def __init__(self, al_pulsar, lado_derecho):
-        super().__init__(al_pulsar, "Mostrar la guía")
+        super().__init__(al_pulsar, t("ov_mostrar_guia"))
         self.lado_derecho = lado_derecho
         self.texto = ""
         self.setFixedSize(self.ANCHO, self.ALTO)
@@ -461,7 +463,7 @@ class Pestana(VentanaClic):
         p.drawText(QRectF(0, 36, self.ANCHO, 20), int(Qt.AlignmentFlag.AlignCenter.value), self.texto)
         p.setFont(fuente(7.5, QFont.Weight.DemiBold))
         p.setPen(APAGADO)
-        p.drawText(QRectF(0, 54, self.ANCHO, 16), int(Qt.AlignmentFlag.AlignCenter.value), "PASO")
+        p.drawText(QRectF(0, 54, self.ANCHO, 16), int(Qt.AlignmentFlag.AlignCenter.value), t("ov_pestana_paso"))
         p.end()
 
 
@@ -471,7 +473,7 @@ class PestanaHistorial(VentanaClic):
     ANCHO, ALTO = 34, 128
 
     def __init__(self, al_pulsar, lado_derecho):
-        super().__init__(al_pulsar, "Ver el historial de aperturas")
+        super().__init__(al_pulsar, t("ov_ver_historial"))
         self.lado_derecho = lado_derecho
         self.setFixedSize(self.ANCHO, self.ALTO)
 
@@ -499,7 +501,7 @@ class PestanaHistorial(VentanaClic):
         p.rotate(90 if derecha else -90)
         p.setFont(fuente(7.5, QFont.Weight.Bold, 1.2))
         p.setPen(TEXTO if self.encima else APAGADO)
-        p.drawText(QRectF(-44, -9, 88, 18), int(Qt.AlignmentFlag.AlignCenter.value), "HISTORIAL")
+        p.drawText(QRectF(-44, -9, 88, 18), int(Qt.AlignmentFlag.AlignCenter.value), t("ov_pestana_historial"))
         p.restore()
         p.end()
 
@@ -545,11 +547,12 @@ class Overlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setWindowOpacity(0.0)
         derecha = lambda: self.config["posicion"] != "izquierda"  # noqa: E731
-        self.boton_menu = BotonRedondo("puntos", self.abrir_menu, "Menú de la guía", derecha)
-        self.boton_plegar = BotonRedondo("plegar", lambda _: self.plegar(True), "Ocultar la guía en el borde", derecha)
+        self.boton_menu = BotonRedondo("puntos", self.abrir_menu, t("ov_menu"), derecha)
+        self.boton_plegar = BotonRedondo("plegar", lambda _: self.plegar(True), t("ov_plegar"), derecha)
         self.pestana = Pestana(lambda _: self.plegar(False), derecha)
         # Historial: la ventana y la pestaña que la abre fuera de partida.
         self.ventana_historial = VentanaHistorial(historial, self.cerrar_historial) if historial else None
+        self.idioma = textos.idioma()  # para rehacer los textos fijos si el panel cambia el idioma
         self.pestana_historial = PestanaHistorial(lambda _: self.abrir_historial(), derecha)
         self.historial_abierto = False
         self.historial_forzado = False  # abierto desde el menú: se ve aunque el juego no esté delante
@@ -651,8 +654,27 @@ class Overlay(QWidget):
     def guardar_config(self):
         C.guardar(self.config, CONFIG)
 
+    def aplicar_idioma(self):
+        """El panel cambió el idioma: rehace los textos fijos (consejos y ventana del historial)."""
+        self.idioma = textos.idioma()
+        self.boton_menu.setToolTip(t("ov_menu"))
+        self.boton_plegar.setToolTip(t("ov_plegar"))
+        self.pestana.setToolTip(t("ov_mostrar_guia"))
+        self.pestana_historial.setToolTip(t("ov_ver_historial"))
+        self.alto_cache = None
+        for w in (self.pestana, self.pestana_historial):
+            w.update()
+        if self.ventana_historial:
+            self.ventana_historial.hide()
+            self.ventana_historial.deleteLater()
+            self.ventana_historial = VentanaHistorial(self.historial, self.cerrar_historial)
+            self.historial_abierto = self.historial_forzado = False
+            self.opacidad_historial = 0.0
+
     # Estado del juego -> vista.
     def tick(self):
+        if textos.idioma() != self.idioma:
+            self.aplicar_idioma()
         guia, estado, frescura = self.fuente_estado()
         ahora = time.monotonic()
         en_partida = guia is not None and estado is not None and frescura < SIN_DATOS
@@ -667,8 +689,8 @@ class Overlay(QWidget):
                 extra = ""
                 if h >= 0:
                     texto, _ = ritmo(h - p["referencia"], guia["margen_segundos"])
-                    extra = f" · {reloj(h)}" + ("" if texto == "A tiempo" else f" ({texto})")
-                self.aviso_paso = (f"{p['titulo']}{extra}", ahora)
+                    extra = f" · {reloj(h)}" + ("" if texto == t("ov_a_tiempo") else f" ({texto})")
+                self.aviso_paso = (f"{de(p, 'titulo')}{extra}", ahora)
                 self.inicio_entrada = ahora
             self.paso_anterior = vista.paso
             self.vista = vista
@@ -783,9 +805,9 @@ class Overlay(QWidget):
         if not self.bandeja:
             return
         if guia and estado:
-            texto = f"AoE2 Coaching · {guia['nombre']} · paso {min(estado.paso + 1, len(guia['pasos']))}"
+            texto = t("ov_bandeja_paso", guia=guia["nombre"], n=min(estado.paso + 1, len(guia["pasos"])))
             if frescura >= 45:
-                texto += " (sin partida en curso)"
+                texto += t("ov_sin_partida")
         else:
             texto = t("bandeja_esperando")
         if texto != self.estado_bandeja:
@@ -817,15 +839,15 @@ class Overlay(QWidget):
     def alto_maximo(self, guia: dict) -> float:
         """La tarjeta más alta posible en esta guía (con aviso de paso y de casas),
         para fijar su borde superior y que los botones no se muevan."""
-        clave = (guia["nombre"], self.config.get("pasos_siguientes"))
+        clave = (guia["nombre"], self.config.get("pasos_siguientes"), textos.idioma())
         if self._alto_max.get(clave) is None:
             altos = []
             for paso in range(len(guia["pasos"]) + 1):
                 v = construir_vista(guia, estado_simulado(guia, paso, 30), self.config.get("pasos_siguientes"))
-                v.aviso = v.aviso or "Población 14/15 · construye una casa"
+                v.aviso = v.aviso or t("ov_aviso_casas", pob=14, max=15)
                 if v.terminada:
-                    v.comparacion = "¡Nueva mejor marca! (antes 16:40) · media 17:05 (−1:20)"
-                altos.append(Pintor(None, ANCHO).dibujar(v, ("Paso de prueba · 0:00 (+10 s)", 1.0), 1.0))
+                    v.comparacion = t("hi_nueva_mejor", hora="16:40") + " · " + t("hi_media", hora="17:05", dif="−1:20")
+                altos.append(Pintor(None, ANCHO).dibujar(v, ("Paso · 0:00 (+10 s)", 1.0), 1.0))
             self._alto_max[clave] = max(altos)
         return self._alto_max[clave]
 
@@ -985,8 +1007,8 @@ class Bienvenida(QWidget):
         self.pintar(p, t)
         p.end()
 
-    def pintar(self, p: QPainter, t: float):
-        opacidad, escala, linea = self.fotograma(t)
+    def pintar(self, p: QPainter, segundo: float):
+        opacidad, escala, linea = self.fotograma(segundo)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         p.setOpacity(opacidad)
@@ -1026,7 +1048,7 @@ class Bienvenida(QWidget):
         p.setPen(SECUNDARIO)
         p.drawText(QRectF(tarjeta.left() + 24, y + 44, self.W - 48, 36),
                    Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap,
-                   "La guía aparece al jugar un mapa [AoE2C].")
+                   t("ov_bienvenida"))
 
 
 # --- Datos simulados (demo y capturas) ---------------------------------------
@@ -1074,6 +1096,8 @@ def main():
     if "--captura" in args:
         destino = Path(args[args.index("--captura") + 1])
         destino.mkdir(parents=True, exist_ok=True)
+        if "--idioma" in args and args.index("--idioma") + 1 < len(args):
+            textos.poner_idioma(args[args.index("--idioma") + 1])  # la tarjeta y el historial (el panel, abajo)
         guias = cargar_guias()
         guia = guia_elegida(args)
         fondo = Path(args[args.index("--fondo") + 1]) if "--fondo" in args else HERE / "fondo.png"
@@ -1087,7 +1111,7 @@ def main():
             if nombre == "final":
                 w.vista.comparacion = comparacion_final(ejemplo, ejemplo.registros[-1])
             if nombre == "paso5":
-                w.aviso_paso = ("Primer jabalí · 3:52 (+22 s)", time.monotonic())
+                w.aviso_paso = (f"{de(guia['pasos'][3], 'titulo')} · 3:52 (+22 s)", time.monotonic())
             alto = int(w.alto_tarjeta()) + 2 * MARGEN
             img = QImage(ANCHO + 2 * MARGEN, alto, QImage.Format.Format_ARGB32_Premultiplied)
             img.fill(Qt.GlobalColor.transparent)

@@ -29,7 +29,7 @@ Páginas (barra lateral):
 | **MODs** | Los mods de AoE2 Coaching (por ahora, el icono sobre el ganado): estado, si está activo en el juego, **Instalar / Actualizar / Activar / Quitar**. |
 | **Ajustes** | Idioma (español / inglés), abrir el panel al iniciar, iniciar con Windows; y de la guía en partida: posición, opacidad, pasos de "A continuación", aviso de casas, abrir el historial al terminar y la pestaña del historial. Al final, botones para abrir las carpetas del juego, del perfil y del mod. |
 
-Los cambios de Ajustes se aplican al momento (el panel y el overlay comparten las preferencias en `%APPDATA%\AoE2Coaching\config.json`). El idioma cambia el panel y los menús; las guías y la tarjeta de la partida siguen en español.
+Los cambios de Ajustes se aplican al momento (el panel y el overlay comparten las preferencias en `%APPDATA%\AoE2Coaching\config.json`). El idioma cambia todo AoE2C: el panel, los menús, los pasos de las guías, la tarjeta de la partida y el historial. La primera vez se usa el idioma de Windows (español si Windows está en español; si no, inglés). Las partidas guardadas antes de que las guías tuvieran inglés muestran sus pasos en español. El panel nativo del juego (`panel_juego`, opcional) sigue en español: sus textos van dentro del script XS.
 
 ### Elegir la guía
 
@@ -208,7 +208,7 @@ La fuente es [build_orders/scouts_21.json](../content/guias/build_orders/scouts_
 | `apps/desktop/mapas.py` | Arma los mapas [AoE2C] y sus imágenes con los archivos del juego (lo usan la app y `build.py`). |
 | `apps/desktop/instalador.py` | Instala guías y mods del catálogo, activa la guía (copia su script como `aoe2c_guia.xs`), arma, quita y exporta mapas, activa los mods en `mod-status.json`, abre el juego y el inicio con Windows. |
 | `apps/desktop/config.py` | Preferencias compartidas por el panel y el overlay (`config.json`). |
-| `apps/desktop/textos.py` | Textos del panel y los menús en español e inglés. |
+| `apps/desktop/textos.py` | Textos del panel, los menús, la tarjeta y el historial en español e inglés; `de()` elige el texto de una guía según el idioma. |
 | `apps/desktop/pruebas/test_panel.py` | Pruebas de Scouts, el lector, el instalador, las preferencias, los textos y el panel (`py apps/desktop/pruebas/test_panel.py`). |
 | `apps/desktop/pruebas/test_catalogo.py` | Pruebas del catálogo: formato, hash, guías, mapas, mods, `mod-status.json` y las páginas Guías, Mapas y MODs. |
 | `apps/desktop/pruebas/test_arranque.py` | Arranca el programa entero sin pantalla: animación, panel, segunda copia y Cerrar AoE2C. |
@@ -277,7 +277,7 @@ Opciones: `--ascii` escribe los textos sin tildes. `--pruebas` añade el mapa "A
 
 Copia `build_orders/scouts_21.json` con otro nombre, cambia `id`, `archivo_xs` y los pasos, y reconstruye. Cada JSON genera su propio script y su manifiesto, y sale como una tarjeta más en la página Guías del panel.
 
-Claves generales: `id` (minúsculas y `_`), `nombre`, `descripcion` y `descripcion_en`, `nivel` (`facil`, `media` o `dificil`), `mapas_recomendados` (ids de `mapas.json`), `hitos` (de `clic_feudal`, `feudal`, `clic_castillos`, `castillos` y `meta` = último paso), `series` (1 o 2 hitos para el gráfico de evolución), `hito_principal`, `titulo_final` e `icono_final` (la tarjeta al completar la guía), `archivo_xs` (sin espacios), `margen_segundos` (margen para "a tiempo"), `aviso_casas`, `overlay` y `panel_juego` (true/false, al menos uno activado), `pasos_hechos_visibles` y `pasos_siguientes_visibles` (0 a 5) y `mensaje_final`.
+Claves generales: `id` (minúsculas y `_`), `nombre`, `descripcion` y `descripcion_en`, `nivel` (`facil`, `media` o `dificil`), `mapas_recomendados` (ids de `mapas.json`), `hitos` (de `clic_feudal`, `feudal`, `clic_castillos`, `castillos` y `meta` = último paso), `series` (1 o 2 hitos para el gráfico de evolución), `hito_principal`, `titulo_final`, `titulo_final_en` e `icono_final` (la tarjeta al completar la guía), `archivo_xs` (sin espacios), `margen_segundos` (margen para "a tiempo"), `aviso_casas`, `overlay` y `panel_juego` (true/false, al menos uno activado), `pasos_hechos_visibles` y `pasos_siguientes_visibles` (0 a 5), y `mensaje_final` y `mensaje_final_en`. Los textos en inglés (`_en`) son obligatorios; solo los muestra AoE2C, así que pueden llevar comillas y apóstrofos. Al cambiar una guía, sube su `version` para que el panel ofrezca la actualización.
 
 **Mapas:** se añaden en `mapas.json`. Cada uno lleva `id`, `base` (un `.rms` oficial de `gamedata_x2`), `archivo` (el nombre con que sale en el juego), `nombre`, `tipo` y `descripcion` (con `es` y `en`), `guias` (ids de guías recomendadas) y, si la imagen oficial no se llama `rm_<base>.png`, `imagen`. Los mapas que ya cargan su propio script XS no sirven de base; `build.py` lo avisa.
 
@@ -285,6 +285,7 @@ Cada paso lleva:
 
 - `titulo`: la línea corta de la lista (hasta 32 caracteres, para que no se parta).
 - `texto`: la instrucción completa, que solo se ve en el paso actual.
+- `titulo_en` y `texto_en`: lo mismo en inglés. Las etiquetas de las condiciones ("Casas", "Leñadores"...) se traducen solas (`ETIQUETAS_EN` en `build.py`).
 - `icono`, `referencia` (`m:ss`) y `condiciones`.
 
 El paso se cumple cuando se cumplen todas sus condiciones:
@@ -353,5 +354,4 @@ Para añadir edificios, tareas o tecnologías, se amplían las tablas del princi
 - **Aviso de centro urbano parado:** el recurso 80 del jugador ("Queued Units") permitiría detectar un centro urbano sin aldeanos en cola. Es la métrica más útil en un Fast Castle.
 - **Probar el panel y Scouts en una partida:** que el panel se abra tras la animación, que "Usar esta guía" cambie la guía en la siguiente partida y que los tiempos de referencia de Scouts sean razonables.
 - **Más build orders:** Arqueros, Drush FC, Hombres de armas → Arqueros y Águilas (ya salen como "Próximamente" en el panel).
-- **Traducir la tarjeta de la partida y el historial** al inglés (ahora solo el panel y los menús).
 - **Indicaciones visuales** (opción B): XS tiene `xsFlashUnit`, `xsSetUnitCaption` y `xsSetViewPosition`, que podrían señalar unidades o edificios en el mapa.

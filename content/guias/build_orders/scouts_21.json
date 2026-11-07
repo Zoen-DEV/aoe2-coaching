@@ -1,6 +1,6 @@
 {
   "id": "scouts",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "nombre": "Scouts 21",
   "descripcion": "Exploradores en la Edad Feudal: 21 de población al pulsar Feudal, establo nada más llegar y exploradores sin parar para molestar a los aldeanos enemigos.",
   "descripcion_en": "Feudal Age Scouts: 21 population when you click Feudal, a stable as soon as you arrive and non-stop scouts to harass enemy villagers.",
@@ -10,6 +10,7 @@
   "series": ["feudal", "meta"],
   "hito_principal": "meta",
   "titulo_final": "¡Exploradores en marcha!",
+  "titulo_final_en": "Scouts on the move!",
   "icono_final": "explorador",
   "archivo_xs": "guia_scouts.xs",
   "margen_segundos": 20,
@@ -19,10 +20,13 @@
   "pasos_hechos_visibles": 0,
   "pasos_siguientes_visibles": 3,
   "mensaje_final": "Siguiente: aldeanos sin parar, granjas, y pasa a arqueros o sube a Castillos con caballeros.",
+  "mensaje_final_en": "Next: non-stop villagers, farms, then go archers or click up to Castle Age with knights.",
   "pasos": [
     {
       "titulo": "2 casas",
+      "titulo_en": "2 houses",
       "texto": "Pon a los 3 aldeanos iniciales a construir 2 casas. Crea aldeanos sin parar y trae ganado con el explorador.",
+      "texto_en": "Put the 3 starting villagers on 2 houses. Make villagers non-stop and bring sheep with your scout.",
       "icono": "casa",
       "referencia": "0:35",
       "condiciones": [
@@ -31,7 +35,9 @@
     },
     {
       "titulo": "6 pastores",
+      "titulo_en": "6 on sheep",
       "texto": "Manda a los aldeanos al ganado, bajo el centro urbano, hasta tener 6 pastores.",
+      "texto_en": "Send villagers to the sheep under the Town Center until you have 6 shepherds.",
       "icono": "oveja",
       "referencia": "1:20",
       "condiciones": [
@@ -40,7 +46,9 @@
     },
     {
       "titulo": "Campamento y 4 leñadores",
+      "titulo_en": "Lumber camp and 4 on wood",
       "texto": "Con los aldeanos 7 a 10, construye un campamento maderero junto al bosque y ponlos a talar.",
+      "texto_en": "With villagers 7 to 10, build a lumber camp next to the woodline and put them on wood.",
       "icono": "campamento_maderero",
       "referencia": "3:10",
       "condiciones": [
@@ -50,7 +58,9 @@
     },
     {
       "titulo": "Primer jabalí",
+      "titulo_en": "First boar",
       "texto": "Con el aldeano 11, atrae el primer jabalí hasta el centro urbano y pasa los pastores a cazarlo.",
+      "texto_en": "With villager 11, lure the first boar to the Town Center and move the shepherds onto it.",
       "icono": "jabali",
       "referencia": "3:30",
       "condiciones": [
@@ -59,7 +69,9 @@
     },
     {
       "titulo": "Casa, molino y 4 en bayas",
+      "titulo_en": "House, mill and 4 on berries",
       "texto": "Con el aldeano 12, construye una casa y un molino junto a las bayas. Los aldeanos 12 a 15 recolectan bayas.",
+      "texto_en": "With villager 12, build a house and a mill next to the berries. Villagers 12 to 15 gather berries.",
       "icono": "molino",
       "referencia": "5:15",
       "condiciones": [
@@ -70,7 +82,9 @@
     },
     {
       "titulo": "Segundo jabalí, 13 en comida",
+      "titulo_en": "Second boar, 13 on food",
       "texto": "Atrae el segundo jabalí con el aldeano 16 y manda el 17 a la comida. Construye otra casa.",
+      "texto_en": "Lure the second boar with villager 16 and send villager 17 to food. Build another house.",
       "icono": "jabali",
       "referencia": "6:00",
       "condiciones": [
@@ -80,7 +94,9 @@
     },
     {
       "titulo": "Cuartel y 6 leñadores",
+      "titulo_en": "Barracks and 6 on wood",
       "texto": "Con el aldeano 18, construye un cuartel y luego ponlo a talar. Los aldeanos 19 y 20 van a la madera.",
+      "texto_en": "With villager 18, build a Barracks, then send it to wood. Villagers 19 and 20 also go to wood.",
       "icono": "cuartel",
       "referencia": "7:20",
       "condiciones": [
@@ -90,7 +106,9 @@
     },
     {
       "titulo": "Telar",
+      "titulo_en": "Loom",
       "texto": "Investiga el Telar en el centro urbano después del aldeano 20.",
+      "texto_en": "Research Loom at the Town Center after villager 20.",
       "icono": "centro_urbano",
       "referencia": "7:30",
       "condiciones": [
@@ -99,7 +117,9 @@
     },
     {
       "titulo": "Clic en Edad Feudal",
+      "titulo_en": "Click Feudal Age",
       "texto": "Sube a la Edad Feudal con 21 de población (20 aldeanos y el explorador).",
+      "texto_en": "Advance to the Feudal Age at 21 population (20 villagers and the scout).",
       "icono": "centro_urbano",
       "referencia": "7:35",
       "condiciones": [
@@ -108,7 +128,9 @@
     },
     {
       "titulo": "Edad Feudal",
+      "titulo_en": "Feudal Age",
       "texto": "Mientras sube: junta 175 de madera para el establo y pasa a granjas a los aldeanos que se queden sin ganado.",
+      "texto_en": "While aging up: gather 175 wood for the Stable and move villagers to farms as the sheep run out.",
       "icono": "centro_urbano",
       "referencia": "9:45",
       "condiciones": [
@@ -117,7 +139,9 @@
     },
     {
       "titulo": "Establo",
+      "titulo_en": "Stable",
       "texto": "Nada más llegar a Feudal, construye un establo con 2 leñadores, cerca del bosque.",
+      "texto_en": "As soon as you reach Feudal, build a Stable with 2 lumberjacks, close to the woodline.",
       "icono": "establo",
       "referencia": "10:20",
       "condiciones": [
@@ -126,7 +150,9 @@
     },
     {
       "titulo": "3 exploradores",
+      "titulo_en": "3 scouts",
       "texto": "Crea exploradores sin parar (cuenta el inicial). Ataca a los aldeanos de la madera y el oro, no a sus soldados.",
+      "texto_en": "Make scouts non-stop (the starting one counts). Hit the villagers on wood and gold, not their soldiers.",
       "icono": "explorador",
       "referencia": "11:20",
       "condiciones": [
@@ -135,7 +161,9 @@
     },
     {
       "titulo": "4 granjas y 24 aldeanos",
+      "titulo_en": "4 farms and 24 villagers",
       "texto": "No dejes parado el centro urbano: aldeanos sin parar y granjas cuando se acabe la comida de caza.",
+      "texto_en": "Keep the Town Center busy: non-stop villagers, and farms when the hunt runs out.",
       "icono": "granja",
       "referencia": "11:40",
       "condiciones": [
@@ -145,7 +173,9 @@
     },
     {
       "titulo": "6 exploradores",
+      "titulo_en": "6 scouts",
       "texto": "Sigue con el establo sin parar hasta 6 exploradores. Si pierdes alguno, repón para no quedarte sin presión.",
+      "texto_en": "Keep the Stable producing up to 6 scouts. If you lose any, replace them to keep up the pressure.",
       "icono": "explorador",
       "referencia": "12:50",
       "condiciones": [

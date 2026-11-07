@@ -1,9 +1,10 @@
-"""Textos del panel y del menú de AoE2C, en español e inglés.
+"""Textos de AoE2C (panel, menús, tarjeta de la partida e historial), en español e inglés.
 
 t("clave", nombre=valor) devuelve el texto en el idioma elegido (con los valores
 puestos). Si falta una clave en un idioma, se usa el español.
 
-Las guías (pasos e instrucciones) y la tarjeta de la partida siguen en español.
+Los textos de las guías vienen en su manifiesto: de(datos, "titulo") elige "titulo_en"
+en inglés (si la guía lo trae) y "titulo" en español.
 """
 
 IDIOMAS = {"es": "Español", "en": "English"}
@@ -101,7 +102,6 @@ TEXTOS = {
         "proxima_aguilas": "Águilas",
         "proxima_aguilas_desc": "La alternativa a Scouts para aztecas, mayas e incas.",
         # Estadísticas.
-        "historial_en_espanol": "El historial se muestra en español",
         # Mapas.
         "mapas_intro": "Cada mapa es una copia del oficial que carga la guía activa. Instálalos para que salgan en el juego, o guarda una copia del .rms para compartirlo.",
         "mapas_nota": "Un mapa recién instalado sale en la lista del juego al reiniciarlo. En la sala: Mapa aleatorio → Estilo de mapa: Personalizado.",
@@ -168,7 +168,7 @@ TEXTOS = {
         # Ajustes.
         "ajustes_general": "General",
         "op_idioma": "Idioma",
-        "op_idioma_desc": "Idioma del panel y del menú. Las guías siguen en español.",
+        "op_idioma_desc": "Idioma del panel, de las guías y del historial.",
         "op_abrir_panel": "Abrir el panel al iniciar",
         "op_abrir_panel_desc": "Después de la animación de inicio. Si hay una partida en curso, no se abre.",
         "op_inicio_windows": "Iniciar con Windows",
@@ -207,6 +207,78 @@ TEXTOS = {
         "perfil_sin_conexion": "Sin conexión",
         "error_inicio": "No se pudo cambiar el inicio con Windows: {error}",
         "acerca": "AoE2 Coaching v{version} · Mod personal para Age of Empires II: Definitive Edition. Funciona en partidas contra la IA o salas personalizadas con mapas [AoE2C] (no en clasificatorias).",
+        # Tarjeta de la guía en la partida (overlay).
+        "ov_a_tiempo": "A tiempo",
+        "ov_hecha": "Hecha",
+        "ov_en_curso": "En curso",
+        "ov_pendiente": "Pendiente",
+        "ov_aviso_casas": "Población {pob}/{max} · construye una casa",
+        "ov_resumen": "{paso} a las {hora} · objetivo {ref} ({ritmo})",
+        "ov_sin_hacer": "Sin hacer: {pasos}",
+        "ov_completada": "Guía completada",
+        "ov_paso": "Paso {n}",
+        "ov_de": "de {total}",
+        "ov_faltan": "Objetivo {ref} · faltan {resto}",
+        "ov_tarde": "Objetivo {ref} · {tarde} tarde",
+        "ov_a_continuacion": "A CONTINUACIÓN",
+        "ov_pestana_paso": "PASO",
+        "ov_pestana_historial": "HISTORIAL",
+        "ov_mostrar_guia": "Mostrar la guía",
+        "ov_ver_historial": "Ver el historial de aperturas",
+        "ov_menu": "Menú de la guía",
+        "ov_plegar": "Ocultar la guía en el borde",
+        "ov_bandeja_paso": "AoE2 Coaching · {guia} · paso {n}",
+        "ov_sin_partida": " (sin partida en curso)",
+        "ov_bienvenida": "La guía aparece al jugar un mapa [AoE2C].",
+        "ov_titulo_final": "¡Llegaste a Castillos!",
+        # Historial de aperturas.
+        "hi_titulo": "AoE2 Coaching · Historial de aperturas",
+        "hi_cabecera": "AOE2 COACHING · HISTORIAL DE APERTURAS",
+        "hi_cerrar": "Cerrar el historial",
+        "hi_vacio": "Aún no hay partidas guardadas.\n\nJuega en un mapa [AoE2C] con AoE2C abierto: cada partida se guarda sola, con la hora de cada paso.",
+        "hi_borrar": "Borrar",
+        "hi_borrar_consejo": "Quitar esta partida del historial",
+        "hi_borrar_confirmar": "¿Borrar? Pulsa otra vez",
+        "hi_paso_a_paso": "Paso a paso",
+        "hi_partidas": "PARTIDAS",
+        "hi_col_paso": "PASO",
+        "hi_col_hora": "HORA",
+        "hi_col_ref": "VS REF.",
+        "hi_col_tramo": "TRAMO",
+        "hi_evolucion": "Evolución",
+        "hi_evolucion_nota": "Más abajo = más rápido · discontinua = referencia",
+        "hi_donde_pierdes": "Dónde pierdes tiempo",
+        "hi_media_una": "Media de la última partida · por tramo",
+        "hi_media_n": "Media de las últimas {n} partidas · por tramo",
+        "hi_sin_tramos": "Ningún tramo te hace perder tiempo. ¡Bien!",
+        "hi_resumen": "Resumen general",
+        "hi_comparativa_una": "Comparativa de 1 partida",
+        "hi_comparativa_n": "Comparativa de {n} partidas",
+        "hi_n_pasos": "{mapa} · {hechos}/{total} pasos",
+        "hi_sin_hito": "sin {hito}",
+        "hi_mejor_estrella": "★ mejor",
+        "hi_sin_hacer": "sin hacer",
+        "hi_no_llego": "no llegó",
+        "hi_sin_partidas": "Sin partidas",
+        "hi_partidas_una": "{guia} · 1 partida",
+        "hi_partidas_n": "{guia} · {n} partidas",
+        "hi_hito_media": "{hito} · media",
+        "hi_ultimas": "Últimas {n}",
+        "hi_ultima": "Última",
+        "hi_mejor_min": "mejor {hora}",
+        "hi_mejor": "Mejor {hora}",
+        "hi_ref": "Ref. {hora}",
+        "hi_vs_antes": "vs antes",
+        "hi_vs_media": "vs media",
+        "hi_terminada": "Partida terminada",
+        "hi_hito_a_las": "{hito} a las {hora}",
+        "hi_hasta_paso": "guía hasta el paso {n} de {total}",
+        "hi_donde_perdiste": "donde más perdiste: {n}. {paso} ({dif})",
+        "hi_primera": "Primera partida guardada en el historial.",
+        "hi_nueva_mejor": "¡Nueva mejor marca! (antes {hora})",
+        "hi_tu_mejor": "Tu mejor: {hora}",
+        "hi_media": "media {hora} ({dif})",
+        "hi_meses": "ene feb mar abr may jun jul ago sep oct nov dic",
         # Bandeja y menús.
         "menu_abrir_panel": "Abrir el panel de AoE2C",
         "menu_mostrar_guia": "Mostrar u ocultar la guía",
@@ -305,7 +377,6 @@ TEXTOS = {
         "proxima_hombres_armas_desc": "Three early Men-at-Arms and a transition into archers.",
         "proxima_aguilas": "Eagles",
         "proxima_aguilas_desc": "The Scouts alternative for Aztecs, Mayans and Incas.",
-        "historial_en_espanol": "History is shown in Spanish",
         "mapas_intro": "Each map is a copy of the official one that loads the active guide. Install them so they show up in the game, or save a copy of the .rms to share it.",
         "mapas_nota": "A newly installed map shows up in the game's list after restarting it. In the lobby: Random Map → Map Style: Custom.",
         "mapas_sin_imagen": "No image",
@@ -370,7 +441,7 @@ TEXTOS = {
         "mapas_todos_ok": "Maps installed. They show up after restarting the game.",
         "ajustes_general": "General",
         "op_idioma": "Language",
-        "op_idioma_desc": "Language of the dashboard and the menu. Guides stay in Spanish.",
+        "op_idioma_desc": "Language of the dashboard, the guides and the history.",
         "op_abrir_panel": "Open the dashboard on start",
         "op_abrir_panel_desc": "After the startup animation. It doesn't open during a game.",
         "op_inicio_windows": "Start with Windows",
@@ -409,6 +480,78 @@ TEXTOS = {
         "perfil_sin_conexion": "Offline",
         "error_inicio": "Couldn't change start with Windows: {error}",
         "acerca": "AoE2 Coaching v{version} · Personal mod for Age of Empires II: Definitive Edition. Works in games against the AI or custom lobbies with [AoE2C] maps (not in ranked).",
+        # In-game guide card (overlay).
+        "ov_a_tiempo": "On time",
+        "ov_hecha": "Done",
+        "ov_en_curso": "In progress",
+        "ov_pendiente": "Pending",
+        "ov_aviso_casas": "Population {pob}/{max} · build a house",
+        "ov_resumen": "{paso} at {hora} · target {ref} ({ritmo})",
+        "ov_sin_hacer": "Skipped: {pasos}",
+        "ov_completada": "Guide completed",
+        "ov_paso": "Step {n}",
+        "ov_de": "of {total}",
+        "ov_faltan": "Target {ref} · {resto} left",
+        "ov_tarde": "Target {ref} · {tarde} late",
+        "ov_a_continuacion": "UP NEXT",
+        "ov_pestana_paso": "STEP",
+        "ov_pestana_historial": "HISTORY",
+        "ov_mostrar_guia": "Show the guide",
+        "ov_ver_historial": "View opening history",
+        "ov_menu": "Guide menu",
+        "ov_plegar": "Tuck the guide into the screen edge",
+        "ov_bandeja_paso": "AoE2 Coaching · {guia} · step {n}",
+        "ov_sin_partida": " (no game in progress)",
+        "ov_bienvenida": "The guide shows up when you play an [AoE2C] map.",
+        "ov_titulo_final": "You reached the Castle Age!",
+        # Opening history.
+        "hi_titulo": "AoE2 Coaching · Opening history",
+        "hi_cabecera": "AOE2 COACHING · OPENING HISTORY",
+        "hi_cerrar": "Close the history",
+        "hi_vacio": "No games saved yet.\n\nPlay on an [AoE2C] map with AoE2C running: every game is saved automatically, with the time of each step.",
+        "hi_borrar": "Delete",
+        "hi_borrar_consejo": "Remove this game from the history",
+        "hi_borrar_confirmar": "Delete? Click again",
+        "hi_paso_a_paso": "Step by step",
+        "hi_partidas": "GAMES",
+        "hi_col_paso": "STEP",
+        "hi_col_hora": "TIME",
+        "hi_col_ref": "VS REF.",
+        "hi_col_tramo": "STRETCH",
+        "hi_evolucion": "Progress",
+        "hi_evolucion_nota": "Lower = faster · dashed = reference",
+        "hi_donde_pierdes": "Where you lose time",
+        "hi_media_una": "Average of the last game · per stretch",
+        "hi_media_n": "Average of the last {n} games · per stretch",
+        "hi_sin_tramos": "No stretch is costing you time. Nice!",
+        "hi_resumen": "Overview",
+        "hi_comparativa_una": "Comparing 1 game",
+        "hi_comparativa_n": "Comparing {n} games",
+        "hi_n_pasos": "{mapa} · {hechos}/{total} steps",
+        "hi_sin_hito": "no {hito}",
+        "hi_mejor_estrella": "★ best",
+        "hi_sin_hacer": "skipped",
+        "hi_no_llego": "not reached",
+        "hi_sin_partidas": "No games",
+        "hi_partidas_una": "{guia} · 1 game",
+        "hi_partidas_n": "{guia} · {n} games",
+        "hi_hito_media": "{hito} · avg",
+        "hi_ultimas": "Last {n}",
+        "hi_ultima": "Last",
+        "hi_mejor_min": "best {hora}",
+        "hi_mejor": "Best {hora}",
+        "hi_ref": "Ref. {hora}",
+        "hi_vs_antes": "vs before",
+        "hi_vs_media": "vs average",
+        "hi_terminada": "Game over",
+        "hi_hito_a_las": "{hito} at {hora}",
+        "hi_hasta_paso": "guide up to step {n} of {total}",
+        "hi_donde_perdiste": "where you lost the most: {n}. {paso} ({dif})",
+        "hi_primera": "First game saved in the history.",
+        "hi_nueva_mejor": "New personal best! (was {hora})",
+        "hi_tu_mejor": "Your best: {hora}",
+        "hi_media": "average {hora} ({dif})",
+        "hi_meses": "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec",
         "menu_abrir_panel": "Open the AoE2C dashboard",
         "menu_mostrar_guia": "Show or hide the guide",
         "menu_ver_historial": "View opening history",
@@ -423,6 +566,18 @@ TEXTOS = {
 }
 
 
+def idioma_de_windows() -> str:
+    """Idioma inicial: español si Windows está en español; si no, inglés."""
+    try:
+        import ctypes
+        langid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+    except (AttributeError, OSError):  # fuera de Windows
+        import locale
+        codigo = (locale.getlocale()[0] or "").lower()
+        return "es" if codigo.startswith(("es", "spanish")) else "en"
+    return "es" if langid & 0x3FF == 0x0A else "en"  # 0x0A: idioma principal español (cualquier país)
+
+
 def poner_idioma(idioma: str) -> None:
     global _idioma
     _idioma = idioma if idioma in TEXTOS else "es"
@@ -430,6 +585,14 @@ def poner_idioma(idioma: str) -> None:
 
 def idioma() -> str:
     return _idioma
+
+
+def de(datos: dict, clave: str) -> str:
+    """Texto de una guía (o de un registro del historial) en el idioma elegido: en inglés,
+    "<clave>_en" si lo trae; si no, el español."""
+    if _idioma == "en" and datos.get(clave + "_en"):
+        return datos[clave + "_en"]
+    return datos.get(clave, "")
 
 
 def t(clave: str, **valores) -> str:

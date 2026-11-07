@@ -22,10 +22,10 @@ from estilo import (ACENTO, APAGADO, ATENCION, BANDERAS_CLIC, BIEN, BORDE, FONDO
                     SERIE_CASTILLOS, SERIE_FEUDAL, TARJETA, TEXTO, color, fuente)
 from historial import (VENTANA_MEDIA, Historial, comparacion_final, duracion, nombre_hito, pasos_hechos, principal,
                        puntos_debiles, reloj, resumen_hito, tramos, valor_principal, vista)
+from textos import t as tx
 
 MARGEN = 14  # sombra alrededor de la tarjeta
 PARTIDAS_GRAFICO = 20
-MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 IZQ = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
 DER = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 CEN = Qt.AlignmentFlag.AlignCenter
@@ -36,7 +36,7 @@ def fecha_corta(iso: str) -> str:
         d = datetime.fromisoformat(iso)
     except ValueError:
         return iso
-    return f"{d.day:02d} {MESES[d.month - 1]} {d.hour:02d}:{d.minute:02d}"
+    return f"{d.day:02d} {tx('hi_meses').split()[d.month - 1]} {d.hour:02d}:{d.minute:02d}"
 
 
 def mapa_corto(mapa: str) -> str:
@@ -177,8 +177,8 @@ class Grafico(QWidget):
         p = pintor(self)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         caja(p, r, 12, TARJETA, BORDE)
-        texto(p, QRectF(16, 10, 200, 20), "Evolución", fuente(10.5, QFont.Weight.Bold), TEXTO)
-        texto(p, QRectF(16, 26, r.width() - 32, 16), "Más abajo = más rápido · discontinua = referencia",
+        texto(p, QRectF(16, 10, 200, 20), tx("hi_evolucion"), fuente(10.5, QFont.Weight.Bold), TEXTO)
+        texto(p, QRectF(16, 26, r.width() - 32, 16), tx("hi_evolucion_nota"),
               fuente(8, QFont.Weight.Medium), APAGADO)
         # Leyenda (con nombre, así el color no es lo único que identifica la serie).
         lx = r.right() - 16
@@ -312,15 +312,15 @@ class PuntosDebiles(QWidget):
         p = pintor(self)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         caja(p, r, 12, TARJETA, BORDE)
-        texto(p, QRectF(16, 10, r.width() - 32, 20), "Dónde pierdes tiempo", fuente(10.5, QFont.Weight.Bold), TEXTO)
+        texto(p, QRectF(16, 10, r.width() - 32, 20), tx("hi_donde_pierdes"), fuente(10.5, QFont.Weight.Bold), TEXTO)
         n = min(self.partidas, VENTANA_MEDIA)
         texto(p, QRectF(16, 26, r.width() - 32, 16),
-              f"Media de {'la última partida' if n == 1 else f'las últimas {n} partidas'} · por tramo",
+              tx("hi_media_una") if n == 1 else tx("hi_media_n", n=n),
               fuente(8, QFont.Weight.Medium), APAGADO)
         lentos = [t for t in self.tramos if t["media"] >= 1][: self.FILAS]
         y = 52
         if not lentos:
-            texto(p, QRectF(16, y, r.width() - 32, 40), "Ningún tramo te hace perder tiempo. ¡Bien!",
+            texto(p, QRectF(16, y, r.width() - 32, 40), tx("hi_sin_tramos"),
                   fuente(9.5, QFont.Weight.Medium), BIEN)
             p.end()
             return
@@ -363,10 +363,10 @@ class FilaResumen(QWidget):
             caja(p, r, 8, color(ACENTO, 40), color(ACENTO, 90))
         elif self.encima:
             caja(p, r, 8, color(TEXTO, 14))
-        texto(p, QRectF(12, 8, r.width() - 20, 18), "Resumen general", fuente(9.5, QFont.Weight.Bold), TEXTO)
+        texto(p, QRectF(12, 8, r.width() - 20, 18), tx("hi_resumen"), fuente(9.5, QFont.Weight.Bold), TEXTO)
         n = self.partidas
         texto(p, QRectF(12, 26, r.width() - 20, 16),
-              f"Comparativa de {n} {'partida' if n == 1 else 'partidas'}", fuente(8.5, QFont.Weight.Medium),
+              tx("hi_comparativa_una") if n == 1 else tx("hi_comparativa_n", n=n), fuente(8.5, QFont.Weight.Medium),
               SECUNDARIO if self.elegida else APAGADO)
         p.end()
 
@@ -424,12 +424,12 @@ class ListaPartidas(QWidget):
             texto(p, QRectF(12, y + 8, ancho, 18), reloj(castillos), fuente(10, QFont.Weight.Bold),
                   TEXTO if castillos is not None else APAGADO, DER)
             texto(p, QRectF(12, y + 27, ancho - 70, 16),
-                  f"{mapa_corto(reg['mapa'])} · {pasos_hechos(reg)}/{len(reg['pasos'])} pasos",
+                  tx("hi_n_pasos", mapa=mapa_corto(reg["mapa"]), hechos=pasos_hechos(reg), total=len(reg["pasos"])),
                   fuente(8.5, QFont.Weight.Medium), SECUNDARIO if elegida else APAGADO)
             if castillos is None:
-                t, c = f"sin {nombre_hito(reg, principal(reg))}", APAGADO
+                t, c = tx("hi_sin_hito", hito=nombre_hito(reg, principal(reg))), APAGADO
             elif castillos == self.mejor:
-                t, c = "★ mejor", BIEN
+                t, c = tx("hi_mejor_estrella"), BIEN
             else:
                 t, c = desfase(castillos - self.media) if self.media is not None else ("", APAGADO)
             texto(p, QRectF(12, y + 27, ancho, 16), t, fuente(8.5, QFont.Weight.DemiBold), c, DER)
@@ -475,10 +475,10 @@ class TablaPasos(QWidget):
         p = pintor(self)
         w = self.width()
         f_cab = fuente(7.5, QFont.Weight.Bold, 1.1)
-        texto(p, QRectF(8, 0, 200, 22), "PASO", f_cab, APAGADO)
-        texto(p, QRectF(w - 182, 0, 54, 22), "HORA", f_cab, APAGADO, DER)
-        texto(p, QRectF(w - 124, 0, 54, 22), "VS REF.", f_cab, APAGADO, DER)
-        texto(p, QRectF(w - 66, 0, 58, 22), "TRAMO", f_cab, APAGADO, DER)
+        texto(p, QRectF(8, 0, 200, 22), tx("hi_col_paso"), f_cab, APAGADO)
+        texto(p, QRectF(w - 182, 0, 54, 22), tx("hi_col_hora"), f_cab, APAGADO, DER)
+        texto(p, QRectF(w - 124, 0, 54, 22), tx("hi_col_ref"), f_cab, APAGADO, DER)
+        texto(p, QRectF(w - 66, 0, 58, 22), tx("hi_col_tramo"), f_cab, APAGADO, DER)
         peor = max((f["tramo"] for f in self.filas if f["tramo"] is not None), default=None)
         y = 22
         for f in self.filas:
@@ -495,7 +495,7 @@ class TablaPasos(QWidget):
                 t, c = desfase(f["tramo"])
                 texto(p, QRectF(w - 66, y, 58, self.FILA), t, fuente(8.5, QFont.Weight.Bold), c, DER)
             else:
-                texto(p, QRectF(w - 182, y, 174, self.FILA), "sin hacer" if f["saltado"] else "no llegó",
+                texto(p, QRectF(w - 182, y, 174, self.FILA), tx("hi_sin_hacer") if f["saltado"] else tx("hi_no_llego"),
                       fuente(8.5, QFont.Weight.Medium), APAGADO, DER)
             y += self.FILA
         p.end()
@@ -593,8 +593,7 @@ class ContenidoHistorial(QWidget):
         raiz.setContentsMargins(0, 0, 0, 0)
 
         # Sin partidas.
-        self.vacio = etiqueta("Aún no hay partidas guardadas.\n\nJuega en un mapa [AoE2C] con AoE2C abierto: "
-                              "cada partida se guarda sola, con la hora de cada paso.", 11, QFont.Weight.Medium,
+        self.vacio = etiqueta(tx("hi_vacio"), 11, QFont.Weight.Medium,
                               SECUNDARIO)
         self.vacio.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.vacio.setWordWrap(True)
@@ -617,7 +616,7 @@ class ContenidoHistorial(QWidget):
         separador.setFixedHeight(1)
         separador.setStyleSheet("background: rgba(255,255,255,26);")
         ll.addWidget(separador)
-        ll.addWidget(etiqueta("  PARTIDAS", 7.5, QFont.Weight.Bold, APAGADO, 1.2))
+        ll.addWidget(etiqueta("  " + tx("hi_partidas"), 7.5, QFont.Weight.Bold, APAGADO, 1.2))
         self.lista = ListaPartidas(self.elegir)
         ll.addWidget(desplazable(self.lista), 1)
         cuerpo.addWidget(lateral)
@@ -643,10 +642,10 @@ class ContenidoHistorial(QWidget):
         fila = QHBoxLayout()
         self.titulo_detalle = etiqueta("", 13, QFont.Weight.Bold)
         fila.addWidget(self.titulo_detalle, 1)
-        self.borrar = QPushButton("Borrar")
+        self.borrar = QPushButton(tx("hi_borrar"))
         self.borrar.setObjectName("borrar")
         self.borrar.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.borrar.setToolTip("Quitar esta partida del historial")
+        self.borrar.setToolTip(tx("hi_borrar_consejo"))
         self.borrar.clicked.connect(self.pulsar_borrar)
         fila.addWidget(self.borrar)
         vp.addLayout(fila)
@@ -663,7 +662,7 @@ class ContenidoHistorial(QWidget):
         detalle = Panel()
         ld = QVBoxLayout(detalle)
         ld.setContentsMargins(12, 10, 6, 8)
-        ld.addWidget(etiqueta("Paso a paso", 10.5, QFont.Weight.Bold))
+        ld.addWidget(etiqueta(tx("hi_paso_a_paso"), 10.5, QFont.Weight.Bold))
         self.pasos = TablaPasos()
         ld.addWidget(desplazable(self.pasos), 1)
         vp.addWidget(detalle, 1)
@@ -696,12 +695,12 @@ class ContenidoHistorial(QWidget):
             self.seleccion = None
             self.refrescar()
         else:
-            self.borrar.setText("¿Borrar? Pulsa otra vez")
+            self.borrar.setText(tx("hi_borrar_confirmar"))
             self.borrar.setProperty("confirmar", True)
             self.borrar.style().polish(self.borrar)
 
     def _reiniciar_borrar(self):
-        self.borrar.setText("Borrar")
+        self.borrar.setText(tx("hi_borrar"))
         self.borrar.setProperty("confirmar", False)
         self.borrar.style().polish(self.borrar)
 
@@ -717,10 +716,11 @@ class ContenidoHistorial(QWidget):
         self.contenido.setVisible(hay)
         if not hay:
             self.seleccion = None
-            self.al_titular("Sin partidas")
+            self.al_titular(tx("hi_sin_partidas"))
             return
         self.seleccion = sel["id"] if sel else None
-        self.al_titular(f"{guia} · {len(regs)} {'partida' if len(regs) == 1 else 'partidas'}")
+        self.al_titular(tx("hi_partidas_una", guia=guia) if len(regs) == 1
+                        else tx("hi_partidas_n", guia=guia, n=len(regs)))
 
         ultimo = regs[-1]
         claves = vista(ultimo)["hitos"]
@@ -730,7 +730,7 @@ class ContenidoHistorial(QWidget):
         self.vista_general.setVisible(sel is None)
         self.vista_partida.setVisible(sel is not None)
         if sel is None:
-            self.fichas_general.preparar(claves, [f"{nombre_hito(ultimo, k)} · media" for k in claves])
+            self.fichas_general.preparar(claves, [tx("hi_hito_media", hito=nombre_hito(ultimo, k)) for k in claves])
             self._pintar_general(regs)
         else:
             self.fichas.preparar(claves, [nombre_hito(ultimo, k) for k in claves])
@@ -740,26 +740,28 @@ class ContenidoHistorial(QWidget):
         n = min(len(regs), VENTANA_MEDIA)
         for clave, ficha in self.fichas_general.items():
             res = resumen_hito(regs, clave)
-            pie = [f"Últimas {n}" if n > 1 else "Última", f"mejor {reloj(res['mejor'])}" if res["mejor"] is not None else ""]
-            ficha.poner(res["media"], res["media_anterior"], "vs antes", " · ".join(x for x in pie if x))
+            pie = [tx("hi_ultimas", n=n) if n > 1 else tx("hi_ultima"),
+                   tx("hi_mejor_min", hora=reloj(res["mejor"])) if res["mejor"] is not None else ""]
+            ficha.poner(res["media"], res["media_anterior"], tx("hi_vs_antes"), " · ".join(x for x in pie if x))
         self.grafico_general.poner(regs[-PARTIDAS_GRAFICO:], None)
         self.debiles.poner(puntos_debiles(regs), len(regs))
 
     def _pintar_partida(self, regs: list[dict], sel: dict):
         # Aviso de la partida que acaba de terminar.
         if self.fin_de_partida and sel is regs[-1]:
-            partes = ["Partida terminada"]
+            partes = [tx("hi_terminada")]
             valor = valor_principal(sel)
             if valor is not None:
-                partes.append(f"{nombre_hito(sel, principal(sel))} a las {reloj(valor)}")
+                partes.append(tx("hi_hito_a_las", hito=nombre_hito(sel, principal(sel)), hora=reloj(valor)))
                 comp = comparacion_final(self.historial, sel)
                 if comp:
                     partes.append(comp.rstrip("."))
             else:
-                partes.append(f"guía hasta el paso {pasos_hechos(sel)} de {len(sel['pasos'])}")
+                partes.append(tx("hi_hasta_paso", n=pasos_hechos(sel), total=len(sel["pasos"])))
             debil = max((f for f in tramos(sel) if f["tramo"] is not None), key=lambda f: f["tramo"], default=None)
             if debil and debil["tramo"] >= 10:
-                partes.append(f"donde más perdiste: {debil['n']}. {debil['titulo']} ({desfase(debil['tramo'])[0]})")
+                partes.append(tx("hi_donde_perdiste", n=debil["n"], paso=debil["titulo"],
+                                 dif=desfase(debil["tramo"])[0]))
             self.aviso.setText(" · ".join(partes))
             self.aviso.show()
         else:
@@ -770,10 +772,10 @@ class ContenidoHistorial(QWidget):
             res = resumen_hito(regs, clave, excluir=sel["id"])
             pie = []
             if res["mejor"] is not None:
-                pie.append(f"Mejor {reloj(res['mejor'])}")
+                pie.append(tx("hi_mejor", hora=reloj(res["mejor"])))
             if sel["referencias"].get(clave) is not None:
-                pie.append(f"Ref. {reloj(sel['referencias'][clave])}")
-            ficha.poner(sel["hitos"].get(clave), res["media"], "vs media", " · ".join(pie))
+                pie.append(tx("hi_ref", hora=reloj(sel["referencias"][clave])))
+            ficha.poner(sel["hitos"].get(clave), res["media"], tx("hi_vs_media"), " · ".join(pie))
         # El gráfico muestra la ventana de partidas que incluye la elegida.
         i = next(k for k, r in enumerate(regs) if r["id"] == sel["id"])
         inicio = min(max(0, len(regs) - PARTIDAS_GRAFICO), i)
@@ -794,7 +796,7 @@ class VentanaHistorial(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setStyleSheet(ESTILO)
-        self.setWindowTitle("AoE2 Coaching · Historial de aperturas")
+        self.setWindowTitle(tx("hi_titulo"))
 
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(MARGEN + 22, MARGEN + 18, MARGEN + 22, MARGEN + 20)
@@ -804,13 +806,13 @@ class VentanaHistorial(QWidget):
         cab = QHBoxLayout()
         textos = QVBoxLayout()
         textos.setSpacing(0)
-        textos.addWidget(etiqueta("AOE2 COACHING · HISTORIAL DE APERTURAS", 8.5, QFont.Weight.Bold, APAGADO, 1.4))
+        textos.addWidget(etiqueta(tx("hi_cabecera"), 8.5, QFont.Weight.Bold, APAGADO, 1.4))
         self.subtitulo = etiqueta("", 15, QFont.Weight.Bold)
         textos.addWidget(self.subtitulo)
         cab.addLayout(textos, 1)
         cerrar = QPushButton("✕")
         cerrar.setObjectName("cerrar")
-        cerrar.setToolTip("Cerrar el historial")
+        cerrar.setToolTip(tx("hi_cerrar"))
         cerrar.setCursor(Qt.CursorShape.PointingHandCursor)
         cerrar.clicked.connect(al_cerrar)
         cab.addWidget(cerrar, 0, Qt.AlignmentFlag.AlignTop)

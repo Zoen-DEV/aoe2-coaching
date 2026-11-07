@@ -39,7 +39,7 @@ from estilo import (ACENTO, APAGADO, ATENCION, BIEN, BORDE, EMOJI, MAL, SECUNDAR
 from historial import (Historial, nombre_hito, pasos_hechos, principal, reloj, resumen_hito, valor_principal,
                        vista_de_guia)
 from historial_ui import ContenidoHistorial, desfase, fecha_corta, mapa_corto
-from textos import t
+from textos import de, t
 from version import VERSION
 
 FONDO_PANEL = "#0d1016"
@@ -1043,7 +1043,7 @@ class PaginaInicio(Pagina):
             limpiar(self.chips_guia)
             self.chips_guia.addWidget(pastilla(t(f"nivel_{guia.get('nivel', 'media')}"), ACENTO))
             self.chips_guia.addWidget(pastilla(t("n_pasos", n=len(guia["pasos"]))))
-            self.chips_guia.addWidget(pastilla(t("meta_a", meta=guia["pasos"][-1]["titulo"],
+            self.chips_guia.addWidget(pastilla(t("meta_a", meta=de(guia["pasos"][-1], "titulo"),
                                                  hora=reloj(guia["pasos"][-1]["referencia"]))))
             self.chips_guia.addStretch(1)
             instalada = panel.instalador.guia_instalada(panel.guias)
@@ -1085,7 +1085,7 @@ class PaginaInicio(Pagina):
         self.titulo_numeros.setText(t("tus_numeros", guia=nombre or "—"))
         vista = vista_de_guia(guia) if guia else {"principal": "castillos", "nombre_meta": ""}
         clave = vista["principal"]
-        etiqueta_hito = vista["nombre_meta"] if clave == "meta" else t(f"hito_{clave}")
+        etiqueta_hito = de(vista, "nombre_meta") if clave == "meta" else t(f"hito_{clave}")
         res = resumen_hito(regs, clave)
         semana = sum(1 for r in regs if r["fecha"] >= time.strftime("%Y-%m-%d", time.localtime(time.time() - 7 * 86400)))
         self.d_partidas.poner(str(len(regs)), t("esta_semana", n=semana) if regs else t("sin_partidas_aun"))
@@ -1164,8 +1164,6 @@ class PaginaEstadisticas(Pagina):
             self.grupo.addButton(b)
             self.chips.addWidget(b)
         self.chips.addStretch(1)
-        if textos.idioma() != "es":
-            self.chips.addWidget(etiqueta(t("historial_en_espanol"), 8.5, QFont.Weight.Medium, APAGADO))
         self.contenido.mostrar_guia(self.guia)
 
 
@@ -1230,7 +1228,7 @@ class TarjetaGuia(Tarjeta):
         cab.addLayout(tx, 1)
         self.capa.addLayout(cab)
         chips = [pastilla(t(f"nivel_{guia.get('nivel', 'media')}"), ACENTO), pastilla(t("n_pasos", n=len(guia["pasos"]))),
-                 pastilla(t("meta_a", meta=guia["pasos"][-1]["titulo"], hora=reloj(guia["pasos"][-1]["referencia"])))]
+                 pastilla(t("meta_a", meta=de(guia["pasos"][-1], "titulo"), hora=reloj(guia["pasos"][-1]["referencia"])))]
         version = panel.instalador.version_guia(guia["id"])
         if version:
             chips.append(pastilla(f"v{version}", APAGADO))
@@ -1240,7 +1238,7 @@ class TarjetaGuia(Tarjeta):
             self.capa.addWidget(etiqueta(t("mapas_recomendados", mapas=", ".join(mapas)), 9, QFont.Weight.Medium,
                                          APAGADO, envolver=True))
         # Pasos (plegables).
-        self.pasos = etiqueta("\n".join(f"{i + 1:>2}.  {p['titulo']}  ·  {reloj(p['referencia'])}"
+        self.pasos = etiqueta("\n".join(f"{i + 1:>2}.  {de(p, 'titulo')}  ·  {reloj(p['referencia'])}"
                                         for i, p in enumerate(guia["pasos"])), 9.5, QFont.Weight.Normal, SECUNDARIO)
         self.pasos.setStyleSheet("color: #bac2ce; background: rgba(255,255,255,8); border-radius: 10px; padding: 10px 14px;")
         self.pasos.hide()

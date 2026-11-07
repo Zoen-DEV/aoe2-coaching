@@ -142,16 +142,16 @@ ICONOS = {  # icono del panel: ID de la unidad o edificio que se muestra
 ID_CASA = EDIFICIOS["casa"][0]
 CLAVES_BUILD_ORDER = {
     "id", "version", "nombre", "descripcion", "descripcion_en", "nivel", "mapas_recomendados", "hitos", "series",
-    "hito_principal", "titulo_final", "icono_final", "archivo_xs", "margen_segundos", "aviso_casas",
-    "overlay", "panel_juego",
-    "pasos_hechos_visibles", "pasos_siguientes_visibles", "mensaje_final", "pasos",
+    "hito_principal", "titulo_final", "titulo_final_en", "icono_final", "archivo_xs", "margen_segundos",
+    "aviso_casas", "overlay", "panel_juego",
+    "pasos_hechos_visibles", "pasos_siguientes_visibles", "mensaje_final", "mensaje_final_en", "pasos",
 }
 OVERLAY_GUIAS = SALIDA / "guias"  # manifiestos que lee el overlay externo
 CLAVES_MAPA = {"id", "version", "base", "archivo", "nombre", "tipo", "descripcion", "guias"}
 CLAVES_MAPA_OPCIONALES = {"imagen"}
 HITOS_VALIDOS = ["clic_feudal", "feudal", "clic_castillos", "castillos", "meta"]  # meta = último paso
 NIVELES = ("facil", "media", "dificil")
-CLAVES_PASO = {"titulo", "texto", "icono", "referencia", "condiciones"}
+CLAVES_PASO = {"titulo", "titulo_en", "texto", "texto_en", "icono", "referencia", "condiciones"}
 VERSION_RE = r"\d+\.\d+\.\d+"
 
 
@@ -187,6 +187,13 @@ def check_text(value, where: str) -> str:
         if bad in value:
             raise BuildOrderError(f"{where}: el texto no puede llevar {bad!r} ({why}): {value!r}")
     check_chars(value, where)
+    return value
+
+
+def check_en(value, where: str) -> str:
+    """Los textos en inglés solo los muestra AoE2C (no van al script XS): basta con que estén."""
+    if not isinstance(value, str) or not value.strip():
+        raise BuildOrderError(f"{where}: falta el texto en inglés")
     return value
 
 
@@ -234,9 +241,8 @@ def load_build_order(path: Path) -> dict:
         raise BuildOrderError(f"{name}: claves desconocidas {sorted(extra)}")
     for key in ("nombre", "mensaje_final", "titulo_final"):
         check_text(data[key], f"{name} > {key}")
-    for key in ("descripcion", "descripcion_en"):
-        if not isinstance(data[key], str) or not data[key].strip():
-            raise BuildOrderError(f"{name}: falta el texto de {key}")
+    for key in ("descripcion", "descripcion_en", "titulo_final_en", "mensaje_final_en"):
+        check_en(data[key], f"{name} > {key}")
     if not re.fullmatch(r"[a-z0-9_]+", str(data["id"])):
         raise BuildOrderError(f"{name}: id debe ser minúsculas, números y _ (por ejemplo fast_castle)")
     if not re.fullmatch(VERSION_RE, str(data["version"])):
@@ -282,6 +288,8 @@ def load_build_order(path: Path) -> dict:
             raise BuildOrderError(f"{where}: faltan {sorted(missing)} / sobran {sorted(extra)}")
         check_text(step["titulo"], f"{where} > titulo")
         check_text(step["texto"], f"{where} > texto")
+        check_en(step["titulo_en"], f"{where} > titulo_en")
+        check_en(step["texto_en"], f"{where} > texto_en")
         if len(step["titulo"]) > MAX_TITULO:
             print(f"aviso: {where}: el título tiene {len(step['titulo'])} caracteres; "
                   f"con más de {MAX_TITULO} su línea del panel se parte en dos")
@@ -348,6 +356,24 @@ def cond_value_expr(cond: dict, index: dict) -> str:
     if "tecnologia" in cond:
         return f"guiaEstadoTech(jugador, {TECNOLOGIAS[cond['tecnologia']][0]})"
     return "guiaEdad(jugador)"
+
+
+# Etiquetas de las condiciones en inglés (para el overlay; el panel del juego va en español).
+ETIQUETAS_EN = {
+    "Casa": "House", "Casas": "Houses", "Molino": "Mill", "Molinos": "Mills",
+    "Campamento": "Lumber camp", "Campamentos": "Lumber camps",
+    "Campamento minero": "Mining camp", "Campamentos mineros": "Mining camps",
+    "Granja": "Farm", "Granjas": "Farms", "Mercado": "Market", "Mercados": "Markets",
+    "Herrería": "Blacksmith", "Herrerías": "Blacksmiths", "Cuartel": "Barracks", "Cuarteles": "Barracks",
+    "Centro urbano": "Town Center", "Centros urbanos": "Town Centers", "Establo": "Stable", "Establos": "Stables",
+    "Exploradores": "Scouts", "Pastores": "Shepherds", "Leñadores": "Lumberjacks", "Cazadores": "Hunters",
+    "Bayas": "Berries", "Oro": "Gold", "Piedra": "Stone", "Granjeros": "Farmers", "Pescadores": "Fishermen",
+    "Constructores": "Builders", "En comida": "On food", "Aldeanos": "Villagers",
+    "Telar": "Loom", "Edad Feudal": "Feudal Age", "Edad de los Castillos": "Castle Age",
+    "Edad Imperial": "Imperial Age", "Hacha de doble filo": "Double-Bit Axe", "Sierra de arco": "Bow Saw",
+    "Collera": "Horse Collar", "Arado pesado": "Heavy Plow", "Carretilla": "Wheelbarrow",
+    "Minería aurífera": "Gold Mining",
+}
 
 
 def cond_label(cond: dict) -> str:
@@ -489,7 +515,10 @@ def build_manifest(bo: dict) -> dict:
                 tech = EDADES[c["edad"]][1]
                 conds.append({"tipo": "edad", "objetivo": EDADES[c["edad"]][0], "indice": tidx[tech],
                               "etiqueta": TECNOLOGIAS[tech][1]})
-        pasos.append({"titulo": s["titulo"], "texto": s["texto"], "icono": s["icono"],
+        for cond in conds:
+            cond["etiqueta_en"] = ETIQUETAS_EN[cond["etiqueta"]]
+        pasos.append({"titulo": s["titulo"], "titulo_en": s["titulo_en"], "texto": s["texto"],
+                      "texto_en": s["texto_en"], "icono": s["icono"],
                       "referencia": s["segundos"], "condiciones": conds})
     return {
         "version": 2,
@@ -505,7 +534,9 @@ def build_manifest(bo: dict) -> dict:
         "series": bo["series"],
         "hito_principal": bo["hito_principal"],
         "nombre_meta": bo["pasos"][-1]["titulo"],
+        "nombre_meta_en": bo["pasos"][-1]["titulo_en"],
         "titulo_final": bo["titulo_final"],
+        "titulo_final_en": bo["titulo_final_en"],
         "icono_final": bo["icono_final"],
         "archivo_xs": bo["archivo_xs"],
         "mapas": [Path(m["archivo"]).stem for m in load_maps()],
@@ -513,6 +544,7 @@ def build_manifest(bo: dict) -> dict:
         "aviso_casas": bo["aviso_casas"],
         "pasos_siguientes_visibles": bo["pasos_siguientes_visibles"],
         "mensaje_final": bo["mensaje_final"],
+        "mensaje_final_en": bo["mensaje_final_en"],
         "num_datos": max(1, len(idx)),
         "num_techs": len(tidx),
         "techs": list(tidx),  # nombre de cada tecnología, en el orden del .xsdat (para el historial)

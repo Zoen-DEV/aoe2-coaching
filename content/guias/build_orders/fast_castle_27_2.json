@@ -1,6 +1,6 @@
 {
   "id": "fast_castle",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "nombre": "Fast Castle 27+2",
   "descripcion": "Directo a Castillos sin ejército en Feudal: 27 de población al pulsar Feudal y 2 aldeanos más antes de pulsar Castillos.",
   "descripcion_en": "Straight to Castle Age with no Feudal army: 27 population when you click Feudal and 2 more villagers before clicking Castle.",
@@ -23,6 +23,7 @@
   ],
   "hito_principal": "castillos",
   "titulo_final": "¡Llegaste a Castillos!",
+  "titulo_final_en": "You reached the Castle Age!",
   "icono_final": "castillo",
   "archivo_xs": "guia_fast_castle.xs",
   "margen_segundos": 20,
@@ -32,10 +33,13 @@
   "pasos_hechos_visibles": 0,
   "pasos_siguientes_visibles": 3,
   "mensaje_final": "Siguiente: 2 centros urbanos más, aldeanos sin parar y granjas.",
+  "mensaje_final_en": "Next: 2 more Town Centers, non-stop villagers and farms.",
   "pasos": [
     {
       "titulo": "2 casas",
+      "titulo_en": "2 houses",
       "texto": "Pon a los 3 aldeanos iniciales a construir 2 casas. Crea aldeanos sin parar y trae ganado con el explorador.",
+      "texto_en": "Put the 3 starting villagers on 2 houses. Make villagers non-stop and bring sheep with your scout.",
       "icono": "casa",
       "referencia": "0:35",
       "condiciones": [
@@ -47,7 +51,9 @@
     },
     {
       "titulo": "6 pastores",
+      "titulo_en": "6 on sheep",
       "texto": "Manda a los aldeanos al ganado, bajo el centro urbano, hasta tener 6 pastores.",
+      "texto_en": "Send villagers to the sheep under the Town Center until you have 6 shepherds.",
       "icono": "oveja",
       "referencia": "1:20",
       "condiciones": [
@@ -59,7 +65,9 @@
     },
     {
       "titulo": "Campamento y 4 leñadores",
+      "titulo_en": "Lumber camp and 4 on wood",
       "texto": "Con los aldeanos 7 a 10, construye un campamento maderero junto al bosque y ponlos a talar.",
+      "texto_en": "With villagers 7 to 10, build a lumber camp next to the woodline and put them on wood.",
       "icono": "campamento_maderero",
       "referencia": "3:10",
       "condiciones": [
@@ -75,7 +83,9 @@
     },
     {
       "titulo": "Primer jabalí",
+      "titulo_en": "First boar",
       "texto": "Con el aldeano 11, atrae el primer jabalí hasta el centro urbano y pasa los pastores a cazarlo.",
+      "texto_en": "With villager 11, lure the first boar to the Town Center and move the shepherds onto it.",
       "icono": "jabali",
       "referencia": "3:30",
       "condiciones": [
@@ -87,7 +97,9 @@
     },
     {
       "titulo": "Casa, molino y 5 en bayas",
+      "titulo_en": "House, mill and 5 on berries",
       "texto": "Con el aldeano 12, construye una casa y un molino junto a las bayas. Los aldeanos 12 a 16 recolectan bayas.",
+      "texto_en": "With villager 12, build a house and a mill next to the berries. Villagers 12 to 16 gather berries.",
       "icono": "molino",
       "referencia": "5:40",
       "condiciones": [
@@ -107,7 +119,9 @@
     },
     {
       "titulo": "Segundo jabalí, 14 en comida",
+      "titulo_en": "Second boar, 14 on food",
       "texto": "Atrae el segundo jabalí con el aldeano 17 y manda el 18 a la comida. Construye otra casa.",
+      "texto_en": "Lure the second boar with villager 17 and send villager 18 to food. Build another house.",
       "icono": "jabali",
       "referencia": "6:25",
       "condiciones": [
@@ -123,7 +137,9 @@
     },
     {
       "titulo": "Segundo campamento, 9 leñadores",
+      "titulo_en": "Second lumber camp, 9 on wood",
       "texto": "Con los aldeanos 19 a 23, construye un segundo campamento maderero y otra casa, y ponlos a talar.",
+      "texto_en": "With villagers 19 to 23, build a second lumber camp and another house, and put them on wood.",
       "icono": "campamento_maderero",
       "referencia": "8:35",
       "condiciones": [
@@ -143,7 +159,9 @@
     },
     {
       "titulo": "Campamento minero, 3 en oro",
+      "titulo_en": "Mining camp, 3 on gold",
       "texto": "Con los aldeanos 24 a 26, construye un campamento minero junto al oro y ponlos a minar.",
+      "texto_en": "With villagers 24 to 26, build a mining camp next to the gold and put them on it.",
       "icono": "campamento_minero",
       "referencia": "9:55",
       "condiciones": [
@@ -159,7 +177,9 @@
     },
     {
       "titulo": "Telar",
+      "titulo_en": "Loom",
       "texto": "Investiga el Telar en el centro urbano después del aldeano 26.",
+      "texto_en": "Research Loom at the Town Center after villager 26.",
       "icono": "centro_urbano",
       "referencia": "10:00",
       "condiciones": [
@@ -171,7 +191,9 @@
     },
     {
       "titulo": "Clic en Edad Feudal",
+      "titulo_en": "Click Feudal Age",
       "texto": "Sube a la Edad Feudal con 27 de población (26 aldeanos y el explorador).",
+      "texto_en": "Advance to the Feudal Age at 27 population (26 villagers and the scout).",
       "icono": "centro_urbano",
       "referencia": "10:05",
       "condiciones": [
@@ -183,7 +205,9 @@
     },
     {
       "titulo": "6 granjas",
+      "titulo_en": "6 farms",
       "texto": "Mientras sube la edad: cuando se acaben el ganado y los jabalíes, pasa esos aldeanos a granjas.",
+      "texto_en": "While aging up: when the sheep and boars run out, move those villagers to farms.",
       "icono": "granja",
       "referencia": "12:15",
       "condiciones": [
@@ -195,7 +219,9 @@
     },
     {
       "titulo": "Mercado y Herrería",
+      "titulo_en": "Market and Blacksmith",
       "texto": "Ya en Feudal: construye un Mercado y una Herrería con 4 leñadores (2 en cada edificio).",
+      "texto_en": "Once in Feudal: build a Market and a Blacksmith with 4 lumberjacks (2 on each building).",
       "icono": "mercado",
       "referencia": "13:10",
       "condiciones": [
@@ -214,7 +240,9 @@
     },
     {
       "titulo": "28 aldeanos",
+      "titulo_en": "28 villagers",
       "texto": "Crea 2 aldeanos más y mándalos a la madera (28 aldeanos, 29 de población).",
+      "texto_en": "Make 2 more villagers and send them to wood (28 villagers, 29 population).",
       "icono": "aldeano",
       "referencia": "13:10",
       "condiciones": [
@@ -226,7 +254,9 @@
     },
     {
       "titulo": "Clic en Castillos",
+      "titulo_en": "Click Castle Age",
       "texto": "Sube a la Edad de los Castillos en el centro urbano (800 de comida y 200 de oro).",
+      "texto_en": "Advance to the Castle Age at the Town Center (800 food and 200 gold).",
       "icono": "castillo",
       "referencia": "13:15",
       "condiciones": [
@@ -238,7 +268,9 @@
     },
     {
       "titulo": "Hacha de doble filo y Collera",
+      "titulo_en": "Double-Bit Axe and Horse Collar",
       "texto": "Mientras sube: investiga Hacha de doble filo en el campamento maderero y Collera en el molino.",
+      "texto_en": "While aging up: research Double-Bit Axe at the lumber camp and Horse Collar at the mill.",
       "icono": "campamento_maderero",
       "referencia": "13:50",
       "condiciones": [
@@ -254,7 +286,9 @@
     },
     {
       "titulo": "Edad de los Castillos",
+      "titulo_en": "Castle Age",
       "texto": "Espera a la Edad de los Castillos. Mientras, sigue haciendo granjas y casas.",
+      "texto_en": "Wait for the Castle Age. Meanwhile, keep adding farms and houses.",
       "icono": "castillo",
       "referencia": "15:55",
       "condiciones": [

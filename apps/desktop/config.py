@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 import rutas
+import textos
 
 ARCHIVO = rutas.CONFIG
 
@@ -24,7 +25,7 @@ DEFECTO = {
     "abrir_historial_al_terminar": True,
     # Panel.
     "guia_activa": "fast_castle",   # la que cargan los mapas [AoE2C] (aoe2c_guia.xs)
-    "idioma": "es",
+    "idioma": None,                 # es o en; None = el de Windows (la primera vez)
     "abrir_panel_al_iniciar": True,
     "aviso_bandeja_visto": False,   # el aviso "sigue en la bandeja" sale una sola vez
     # Carpetas (None = se buscan solas, ver rutas.py).
@@ -40,7 +41,10 @@ def cargar(archivo: Path = ARCHIVO) -> dict:
             datos = {}
     except (OSError, ValueError):
         datos = {}
-    return {**DEFECTO, **{k: v for k, v in datos.items() if k in DEFECTO}}
+    config = {**DEFECTO, **{k: v for k, v in datos.items() if k in DEFECTO}}
+    if config["idioma"] not in textos.IDIOMAS:
+        config["idioma"] = textos.idioma_de_windows()
+    return config
 
 
 def guardar(config: dict, archivo: Path = ARCHIVO) -> None:

@@ -61,7 +61,7 @@ def test_formato(tmp: Path):
               "lo que pide una app más nueva no es compatible")
     comprobar(cat.url_paquete(fc) == str(ruta.parent / fc.paquete.archivo), "paquetes junto al catalogo.json local")
     remoto = K.leer(datos, "https://github.com/x/y/releases/download/contenido-1/catalogo.json")
-    comprobar(remoto.url_paquete(fc) == "https://github.com/x/y/releases/download/contenido-1/guia-fast_castle-1.0.0.zip",
+    comprobar(remoto.url_paquete(fc) == f"https://github.com/x/y/releases/download/contenido-1/guia-fast_castle-{fc.version}.zip",
               "y junto al catalogo.json publicado")
 
     raro = copy.deepcopy(datos)
@@ -134,7 +134,7 @@ def test_guias(tmp: Path):
     comprobar(inst.guias() == {}, "al principio no hay guías instaladas")
     sc = cat.buscar("guia", "scouts")
     comprobar(inst.instalar_guia(sc, K.descargar_paquete(cat, sc, inst.descargas)) is None, "instalar Scouts")
-    comprobar(list(inst.guias()) == ["scouts"] and inst.version_guia("scouts") == "1.0.0",
+    comprobar(list(inst.guias()) == ["scouts"] and inst.version_guia("scouts") == sc.version,
               "queda en contenido/guias con su versión")
     comprobar(inst.activar_guia(inst.guias()["scouts"]) is None and inst.guia_instalada(inst.guias()) == "scouts",
               "y se puede activar para los mapas")

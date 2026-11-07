@@ -1,6 +1,6 @@
 # Plan: compartir AoE2 Coaching (primera versión pública)
 
-- **Estado:** plan acordado el 2026-11-07. Pasos 1, 2 y 3 hechos el 2026-11-07 (monorepo en GitHub; juego, perfil y datos sin rutas fijas; catálogo de contenido: [04-catalogo-contenido.md](04-catalogo-contenido.md)).
+- **Estado:** plan acordado el 2026-11-07. Pasos 1 a 4 hechos el 2026-11-07 (monorepo en GitHub; juego, perfil y datos sin rutas fijas; catálogo de contenido: [04-catalogo-contenido.md](04-catalogo-contenido.md); todo AoE2C en inglés).
 - **Objetivo:** que cualquier jugador pueda descargar AoE2C desde su página oficial, instalarlo como un programa normal (al estilo de Blitz) y, desde el panel, instalar guías, mapas y mods.
 - **Mod actual:** [02-guia-apertura-castillos.md](02-guia-apertura-castillos.md)
 
