@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QComboBox, QDialog
                                QHBoxLayout, QLabel, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider,
                                QStackedWidget, QVBoxLayout, QWidget)
 
+import actualizacion as A
 import catalogo as K
 import config as C
 import instalador as I
@@ -452,6 +453,11 @@ class Panel(QWidget):
             instalador.catalogo = K.cargar_copia(instalador.contenido)
         self.estado_catalogo = ("copia", "") if instalador.catalogo else ("nunca", "")
         self.descargando: set[tuple[str, str]] = set()
+        # Actualización de la app (GitHub Releases): solo la app instalada y con catálogo real.
+        self.actualizacion: A.Actualizacion | None = None
+        self.estado_actualizacion = ("sin_buscar" if fuente_catalogo is not None and A.buscar_activa()
+                                     else "desde_codigo", "")
+        self._progreso_act = 0
         self._trabajos: set = set()
         self._primera_vez = True
         self.perfiles: list[rutas.Perfil] = perfiles or []  # carpetas de perfil encontradas (rutas.py)
@@ -554,6 +560,12 @@ class Panel(QWidget):
             self.botones_lateral[nombre] = b
             lc.addWidget(b)
         lc.addStretch(1)
+        # Versión nueva disponible (se muestra al encontrarla).
+        self.boton_actualizar = boton("", self.actualizar_app, "primario", t("act_boton_consejo"))
+        self.boton_actualizar.hide()
+        lc.addWidget(self.boton_actualizar)
+        lc.addSpacing(10)
+        self._mostrar_actualizacion()
         # Estado del juego.
         estado = QHBoxLayout()
         estado.setSpacing(8)
@@ -662,6 +674,78 @@ class Panel(QWidget):
             self.refrescar_contenido()
 
         self.en_segundo_plano(lambda: K.descargar(fuente), listo)
+
+    # --- Actualización de la app ---
+    def buscar_actualizacion(self):
+        if self.estado_actualizacion[0] in ("desde_codigo", "buscando", "descargando"):
+            return
+        self.estado_actualizacion = ("buscando", "")
+        self._refrescar_actualizacion()
+
+        def listo(resultado, error):
+            if error is not None:
+                logging.getLogger("aoe2c").warning("actualización: %s", error)
+                self.estado_actualizacion = ("error", str(error))
+            else:
+                self.actualizacion = resultado
+                self.estado_actualizacion = ("disponible" if resultado else "al_dia", "")
+            self._refrescar_actualizacion()
+
+        self.en_segundo_plano(A.buscar, listo)
+
+    def actualizar_app(self):
+        """Descarga el instalador de la versión nueva, lo abre en silencio y cierra AoE2C
+        (el instalador pone la versión nueva y la vuelve a abrir)."""
+        a = self.actualizacion
+        if a is None or self.estado_actualizacion[0] == "descargando":
+            return
+        if self.overlay is not None and getattr(self.overlay, "en_partida", False):
+            self.avisar(t("act_en_partida"), ATENCION)
+            return
+        self.estado_actualizacion = ("descargando", "")
+        self._progreso_act = 0
+        self._refrescar_actualizacion()
+
+        def progreso(bajado, total):
+            self._progreso_act = int(100 * bajado / total) if total else 0  # lo pinta tick()
+
+        def listo(instalador, error):
+            if error is None:
+                try:
+                    A.lanzar(instalador)
+                except OSError as e:
+                    error = e
+            if error is not None:
+                logging.getLogger("aoe2c").warning("no se pudo actualizar a %s: %s", a.version, error)
+                self.estado_actualizacion = ("disponible", "")
+                self.avisar(t("act_fallo", error=error), MAL)
+                self._refrescar_actualizacion()
+                return
+            logging.getLogger("aoe2c").info("actualizando a la versión %s", a.version)
+            self.al_salir()
+
+        self.en_segundo_plano(lambda: A.descargar(a, progreso=progreso), listo)
+
+    def texto_actualizacion(self) -> str:
+        estado, error = self.estado_actualizacion
+        nueva = self.actualizacion.version if self.actualizacion else ""
+        return t(f"act_{estado}", version=VERSION, nueva=nueva, error=error, porcentaje=self._progreso_act)
+
+    def _mostrar_actualizacion(self):
+        estado = self.estado_actualizacion[0]
+        b = self.boton_actualizar
+        if estado in ("disponible", "descargando") and self.actualizacion:
+            b.setText(t("act_boton_lateral", nueva=self.actualizacion.version) if estado == "disponible"
+                      else f"{self._progreso_act}%")
+            b.setEnabled(estado == "disponible")
+            b.show()
+        else:
+            b.hide()
+
+    def _refrescar_actualizacion(self):
+        self._mostrar_actualizacion()
+        if self.pagina == "ajustes":
+            self.p_ajustes.refrescar()
 
     def refrescar_contenido(self):
         if self.pagina in ("guias", "mapas", "mods"):
@@ -801,6 +885,8 @@ class Panel(QWidget):
 
     def tick(self):
         self.actualizar_estado()
+        if self.estado_actualizacion[0] == "descargando":
+            self._mostrar_actualizacion()  # el porcentaje de la descarga
         firma = self.firma_historial()
         if firma != self._firma:
             self._firma = firma
@@ -833,6 +919,7 @@ class Panel(QWidget):
             self._primera_vez = False
             self.reparar_mapas()
             self.actualizar_catalogo()
+            self.buscar_actualizacion()
         if self._preguntar_perfil:
             self._preguntar_perfil = False
             QTimer.singleShot(250, self.pedir_perfil)
@@ -1603,6 +1690,14 @@ class PaginaAjustes(Pagina):
                      discord)
         self._opcion(ayuda, t("op_soporte"), t("op_soporte_desc"), boton(t("copiar"), self.copiar_soporte))
         self._opcion(ayuda, t("op_log"), t("op_log_desc"), self._abrir(rutas.LOGS))
+        estado = panel.estado_actualizacion[0]
+        if estado in ("disponible", "descargando"):
+            control = boton(t("act_actualizar"), panel.actualizar_app, "primario")
+            control.setEnabled(estado == "disponible")
+        else:
+            control = boton(t("act_buscar"), panel.buscar_actualizacion)
+            control.setEnabled(estado not in ("desde_codigo", "buscando"))
+        self._opcion(ayuda, t("op_version"), panel.texto_actualizacion(), control)
 
         self.capa.addWidget(etiqueta(t("acerca", version=VERSION), 8.5, QFont.Weight.Medium, APAGADO, envolver=True))
         self.capa.addStretch(1)

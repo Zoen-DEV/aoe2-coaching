@@ -1,6 +1,6 @@
 # Plan: compartir AoE2 Coaching (primera versión pública)
 
-- **Estado:** plan acordado el 2026-11-07. Pasos 1 a 5 hechos el 2026-11-07 (monorepo en GitHub; juego, perfil y datos sin rutas fijas; catálogo de contenido: [04-catalogo-contenido.md](04-catalogo-contenido.md); todo AoE2C en inglés; repeticiones en el historial y soporte). Falta poner la invitación del Discord en `apps/desktop/soporte.py` cuando se cree el servidor (paso 9).
+- **Estado:** plan acordado el 2026-11-07. Pasos 1 a 6 hechos el 2026-11-07 (monorepo en GitHub; juego, perfil y datos sin rutas fijas; catálogo de contenido: [04-catalogo-contenido.md](04-catalogo-contenido.md); todo AoE2C en inglés; repeticiones en el historial y soporte; empaquetado: ver "Empaquetado" abajo). Falta poner la invitación del Discord en `apps/desktop/soporte.py` cuando se cree el servidor (paso 9).
 - **Objetivo:** que cualquier jugador pueda descargar AoE2C desde su página oficial, instalarlo como un programa normal (al estilo de Blitz) y, desde el panel, instalar guías, mapas y mods.
 - **Mod actual:** [02-guia-apertura-castillos.md](02-guia-apertura-castillos.md)
 
@@ -67,6 +67,14 @@ aoe2-coaching/
 7. **Publicación automática.** Los dos procesos de GitHub Actions.
 8. **Página oficial.** Astro en Vercel con el subdominio: qué es, capturas, botón de descarga de la última versión, lista de guías y mapas leída del catálogo, y preguntas frecuentes (aviso de Windows, Xbox).
 9. **Lanzamiento.** Crear el servidor de Discord, cerrar la licencia, enviar el instalador a Microsoft, publicar `desktop-v1.0.0` y `contenido-…`, y probarlo en una PC limpia.
+
+## Empaquetado (paso 6)
+
+- **Armar:** `py apps/desktop/empaquetado/empaquetar.py` exporta el logo (`build/marca/aoe2c.ico`), arma la app con PyInstaller en modo carpeta (`build/desktop/dist/AoE2Coaching`) y compila [aoe2c.iss](../apps/desktop/empaquetado/aoe2c.iss) con Inno Setup 6.7 o posterior (`build/instalador/AoE2Coaching-Setup-<versión>.exe`). La versión sale de `apps/desktop/version.py`.
+- **Instalador:** `%LOCALAPPDATA%\AoE2Coaching`, sin administrador, en español o inglés, acceso en el menú Inicio y, si se elige, en el escritorio. Antes de copiar cierra la copia abierta (`AoE2Coaching.exe --salir`) y borra `_internal` para no mezclar bibliotecas de dos versiones.
+- **Desinstalar:** una ventana con las dos casillas de la decisión 13. Lo hace la propia app (`AoE2Coaching.exe --desinstalar [--juego] [--datos]`, en [desinstalar.py](../apps/desktop/desinstalar.py)): en todos los perfiles quita `aoe2c_guia.xs` y los `guia_*.xs`, el mod de los mapas, los mods instalados desde el panel y sus líneas de `mod-status.json`; siempre quita el inicio con Windows. Con el juego abierto devuelve 2 y el desinstalador pide cerrarlo (Reintentar) o sigue sin tocar el juego (Cancelar).
+- **Actualizar:** [actualizacion.py](../apps/desktop/actualizacion.py). Al abrir el panel por primera vez, la app instalada busca en GitHub Releases la publicación `desktop-v<versión>` más nueva con su `AoE2Coaching-Setup-<versión>.exe`. Si hay una, el panel muestra "Actualizar a vX" en la barra lateral (y en Ajustes, "Versión de AoE2C"). Al pulsarlo, descarga el instalador, comprueba su tamaño y el SHA-256 que da GitHub, lo abre con `/SILENT` y se cierra; el instalador pone la versión nueva y vuelve a abrir AoE2C. En plena partida no actualiza. Desde el código no busca (`AOE2C_ACTUALIZAR=1` lo fuerza).
+- **Pruebas:** [test_empaquetado.py](../apps/desktop/pruebas/test_empaquetado.py) (elegir y descargar la versión, el panel, la desinstalación con un perfil inventado y `--salir`).
 
 ## Para versiones siguientes
 

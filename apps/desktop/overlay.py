@@ -16,13 +16,14 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from PySide6.QtCore import QFileInfo, QPoint, QPointF, QRectF, Qt, QTimer
+from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, QTimer
 from PySide6.QtGui import (QAction, QColor, QFont, QFontMetricsF, QGuiApplication, QIcon, QImage, QPainter,
                            QPainterPath, QPen, QPixmap)
-from PySide6.QtWidgets import QApplication, QFileIconProvider, QMenu, QSystemTrayIcon, QWidget
+from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config as C  # noqa: E402
+import logo  # noqa: E402
 import repeticiones  # noqa: E402
 import rutas  # noqa: E402
 import textos  # noqa: E402
@@ -924,32 +925,9 @@ class Overlay(QWidget):
 
 # --- Icono y aviso de inicio ---------------------------------------------------
 
-# El mismo icono que el acceso directo del escritorio: el del ejecutable del juego.
-ICONO_JUEGO: Path | None = None  # AoE2DE_s.exe; lo fija main() con la carpeta del juego encontrada
-_icono: QIcon | None = None
-
-
-def icono_dibujado() -> QIcon:
-    """Check azul, por si no se encuentra el juego."""
-    pix = QPixmap(64, 64)
-    pix.fill(Qt.GlobalColor.transparent)
-    q = QPainter(pix)
-    q.setRenderHint(QPainter.RenderHint.Antialiasing)
-    path = QPainterPath()
-    path.addRoundedRect(QRectF(4, 4, 56, 56), 14, 14)
-    q.fillPath(path, ACENTO)
-    q.setPen(QPen(QColor("white"), 6, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-    q.drawPolyline([QPointF(18, 33), QPointF(28, 43), QPointF(46, 22)])
-    q.end()
-    return QIcon(pix)
-
-
 def icono_app() -> QIcon:
-    global _icono
-    if _icono is None:
-        icono = QFileIconProvider().icon(QFileInfo(str(ICONO_JUEGO))) if ICONO_JUEGO and ICONO_JUEGO.is_file() else QIcon()
-        _icono = icono if not icono.isNull() and icono.availableSizes() else icono_dibujado()
-    return _icono
+    """El logo de AoE2C (logo.py): ventanas, bandeja y aviso de inicio."""
+    return logo.icono()
 
 
 def suave(t: float) -> float:
@@ -1161,8 +1139,6 @@ def main():
     entorno = preparar(config)
     if copiados:
         log.info("datos copiados de la versión anterior: %s", ", ".join(copiados))
-    global ICONO_JUEGO
-    ICONO_JUEGO = entorno.juego / rutas.EXE_JUEGO if entorno.juego else None
     perfil = entorno.perfil.carpeta if entorno.perfil else None
     repeticiones.poner_perfil(perfil)  # para vincular cada partida del historial con su repetición
     from instalador import Instalador
@@ -1203,7 +1179,7 @@ def main():
         fuente_estado = real
 
     # Una sola copia del programa: si ya hay una abierta, se le pide que muestre su panel.
-    servidor = instancia_unica(lambda: panel.mostrar())
+    servidor = instancia_unica(lambda: panel.mostrar(), app.quit)
     if servidor is None:
         return
 
@@ -1254,11 +1230,17 @@ def main():
     sys.exit(app.exec())
 
 
-def instancia_unica(al_pedir_panel):
+def nombre_instancia() -> str:
+    # AOE2C_INSTANCIA: otro nombre, para que las pruebas no hablen con la copia abierta.
+    return os.environ.get("AOE2C_INSTANCIA") or "AoE2Coaching-" + (os.environ.get("USERNAME") or "usuario")
+
+
+def instancia_unica(al_pedir_panel, al_pedir_salir=None):
     """Devuelve el servidor local de esta copia, o None si ya había otra abierta (a la
-    que se le pide que muestre el panel)."""
+    que se le pide que muestre el panel). Si otra copia manda "salir" (el instalador,
+    antes de poner una versión nueva o de desinstalar), se llama a al_pedir_salir."""
     from PySide6.QtNetwork import QLocalServer, QLocalSocket
-    nombre = "AoE2Coaching-" + (os.environ.get("USERNAME") or "usuario")
+    nombre = nombre_instancia()
     otro = QLocalSocket()
     otro.connectToServer(nombre)
     if otro.waitForConnected(300):
@@ -1275,12 +1257,38 @@ def instancia_unica(al_pedir_panel):
         s = servidor.nextPendingConnection()
         if s:
             s.waitForReadyRead(300)
-            s.readAll()
+            pedido = bytes(s.readAll().data())
             s.disconnectFromServer()
-            al_pedir_panel()
+            if pedido == b"salir" and al_pedir_salir:
+                al_pedir_salir()
+            else:
+                al_pedir_panel()
 
     servidor.newConnection.connect(conexion)
     return servidor
+
+
+def pedir_salir(espera: float = 8.0) -> bool:
+    """Pide a la copia abierta que se cierre y espera a que lo haga. True si ya no queda
+    ninguna abierta (o no había). Lo usa `AoE2Coaching.exe --salir` (el instalador)."""
+    from PySide6.QtNetwork import QLocalSocket
+    otro = QLocalSocket()
+    otro.connectToServer(nombre_instancia())
+    if not otro.waitForConnected(500):
+        return True
+    otro.write(b"salir")
+    otro.waitForBytesWritten(500)
+    otro.disconnectFromServer()
+    fin = time.monotonic() + espera
+    while time.monotonic() < fin:
+        time.sleep(0.2)
+        prueba = QLocalSocket()
+        prueba.connectToServer(nombre_instancia())
+        if not prueba.waitForConnected(200):
+            time.sleep(0.5)  # que termine de soltar sus archivos
+            return True
+        prueba.disconnectFromServer()
+    return False
 
 
 def guia_elegida(args: list[str]) -> dict:

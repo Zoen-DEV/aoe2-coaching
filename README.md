@@ -12,6 +12,7 @@ Guías de apertura paso a paso encima de Age of Empires II: Definitive Edition, 
 ```
 apps/
   desktop/        app de Windows (Python + PySide6): overlay, panel e instalador de contenido
+    empaquetado/  armado con PyInstaller e instalador de Inno Setup
     pruebas/      pruebas de la app (y de la validación de las guías)
   web/            página oficial (Astro) - plan 8
   api/            backend en Node - cuando lleguen las cuentas
@@ -83,6 +84,22 @@ py apps/desktop/pruebas/test_catalogo.py
 
 ```bash
 py apps/desktop/pruebas/test_soporte.py
+```
+
+```bash
+py apps/desktop/pruebas/test_empaquetado.py
+```
+
+Exportar el logo (SVG, PNG e `.ico`) a `build/marca`:
+
+```bash
+py apps/desktop/logo.py
+```
+
+Armar la app para instalar: la carpeta de PyInstaller en `build/desktop/dist/AoE2Coaching` y el instalador en `build/instalador/AoE2Coaching-Setup-<versión>.exe` (necesita Inno Setup 6.7 o posterior: `winget install JRSoftware.InnoSetup`; `--sin-instalador` arma solo la app). Ver [apps/desktop/empaquetado](apps/desktop/empaquetado):
+
+```bash
+py apps/desktop/empaquetado/empaquetar.py
 ```
 
 Armar el mod de las ovejas:

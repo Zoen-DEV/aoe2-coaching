@@ -52,7 +52,7 @@ La tarjeta deja pasar los clics al juego y no le quita el foco. Solo se ve cuand
 
 **Plegar y desplegar:** el botón **›** de la cabecera desliza la tarjeta fuera de la pantalla, en 0,28 s a 60 fps. La tarjeta se dibuja una sola vez en memoria y durante la animación solo se mueve la ventana. Queda una pestaña pegada al borde con el número del paso actual; al pulsarla, la tarjeta vuelve. El lado se recuerda entre partidas; al empezar una partida nueva, la tarjeta sale siempre desplegada.
 
-El icono de la bandeja es el mismo que el del acceso directo del escritorio (el casco del juego, sacado de `AoE2DE_s.exe`; si no se encuentra el juego, un check azul). Dice qué está leyendo y tiene el mismo menú.
+El icono de la bandeja es el logo de AoE2C (escudo granate con un cheurón dorado, en `apps/desktop/logo.py`). Dice qué está leyendo y tiene el mismo menú.
 
 **Al abrir el programa** aparece unos 3 s en el centro de la pantalla una tarjeta con el icono y "AoE2 Coaching": entra con un leve zoom, se queda un momento y se desvanece. No recibe clics ni quita el foco.
 

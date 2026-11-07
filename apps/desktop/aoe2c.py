@@ -7,6 +7,11 @@ Abre el overlay de la partida y el panel, según cómo se lance:
 
 Si ya hay una copia abierta, no se abre otra: la que estaba muestra su panel.
 Las preferencias, el historial y los logs están en %APPDATA%\\AoE2Coaching\\.
+
+Órdenes para el instalador (sin ventanas):
+
+    --salir                          cierra la copia abierta y espera a que termine
+    --desinstalar [--juego] [--datos]  ver desinstalar.py
 """
 
 import sys
@@ -14,7 +19,25 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from overlay import main  # noqa: E402
+
+def orden_instalador(args: list[str]) -> int | None:
+    """Ejecuta una orden del instalador y devuelve su código de salida, o None si no es una."""
+    if "--salir" in args:
+        from overlay import pedir_salir
+        return 0 if pedir_salir() else 1
+    if "--desinstalar" in args:
+        import rutas
+        rutas.configurar_log()
+        from overlay import pedir_salir
+        pedir_salir()
+        import desinstalar
+        return desinstalar.main(args)
+    return None
+
 
 if __name__ == "__main__":
+    codigo = orden_instalador(sys.argv[1:])
+    if codigo is not None:
+        sys.exit(codigo)
+    from overlay import main
     main()
