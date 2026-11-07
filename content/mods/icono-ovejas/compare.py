@@ -14,12 +14,15 @@ from PIL import Image, ImageDraw, ImageFont
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[2] / "tools"))
+sys.path.insert(0, str(HERE.parents[2] / "apps" / "desktop"))
 sys.path.insert(0, str(HERE))
 import icons  # noqa: E402
 import sld  # noqa: E402
 from render_sld import decode_frames, tint  # noqa: E402
 
-GAME = Path(r"C:\Program Files (x86)\Steam\steamapps\common\AoE2DE\resources\_common")
+import rutas  # noqa: E402
+
+GAME = rutas.para_scripts()[0] / "resources" / "_common"
 GRAPHICS = GAME / "drs" / "graphics"
 PALETTES = GAME / "palettes"
 SCALE = 3

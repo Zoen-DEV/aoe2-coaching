@@ -1,3 +1,3 @@
 @echo off
-rem Abre el overlay de AoE2 Coaching (se controla desde su icono en la bandeja).
-start "" pyw "%~dp0overlay.py"
+rem Abre AoE2 Coaching (overlay y panel). Se controla desde su icono en la bandeja.
+start "" pyw "%~dp0aoe2c.py"

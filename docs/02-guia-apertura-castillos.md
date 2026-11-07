@@ -3,7 +3,7 @@
 - **Estado:** v4 instalada: **panel de AoE2C** (dashboard), guía de **Scouts 21** y elección de guía desde el panel, con 5 mapas. Probado con tests de código y capturas en memoria; **falta probarlo en una partida** (ver "Cómo probarlo en el juego").
 - **Tipo de mod:** mapa aleatorio con script XS, más un overlay en Python (PySide6)
 - **Juego:** Age of Empires II: Definitive Edition
-- **Código:** [content/guias/build.py](../content/guias/build.py) y [apps/desktop/overlay.py](../apps/desktop/overlay.py)
+- **Código:** [content/guias/build.py](../content/guias/build.py) y [apps/desktop/aoe2c.py](../apps/desktop/aoe2c.py) (el programa único: overlay y panel)
 
 ## Qué hace
 
@@ -28,7 +28,7 @@ Páginas (barra lateral):
 | **Mapas** | Una tarjeta por mapa con su imagen, tipo, descripción, guías recomendadas y estado (Instalado, Hay una versión nueva, No instalado). Botones **Instalar / Actualizar / Quitar** y **⤓** para guardar una copia del `.rms` y su imagen en otra carpeta. |
 | **Ajustes** | Idioma (español / inglés), abrir el panel al iniciar, iniciar con Windows; y de la guía en partida: posición, opacidad, pasos de "A continuación", aviso de casas, abrir el historial al terminar y la pestaña del historial. Al final, botones para abrir las carpetas del juego, del perfil y del mod. |
 
-Los cambios de Ajustes se aplican al momento (el panel y el overlay comparten las preferencias en `apps/desktop/config.json`). El idioma cambia el panel y los menús; las guías y la tarjeta de la partida siguen en español.
+Los cambios de Ajustes se aplican al momento (el panel y el overlay comparten las preferencias en `%APPDATA%\AoE2Coaching\config.json`). El idioma cambia el panel y los menús; las guías y la tarjeta de la partida siguen en español.
 
 ### Elegir la guía
 
@@ -66,7 +66,7 @@ Para ver el diseño sin jugar: `py overlay.py --demo` (simula una partida que av
 
 ### El historial de aperturas
 
-El overlay guarda cada partida en `apps/desktop/historial.json`, sin tocar el script XS. Por partida anota la hora de cada paso de la guía y cuatro hitos: **clic en Feudal, llegada a Feudal, clic en Castillos y llegada a Castillos**.
+El overlay guarda cada partida en `%APPDATA%\AoE2Coaching\historial.json`, sin tocar el script XS. Por partida anota la hora de cada paso de la guía y cuatro hitos: **clic en Feudal, llegada a Feudal, clic en Castillos y llegada a Castillos**.
 
 - **Al terminar la partida** (cuando el juego deja de enviar datos durante 4 s) se abre sola la ventana del historial, con la partida recién jugada elegida y un aviso: hora de Castillos, si es tu mejor marca, la diferencia con tu media y el tramo donde más perdiste. Al volver a la partida se cierra sola.
 - **Fuera de partida** (menú principal, sala, pantalla de puntuación), con el juego delante, aparece una pestaña **HISTORIAL** pegada al borde de la pantalla, a media altura, en el mismo lado que la guía. Al pulsarla se abre el historial. Se puede quitar desde el menú (⋯ o bandeja) → "Pestaña del historial fuera de partida".
@@ -211,17 +211,20 @@ La fuente es [build_orders/scouts_21.json](../content/guias/build_orders/scouts_
 | `content/guias/xs/motor.xs` | El motor: estado por jugador, avance de pasos, panel y aviso de casas. |
 | `content/guias/pruebas/prueba_panel.xs` | Maqueta del panel con datos inventados, para probar cambios de diseño (`--pruebas`). |
 | `content/guias/build.py` | Valida los JSON, genera el XS, los mapas y los manifiestos del overlay, comprueba el XS y lo instala. |
+| `apps/desktop/aoe2c.py` | El programa único (el futuro AoE2Coaching.exe). Con `--inicio` (inicio con Windows) espera en la bandeja sin abrir el panel. |
+| `apps/desktop/rutas.py` | Encuentra el juego (bibliotecas de Steam) y la carpeta del perfil (pregunta si hay varias con uso), y dónde van los datos y los logs. |
 | `apps/desktop/overlay.py` | El overlay: ventana, diseño, bandeja del sistema, `--demo` y `--captura`. |
 | `apps/desktop/lector.py` | Busca y lee el `.xsdat` que escribe el juego. |
 | `apps/desktop/historial.py` | Registra cada partida (pasos e hitos) y calcula mejores marcas, medias y puntos débiles. |
 | `apps/desktop/historial_ui.py` | La ventana del historial. |
 | `apps/desktop/estilo.py` | Colores y fuentes comunes del overlay y del historial. |
-| `apps/desktop/historial.json` | Las partidas guardadas (se crea al jugar la primera). |
+| `%APPDATA%\AoE2Coaching\historial.json` | Las partidas guardadas (se crea al jugar la primera). |
 | `apps/desktop/pruebas/test_historial.py` | Pruebas del historial: simula partidas segundo a segundo, sin abrir ventanas (`py apps/desktop/pruebas/test_historial.py`). |
 | `build/guias/*.json` | Manifiestos generados (`build/` no se sube a git): textos de cada guía y orden de los datos del `.xsdat`. |
-| `apps/desktop/Iniciar overlay.bat` | Abre el overlay sin ventana de consola. |
+| `apps/desktop/Iniciar overlay.bat` | Abre AoE2C (`aoe2c.py`) sin ventana de consola. |
 | `apps/desktop/Cerrar overlay.bat` | Cierra el overlay sin usar el menú (por si no está visible). |
-| `apps/desktop/config.json` | Lado de la pantalla elegido en el menú (se crea al cambiarlo). |
+| `%APPDATA%\AoE2Coaching\config.json` | Preferencias del panel y del overlay, y las carpetas elegidas a mano (perfil, juego). |
+| `%APPDATA%\AoE2Coaching\logs\aoe2c.log` | Log de AoE2C (carpetas encontradas y errores no capturados). |
 | `build/mods/guia-apertura-castillos/resources/_common/xs/guia_fast_castle.xs` | Script final en un solo archivo: utilidades, funciones generadas de los pasos y motor. |
 | `build/mods/guia-apertura-castillos/resources/_common/random-map-scripts/*.rms` | Los mapas. |
 

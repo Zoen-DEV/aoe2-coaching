@@ -170,7 +170,8 @@ def test_historial_scouts(tmp: Path):
 
 def test_migracion(tmp: Path):
     print("Partidas guardadas con la versión anterior")
-    real = OVERLAY / "historial.json"
+    import rutas
+    real = next((p for p in (rutas.HISTORIAL, OVERLAY / "historial.json") if p.is_file()), rutas.HISTORIAL)
     if not real.is_file():
         print("  (sin historial.json real: se omite)")
         return

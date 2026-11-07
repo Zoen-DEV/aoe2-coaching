@@ -4,12 +4,12 @@ Ventana translúcida, siempre encima y que deja pasar los clics, que dibuja la
 guía a partir del archivo que escribe el script XS del mapa (ver lector.py).
 Se controla desde su icono en la bandeja del sistema (posición y salir).
 
-Uso:
-    pyw overlay.py              el overlay normal
+Se abre con aoe2c.py (el programa único; ver allí las opciones). También:
     py overlay.py --demo        partida simulada, para ver el diseño sin jugar
     py overlay.py --captura DIR imágenes de prueba (sobre una captura del juego si existe fondo.png)
 """
 
+import logging
 import os
 import sys
 import time
@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QApplication, QFileIconProvider, QMenu, QSystemTra
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config as C  # noqa: E402
+import rutas  # noqa: E402
 import textos  # noqa: E402
 from estilo import (ACENTO, APAGADO, ATENCION, BANDERAS_CLIC, BIEN, BORDE, EMOJI, FONDO, MAL, PISTA,  # noqa: E402
                     SECUNDARIO, TARJETA, TEXTO, color, fuente)
@@ -32,7 +33,8 @@ from lector import Estado, Lector, cargar_guias  # noqa: E402
 from textos import t  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-CONFIG = HERE / "config.json"
+CONFIG = rutas.CONFIG  # %APPDATA%\AoE2Coaching\config.json
+log = logging.getLogger("aoe2c")
 
 # --- Estilo ------------------------------------------------------------------
 
@@ -900,7 +902,7 @@ class Overlay(QWidget):
 # --- Icono y aviso de inicio ---------------------------------------------------
 
 # El mismo icono que el acceso directo del escritorio: el del ejecutable del juego.
-ICONO_JUEGO = Path(r"C:\Program Files (x86)\Steam\steamapps\common\AoE2DE\AoE2DE_s.exe")
+ICONO_JUEGO: Path | None = None  # AoE2DE_s.exe; lo fija main() con la carpeta del juego encontrada
 _icono: QIcon | None = None
 
 
@@ -922,7 +924,7 @@ def icono_dibujado() -> QIcon:
 def icono_app() -> QIcon:
     global _icono
     if _icono is None:
-        icono = QFileIconProvider().icon(QFileInfo(str(ICONO_JUEGO))) if ICONO_JUEGO.is_file() else QIcon()
+        icono = QFileIconProvider().icon(QFileInfo(str(ICONO_JUEGO))) if ICONO_JUEGO and ICONO_JUEGO.is_file() else QIcon()
         _icono = icono if not icono.isNull() and icono.availableSizes() else icono_dibujado()
     return _icono
 
@@ -1050,6 +1052,19 @@ def estado_simulado(guia: dict, paso: int, tiempo: int, avance: float = 0.6) -> 
     return Estado(tiempo, 1, paso, horas, datos, techs, edad, 14, 1 if paso == 4 else 6, 0)
 
 
+def preparar(config: dict) -> rutas.Entorno:
+    """Log, datos en %APPDATA%, inicio con Windows y carpetas del juego y del perfil.
+    Es lo único que toca el sistema al arrancar (las pruebas lo sustituyen)."""
+    rutas.configurar_log()
+    from instalador import actualizar_inicio_con_windows
+    if actualizar_inicio_con_windows():
+        log.info("inicio con Windows corregido para apuntar a esta copia")
+    entorno = rutas.resolver(config)
+    log.info("juego: %s | perfil: %s%s", entorno.juego, entorno.perfil and entorno.perfil.carpeta,
+             " (hay que elegir)" if entorno.preguntar else "")
+    return entorno
+
+
 def main():
     args = sys.argv[1:]
     app = QApplication(sys.argv)
@@ -1112,6 +1127,16 @@ def main():
         capturar_panel(destino, guias, ejemplo, args)
         return
 
+    # Datos de la versión anterior (junto al código) -> %APPDATA%\AoE2Coaching\, antes de leerlos.
+    copiados = rutas.preparar_datos() if CONFIG == rutas.CONFIG else []
+    config = cargar_config()
+    entorno = preparar(config)
+    if copiados:
+        log.info("datos copiados de la versión anterior: %s", ", ".join(copiados))
+    global ICONO_JUEGO
+    ICONO_JUEGO = entorno.juego / rutas.EXE_JUEGO if entorno.juego else None
+    perfil = entorno.perfil.carpeta if entorno.perfil else None
+
     if "--demo" in args:
         # Partida simulada con un historial inventado (no se guarda nada en disco). Al
         # acabar la guía, la "partida" deja de enviar datos y se abre el historial.
@@ -1133,7 +1158,7 @@ def main():
 
         fuente_estado = demo
     else:
-        lector = Lector()
+        lector = Lector(perfil)
         historial = Historial()
         seguimiento = Seguimiento(historial)
 
@@ -1151,7 +1176,6 @@ def main():
     if servidor is None:
         return
 
-    config = cargar_config()
     textos.poner_idioma(config.get("idioma", "es"))
     w = Overlay(fuente_estado, solo_con_juego="--demo" not in args, historial=historial, seguimiento=seguimiento,
                 config=config)
@@ -1162,18 +1186,29 @@ def main():
         if w.bandeja:
             w.bandeja.showMessage(t("bandeja_titulo"), t("bandeja_texto"), icono_app(), 6000)
 
+    def perfil_cambiado(carpeta: Path | None):
+        if "--demo" not in args:
+            lector.perfil, lector.archivo, lector.mtime = carpeta, None, 0.0
+
     from dashboard import Panel
     from instalador import Instalador
-    panel = Panel(config, historial, cargar_guias(), Instalador(), overlay=w, icono=icono_app(), al_salir=app.quit,
-                  al_ocultar=ocultado, guardar_config=w.guardar_config)
+    panel = Panel(config, historial, cargar_guias(), Instalador(perfil=perfil, juego=entorno.juego), overlay=w,
+                  icono=icono_app(), al_salir=app.quit, al_ocultar=ocultado, guardar_config=w.guardar_config,
+                  perfiles=entorno.perfiles, al_cambiar_perfil=perfil_cambiado,
+                  preguntar_perfil=entorno.preguntar)
     w.al_abrir_panel = panel.mostrar
+
+    if "--inicio" in args:
+        # Abierto por el inicio con Windows: espera en la bandeja, sin animación ni panel.
+        sys.exit(app.exec())
+
     bienvenida = Bienvenida()  # para saber que el programa se abrió
     bienvenida.mostrar()
 
     def tras_bienvenida():
         # El panel se abre al acabar la animación, salvo que haya una partida en curso
-        # (para no taparla ni quitarle el foco al juego).
-        if config.get("abrir_panel_al_iniciar", True) and not w.en_partida:
+        # (para no taparla ni quitarle el foco al juego). Si hay que elegir perfil, siempre.
+        if (config.get("abrir_panel_al_iniciar", True) or entorno.preguntar) and not w.en_partida:
             panel.mostrar()
 
     QTimer.singleShot(int(bienvenida.duracion() * 1000), tras_bienvenida)

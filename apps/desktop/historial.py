@@ -14,8 +14,9 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-ARCHIVO = HERE / "historial.json"
+import rutas  # noqa: E402
+
+ARCHIVO = rutas.HISTORIAL  # en %APPDATA%\AoE2Coaching\
 SIN_DATOS = 4.0  # segundos sin datos nuevos para dar la partida por parada (pausa o fin)
 VENTANA_MEDIA = 10  # partidas que entran en la media y en los puntos débiles
 
@@ -160,6 +161,7 @@ class Historial:
             return
         tmp = self.archivo.with_suffix(".tmp")
         try:
+            self.archivo.parent.mkdir(parents=True, exist_ok=True)
             tmp.write_text(json.dumps({"version": 1, "partidas": self.registros}, ensure_ascii=False, indent=1),
                            encoding="utf-8")
             os.replace(tmp, self.archivo)

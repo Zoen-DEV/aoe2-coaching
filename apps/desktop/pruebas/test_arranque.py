@@ -55,6 +55,8 @@ def main():
         O.CONFIG = Path(d) / "config.json"  # preferencias por defecto, en una carpeta temporal
         O.QApplication = App
         O.Historial = lambda: H.Historial(None)  # historial en memoria
+        # Sin tocar el sistema: ni %APPDATA%, ni el registro, ni las carpetas reales del juego.
+        O.preparar = lambda config: O.rutas.Entorno(None, None, [], False)
         O.Bienvenida.FIJA = 0.2  # animación corta
         mostrar = D.Panel.mostrar
 

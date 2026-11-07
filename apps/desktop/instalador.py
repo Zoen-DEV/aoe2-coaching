@@ -17,17 +17,18 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import rutas
+
 HERE = Path(__file__).resolve().parent
 RAIZ = HERE.parent.parent  # raíz del monorepo
 MOD_ORIGEN = RAIZ / "build" / "mods" / "guia-apertura-castillos"
 CATALOGO = RAIZ / "content" / "mapas" / "mapas.json"
-PERFIL = Path(r"C:\Users\User\Games\Age of Empires 2 DE\76561199524040890")
-JUEGO = Path(r"C:\Program Files (x86)\Steam\steamapps\common\AoE2DE")
 NOMBRE_MOD = "guia-apertura-castillos"
 XS_COMUN = "aoe2c_guia.xs"
 RMS = Path("resources") / "_common" / "random-map-scripts"
 XS = Path("resources") / "_common" / "xs"
 ID_STEAM_JUEGO = 813780
+SIN_PERFIL = "no se encontró la carpeta del perfil del juego (abre el juego una vez)"
 CLAVE_INICIO = r"Software\Microsoft\Windows\CurrentVersion\Run"
 NOMBRE_INICIO = "AoE2Coaching"
 
@@ -47,19 +48,27 @@ def mismos_bytes(a: Path, b: Path) -> bool:
 
 
 class Instalador:
-    def __init__(self, perfil: Path = PERFIL, origen: Path = MOD_ORIGEN, catalogo: Path = CATALOGO):
-        self.perfil = Path(perfil)
+    """Las carpetas del perfil y del juego las da rutas.py; pueden faltar (None) si el
+    juego no está instalado o no se abrió nunca."""
+
+    def __init__(self, perfil: Path | None = None, origen: Path = MOD_ORIGEN, catalogo: Path = CATALOGO,
+                 juego: Path | None = None):
+        self.perfil = Path(perfil) if perfil else None
+        self.juego = Path(juego) if juego else None
         self.origen = Path(origen)
         self.catalogo = Path(catalogo)
 
     # Rutas.
     @property
-    def xs_perfil(self) -> Path:
-        return self.perfil / XS
+    def xs_perfil(self) -> Path | None:
+        return self.perfil / XS if self.perfil else None
 
     @property
-    def mod_instalado(self) -> Path:
-        return self.perfil / "mods" / "local" / NOMBRE_MOD
+    def mod_instalado(self) -> Path | None:
+        return self.perfil / "mods" / "local" / NOMBRE_MOD if self.perfil else None
+
+    def juego_instalado(self) -> bool:
+        return rutas.es_carpeta_juego(self.juego)
 
     def mapas(self) -> list[dict]:
         try:
@@ -70,6 +79,8 @@ class Instalador:
     # Guía activa.
     def guia_instalada(self, guias: dict[str, dict]) -> str | None:
         """Id de la guía que cargan ahora los mapas (según el aoe2c_guia.xs del perfil)."""
+        if self.perfil is None:
+            return None
         actual = self.xs_perfil / XS_COMUN
         for id_, guia in guias.items():
             if mismos_bytes(actual, self.origen / XS / guia["archivo_xs"]):
@@ -78,6 +89,8 @@ class Instalador:
 
     def activar_guia(self, guia: dict) -> str | None:
         """Copia el script de la guía como aoe2c_guia.xs. Devuelve un error o None."""
+        if self.perfil is None:
+            return SIN_PERFIL
         origen = self.origen / XS / guia["archivo_xs"]
         if not origen.is_file():
             return f"falta {origen.name}: ejecuta build.py"
@@ -97,11 +110,11 @@ class Instalador:
         out = []
         for m in self.mapas():
             fuente = self.origen / RMS / m["archivo"]
-            instalado = self.mod_instalado / RMS / m["archivo"]
+            instalado = self.mod_instalado / RMS / m["archivo"] if self.perfil else None
             imagen = fuente.with_suffix(".png")
             if not fuente.is_file():
                 estado = "sin_construir"
-            elif not instalado.is_file():
+            elif instalado is None or not instalado.is_file():
                 estado = "no_instalado"
             elif mismos_bytes(fuente, instalado):
                 estado = "instalado"
@@ -117,6 +130,8 @@ class Instalador:
     def instalar_mapa(self, mapa: dict, guia: dict | None = None) -> str | None:
         """Copia el mapa (y su imagen) al mod local. Si el perfil aún no tiene el script
         común, instala también el de la guía `guia`."""
+        if self.perfil is None:
+            return SIN_PERFIL
         archivos = self._archivos(mapa)
         if not archivos:
             return f"falta {mapa['archivo']}: ejecuta build.py"
@@ -135,6 +150,8 @@ class Instalador:
         return None
 
     def quitar_mapa(self, mapa: dict) -> str | None:
+        if self.perfil is None:
+            return SIN_PERFIL
         instalado = self.mod_instalado / RMS / mapa["archivo"]
         try:
             for p in (instalado, instalado.with_suffix(".png")):
@@ -158,10 +175,6 @@ class Instalador:
 
 
 # --- Juego y Windows ----------------------------------------------------------
-
-
-def juego_instalado() -> bool:
-    return (JUEGO / "AoE2DE_s.exe").is_file()
 
 
 def juego_abierto() -> bool:
@@ -208,10 +221,27 @@ def abrir_carpeta(carpeta: Path) -> None:
 
 
 def comando_inicio() -> str:
-    """Orden que abre AoE2C sin consola (pythonw + overlay.py)."""
+    """Orden que abre AoE2C al iniciar sesión: el .exe empaquetado o, desde el código,
+    pythonw + aoe2c.py. --inicio hace que espere en la bandeja sin abrir el panel."""
+    if getattr(sys, "frozen", False):
+        return f'"{sys.executable}" --inicio'
     exe = Path(sys.executable)
     pyw = exe.with_name("pythonw.exe")
-    return f'"{pyw if pyw.is_file() else exe}" "{HERE / "overlay.py"}"'
+    return f'"{pyw if pyw.is_file() else exe}" "{HERE / "aoe2c.py"}" --inicio'
+
+
+def actualizar_inicio_con_windows() -> bool:
+    """Si el inicio con Windows está activo pero apunta a otra orden (otra carpeta o una
+    versión anterior), lo corrige. Devuelve True si lo cambió."""
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, CLAVE_INICIO) as k:
+            actual = winreg.QueryValueEx(k, NOMBRE_INICIO)[0]
+    except OSError:
+        return False
+    if actual == comando_inicio():
+        return False
+    return poner_inicio_con_windows(True) is None
 
 
 def inicio_con_windows() -> bool:

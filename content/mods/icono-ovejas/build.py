@@ -23,16 +23,19 @@ from PIL import Image
 HERE = Path(__file__).resolve().parent
 RAIZ = HERE.parents[2]  # raíz del monorepo
 sys.path.insert(0, str(RAIZ / "tools"))
+sys.path.insert(0, str(RAIZ / "apps" / "desktop"))  # rutas.py: busca el juego y el perfil
+import rutas  # noqa: E402
 sys.path.insert(0, str(HERE))
 import icons  # noqa: E402
 import sld  # noqa: E402
 from render_sld import PLAYER_COLORS, composite, decode_frames  # noqa: E402
 
-GAME_GRAPHICS = Path(r"C:\Program Files (x86)\Steam\steamapps\common\AoE2DE\resources\_common\drs\graphics")
+_JUEGO, _PERFIL = rutas.para_scripts()
+GAME_GRAPHICS = _JUEGO / "resources" / "_common" / "drs" / "graphics"
 MOD_DIR = RAIZ / "build" / "mods" / "icono-ovejas"
 OUT_DIR = MOD_DIR / "resources" / "_common" / "drs" / "graphics"
 PREVIEW_DIR = HERE / "preview"
-LOCAL_MODS = Path(r"C:\Users\User\Games\Age of Empires 2 DE\76561199524040890\mods\local")
+LOCAL_MODS = _PERFIL / "mods" / "local"
 INSTALL_NAME = "icono-ovejas"
 
 # Animaciones del animal vivo (quieto, caminando, corriendo). La muerte y el

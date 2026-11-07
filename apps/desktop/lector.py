@@ -25,8 +25,6 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 GUIAS = HERE.parent.parent / "build" / "guias"  # los genera content/guias/build.py
-PROFILE = Path(r"C:\Users\User\Games\Age of Empires 2 DE\76561199524040890")
-GAME = Path(r"C:\Program Files (x86)\Steam\steamapps\common\AoE2DE")
 INICIO, FIN, VERSION = 4722, 9999, 2
 
 
@@ -125,7 +123,8 @@ def _parsear_en(data: bytes, pos: int, guia: dict) -> Estado | None:
 class Lector:
     """Busca el .xsdat más reciente de alguna guía y lo relee cuando cambia."""
 
-    def __init__(self) -> None:
+    def __init__(self, perfil: Path | None = None) -> None:
+        self.perfil = perfil  # carpeta del perfil del juego (rutas.py); None = no se lee nada
         self.guias = cargar_guias()
         self.mapas = mapas_de(self.guias)
         self.archivo: Path | None = None
@@ -138,7 +137,10 @@ class Lector:
         # El juego escribe el archivo en la carpeta "profile" del perfil. Solo se miran
         # carpetas concretas, sin recorrer subcarpetas: una búsqueda amplia (por ejemplo
         # en Documentos) tardaba segundos y congelaba el overlay.
-        for carpeta in (PROFILE / "profile", PROFILE, PROFILE / "resources" / "_common" / "xs"):
+        if self.perfil is None:
+            return
+        perfil = Path(self.perfil)
+        for carpeta in (perfil / "profile", perfil, perfil / "resources" / "_common" / "xs"):
             try:
                 for entrada in os.scandir(carpeta):
                     if entrada.name.lower().endswith(".xsdat") and Path(entrada.name).stem.lower() in self.mapas:

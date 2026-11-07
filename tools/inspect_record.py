@@ -15,7 +15,10 @@ import sys
 import zlib
 from pathlib import Path
 
-SAVEGAME = Path(r"C:\Users\User\Games\Age of Empires 2 DE\76561199524040890\savegame")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "desktop"))
+import rutas  # noqa: E402
+
+SAVEGAME = rutas.para_scripts()[1] / "savegame"  # el perfil que usa AoE2C
 
 
 def header(path: Path) -> bytes:

@@ -30,9 +30,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 RAIZ = HERE.parent.parent  # raíz del monorepo
 SALIDA = RAIZ / "build"  # todo lo generado (ignorado por git)
-GAME = Path(r"C:\Program Files (x86)\Steam\steamapps\common\AoE2DE")
+sys.path.insert(0, str(RAIZ / "apps" / "desktop"))  # rutas.py: busca el juego y el perfil
+import rutas  # noqa: E402
+GAME, PROFILE = rutas.para_scripts()
 GAME_MAPS = GAME / "resources" / "_common" / "drs" / "gamedata_x2"
-PROFILE = Path(r"C:\Users\User\Games\Age of Empires 2 DE\76561199524040890")
 LOCAL_MODS = PROFILE / "mods" / "local"
 PROFILE_XS = PROFILE / "resources" / "_common" / "xs"
 INSTALL_NAME = "guia-apertura-castillos"

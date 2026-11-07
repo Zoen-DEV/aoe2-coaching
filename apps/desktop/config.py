@@ -1,4 +1,5 @@
-"""Preferencias de AoE2C, compartidas por el overlay y el panel (config.json).
+"""Preferencias de AoE2C, compartidas por el overlay y el panel (config.json en
+%APPDATA%/AoE2Coaching/, ver rutas.py).
 
 Las dos ventanas viven en el mismo proceso y usan el mismo diccionario: lo que se
 cambia en el panel se ve en la guía de la partida sin reiniciar nada.
@@ -8,8 +9,9 @@ import json
 import os
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-ARCHIVO = HERE / "config.json"
+import rutas
+
+ARCHIVO = rutas.CONFIG
 
 DEFECTO = {
     # Guía en partida (overlay).
@@ -25,6 +27,9 @@ DEFECTO = {
     "idioma": "es",
     "abrir_panel_al_iniciar": True,
     "aviso_bandeja_visto": False,   # el aviso "sigue en la bandeja" sale una sola vez
+    # Carpetas (None = se buscan solas, ver rutas.py).
+    "perfil": None,                 # carpeta del perfil elegida (si hay varias)
+    "juego": None,                  # carpeta del juego elegida a mano (si no se encuentra)
 }
 
 
@@ -42,6 +47,7 @@ def guardar(config: dict, archivo: Path = ARCHIVO) -> None:
     archivo = Path(archivo)
     tmp = archivo.with_suffix(".tmp")
     try:
+        archivo.parent.mkdir(parents=True, exist_ok=True)
         tmp.write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, archivo)
     except OSError:

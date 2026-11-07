@@ -2,7 +2,7 @@
 # Los .rms derivan de mapas oficiales de Microsoft y los .sld de sus sprites: no se publican.
 build/
 
-# Datos del usuario (en el plan 2 pasan a %APPDATA%\AoE2Coaching\)
+# Datos del usuario de la versión anterior (ahora van en %APPDATA%\AoE2Coaching\; la app los copia allí)
 apps/desktop/config.json
 apps/desktop/historial.json
 apps/desktop/fondo.png

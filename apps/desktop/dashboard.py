@@ -19,12 +19,13 @@ from pathlib import Path
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QIcon, QPainter, QPainterPath, QPen, QPixmap
-from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QComboBox, QFileDialog, QFrame, QGridLayout,
-                               QHBoxLayout, QLabel, QPushButton, QScrollArea, QSizePolicy, QSlider,
+from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
+                               QHBoxLayout, QLabel, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider,
                                QStackedWidget, QVBoxLayout, QWidget)
 
 import config as C
 import instalador as I
+import rutas
 import textos
 from estilo import (ACENTO, APAGADO, ATENCION, BIEN, BORDE, EMOJI, MAL, SECUNDARIO, TARJETA, TEXTO, color,
                     fuente)
@@ -93,6 +94,13 @@ def caja(p: QPainter, r: QRectF, radio: float, relleno, borde=None):
     if borde is not None:
         p.setPen(QPen(borde, 1))
         p.drawPath(path)
+
+
+def nombre_perfil(p: "rutas.Perfil") -> str:
+    """«Zoen · 63 partidas · 06/11/2026» para elegir entre carpetas de perfil."""
+    nombre = p.nombre or (t("perfil_sin_conexion") if p.id == "0" else p.id)
+    fecha = time.strftime("%d/%m/%Y", time.localtime(p.ultimo_uso)) if p.ultimo_uso else "—"
+    return t("perfil_etiqueta", nombre=nombre, partidas=p.repeticiones, fecha=fecha)
 
 
 def etiqueta(texto: str, tam: float = 10, peso=QFont.Weight.Normal, c: QColor = TEXTO, espacio: float = 0.0,
@@ -392,8 +400,12 @@ def limpiar(capa):
 class Panel(QWidget):
     def __init__(self, config: dict, historial: Historial, guias: dict[str, dict], instalador: I.Instalador,
                  overlay=None, icono: QIcon | None = None, al_salir=None, al_ocultar=None,
-                 guardar_config=None, comprobar_juego: bool = True):
+                 guardar_config=None, comprobar_juego: bool = True, perfiles: list | None = None,
+                 al_cambiar_perfil=None, preguntar_perfil: bool = False):
         super().__init__(None, Qt.WindowType.Window)
+        self.perfiles: list[rutas.Perfil] = perfiles or []  # carpetas de perfil encontradas (rutas.py)
+        self.al_cambiar_perfil = al_cambiar_perfil or (lambda carpeta: None)
+        self._preguntar_perfil = preguntar_perfil  # se pregunta la primera vez que se muestra
         self.config = config
         self.historial = historial
         self.guias = guias
@@ -588,7 +600,7 @@ class Panel(QWidget):
             c, texto = APAGADO, t("estado_juego_cerrado")
         self.punto.poner(c)
         self.texto_estado.setText(texto)
-        self.boton_jugar.setEnabled(not self.juego and not jugando and I.juego_instalado())
+        self.boton_jugar.setEnabled(not self.juego and not jugando and self.instalador.juego_instalado())
         self.boton_jugar.setText(t("jugando") if (self.juego or jugando) else t("jugar"))
         if self.mensaje.isVisible() and ahora > self._mensaje_hasta:
             self.mensaje.hide()
@@ -630,6 +642,55 @@ class Panel(QWidget):
         self.activateWindow()
         self.tick()
         self.temporizador.start()
+        if self._preguntar_perfil:
+            self._preguntar_perfil = False
+            QTimer.singleShot(250, self.pedir_perfil)
+
+    # --- Carpetas ---
+    def cambiar_perfil(self, carpeta: Path):
+        self.instalador.perfil = Path(carpeta)
+        self.config["perfil"] = str(carpeta)
+        self.guardar_config()
+        self.al_cambiar_perfil(Path(carpeta))
+        self.construir()
+        self.avisar(t("perfil_cambiado"))
+
+    def cambiar_juego(self, carpeta: Path) -> bool:
+        if not rutas.es_carpeta_juego(Path(carpeta)):
+            self.avisar(t("juego_no_valido"), MAL)
+            return False
+        self.instalador.juego = Path(carpeta)
+        self.config["juego"] = str(carpeta)
+        self.guardar_config()
+        self.construir()
+        self.avisar(t("juego_cambiado"))
+        return True
+
+    def pedir_perfil(self):
+        """Ventana para elegir entre varias carpetas de perfil con uso."""
+        if len(self.perfiles) < 2:
+            return
+        dialogo = QDialog(self)
+        dialogo.setWindowTitle("AoE2 Coaching")
+        dialogo.setStyleSheet(ESTILO + " QDialog { background: #12161d; } QRadioButton { color: #f0f3f7; padding: 6px 0; }")
+        capa = QVBoxLayout(dialogo)
+        capa.setContentsMargins(28, 24, 28, 24)
+        capa.setSpacing(12)
+        capa.addWidget(etiqueta(t("perfil_titulo"), 14, QFont.Weight.Bold, envolver=True))
+        capa.addWidget(etiqueta(t("perfil_texto"), 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True))
+        grupo = QButtonGroup(dialogo)
+        actual = self.instalador.perfil
+        for i, p in enumerate(self.perfiles):
+            r = QRadioButton(nombre_perfil(p))
+            r.setFont(fuente(10, QFont.Weight.Medium))
+            r.setChecked(p.carpeta == actual if actual else i == 0)
+            grupo.addButton(r, i)
+            capa.addWidget(r)
+        b = boton(t("usar_perfil"), dialogo.accept, "primario")
+        capa.addWidget(b, 0, Qt.AlignmentFlag.AlignRight)
+        dialogo.setMinimumWidth(620)
+        if dialogo.exec() and grupo.checkedId() >= 0:
+            self.cambiar_perfil(self.perfiles[grupo.checkedId()].carpeta)
 
     def showEvent(self, e):
         super().showEvent(e)
@@ -1164,13 +1225,33 @@ class PaginaAjustes(Pagina):
         self._opcion(guia, t("op_pestana"), t("op_pestana_desc"),
                      Interruptor(cfg.get("pestana_historial", True), lambda v: self._poner("pestana_historial", v)))
 
-        # Carpetas.
-        rutas = self._seccion(t("ajustes_carpetas"))
-        for nombre, ruta in ((t("carpeta_juego"), I.JUEGO), (t("carpeta_perfil"), panel.instalador.perfil),
-                             (t("carpeta_mod"), panel.instalador.mod_instalado)):
-            b = boton(t("abrir"), lambda _=False, r=ruta: I.abrir_carpeta(r))
-            b.setEnabled(Path(ruta).exists())
-            self._opcion(rutas, nombre, str(ruta), b)
+        # Carpetas (las encuentra rutas.py; aquí se pueden cambiar).
+        carpetas = self._seccion(t("ajustes_carpetas"))
+        inst = panel.instalador
+        juego = QWidget()
+        cj = QHBoxLayout(juego)
+        cj.setContentsMargins(0, 0, 0, 0)
+        cj.addWidget(self._abrir(inst.juego))
+        cj.addWidget(boton(t("elegir"), self._elegir_juego))
+        self._opcion(carpetas, t("carpeta_juego"), str(inst.juego) if inst.juego else t("no_encontrada"), juego)
+        if len(panel.perfiles) > 1:
+            perfil = QComboBox()
+            perfil.setFixedWidth(320)
+            for p in panel.perfiles:
+                perfil.addItem(nombre_perfil(p), str(p.carpeta))
+            perfil.setCurrentIndex(max(0, perfil.findData(str(inst.perfil))))
+            perfil.currentIndexChanged.connect(lambda _i: panel.cambiar_perfil(Path(perfil.currentData())))
+            caja = QWidget()
+            cp = QHBoxLayout(caja)
+            cp.setContentsMargins(0, 0, 0, 0)
+            cp.addWidget(perfil)
+            cp.addWidget(self._abrir(inst.perfil))
+            control = caja
+        else:
+            control = self._abrir(inst.perfil)
+        self._opcion(carpetas, t("carpeta_perfil"), str(inst.perfil) if inst.perfil else t("no_encontrada"), control)
+        self._opcion(carpetas, t("carpeta_mod"), str(inst.mod_instalado) if inst.mod_instalado else t("no_encontrada"),
+                     self._abrir(inst.mod_instalado))
 
         self.capa.addWidget(etiqueta(t("acerca", version=VERSION), 8.5, QFont.Weight.Medium, APAGADO, envolver=True))
         self.capa.addStretch(1)
@@ -1199,6 +1280,17 @@ class PaginaAjustes(Pagina):
         f.addLayout(tx, 1)
         f.addWidget(control, 0, Qt.AlignmentFlag.AlignVCenter)
         capa.addLayout(f)
+
+    def _abrir(self, ruta: Path | None) -> QPushButton:
+        b = boton(t("abrir"), lambda _=False, r=ruta: I.abrir_carpeta(r))
+        b.setEnabled(bool(ruta) and Path(ruta).exists())
+        return b
+
+    def _elegir_juego(self):
+        inicio = str(self.panel.instalador.juego or rutas.carpeta_steam() or Path.home())
+        carpeta = QFileDialog.getExistingDirectory(self, t("elegir_juego"), inicio)
+        if carpeta:
+            self.panel.cambiar_juego(Path(carpeta))
 
     def _poner(self, clave: str, valor):
         self.panel.config[clave] = valor

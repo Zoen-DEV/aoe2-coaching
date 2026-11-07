@@ -35,7 +35,7 @@ Lo generado va a `build/`: los mapas `.rms` son copias de mapas oficiales y los 
 py -m pip install -r requirements.txt
 ```
 
-Por ahora las rutas del juego y del perfil están fijas en el código (`C:\Program Files (x86)\Steam\...` y `C:\Users\User\Games\Age of Empires 2 DE\<id>`). Detectarlas solas es el plan 2.
+El juego se busca en las bibliotecas de Steam y el perfil en `%USERPROFILE%\Games\Age of Empires 2 DE\<id>` (si hay varios con partidas, el panel pregunta cuál usar). Los scripts de `content/` y `tools/` usan las mismas carpetas. Ver [apps/desktop/rutas.py](apps/desktop/rutas.py).
 
 ## Uso
 
@@ -45,10 +45,10 @@ Armar las guías, los mapas y el mod de AoE2C (sin `--install` no toca el juego)
 py content/guias/build.py
 ```
 
-Abrir la app (overlay y panel):
+Abrir la app (overlay y panel). Sus preferencias, el historial y los logs quedan en `%APPDATA%\AoE2Coaching\`:
 
 ```bash
-py apps/desktop/overlay.py
+py apps/desktop/aoe2c.py
 ```
 
 Correr las pruebas (necesitan el contenido armado en `build/`):
@@ -63,6 +63,10 @@ py apps/desktop/pruebas/test_historial.py
 
 ```bash
 py apps/desktop/pruebas/test_arranque.py
+```
+
+```bash
+py apps/desktop/pruebas/test_rutas.py
 ```
 
 Armar el mod de las ovejas:
