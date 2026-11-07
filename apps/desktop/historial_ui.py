@@ -7,11 +7,13 @@ quitarle el foco al juego.
 - A la derecha, sin partida elegida, el resumen general: la media de cada hito
   (clic en Feudal, Feudal, clic en Castillos, Castillos) frente a las partidas
   anteriores, la evolución de Feudal y Castillos y los tramos donde más tiempo pierdes.
-- Con una partida elegida: sus hitos frente a tu media, su lugar en la evolución
-  y el detalle paso a paso.
+- Con una partida elegida: sus hitos frente a tu media, su lugar en la evolución,
+  el detalle paso a paso y su repetición (ver repeticiones.py).
 """
 
 from datetime import datetime
+
+import repeticiones
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPainterPath, QPen
@@ -514,6 +516,7 @@ QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::su
 QPushButton { color: #bac2ce; background: rgba(255,255,255,14); border: 1px solid rgba(255,255,255,34);
               border-radius: 13px; padding: 4px 12px; font-family: 'Segoe UI'; font-size: 9pt; font-weight: 600; }
 QPushButton:hover { color: #f0f3f7; background: rgba(255,255,255,34); border-color: rgba(255,255,255,70); }
+QPushButton:disabled { color: rgba(186,194,206,90); background: rgba(255,255,255,6); border-color: rgba(255,255,255,18); }
 QPushButton#cerrar { padding: 0; min-width: 26px; max-width: 26px; min-height: 26px; max-height: 26px;
                      font-size: 10pt; }
 QPushButton#borrar[confirmar="true"] { color: #ffc4c4; border-color: rgba(255,96,96,140);
@@ -588,6 +591,12 @@ class ContenidoHistorial(QWidget):
         self.seleccion: str | None = None  # None = resumen general
         self.fin_de_partida = False
         self.guia_fija: str | None = None
+        self.repeticion = None  # Path de la repetición de la partida elegida
+        # Para "Ver repetición" (las pruebas los sustituyen).
+        import instalador
+        self.juego_abierto = instalador.juego_abierto
+        self.abrir_juego = instalador.abrir_juego
+        self.mostrar_en_carpeta = repeticiones.mostrar_en_carpeta
         self.setStyleSheet(ESTILO)
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(0, 0, 0, 0)
@@ -642,6 +651,15 @@ class ContenidoHistorial(QWidget):
         fila = QHBoxLayout()
         self.titulo_detalle = etiqueta("", 13, QFont.Weight.Bold)
         fila.addWidget(self.titulo_detalle, 1)
+        self.ver_repeticion = QPushButton("▶  " + tx("hi_ver_repeticion"))
+        self.ver_repeticion.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ver_repeticion.clicked.connect(self.pulsar_ver_repeticion)
+        fila.addWidget(self.ver_repeticion)
+        self.en_carpeta = QPushButton(tx("hi_en_carpeta"))
+        self.en_carpeta.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.en_carpeta.setToolTip(tx("hi_en_carpeta_consejo"))
+        self.en_carpeta.clicked.connect(self.pulsar_en_carpeta)
+        fila.addWidget(self.en_carpeta)
         self.borrar = QPushButton(tx("hi_borrar"))
         self.borrar.setObjectName("borrar")
         self.borrar.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -649,6 +667,11 @@ class ContenidoHistorial(QWidget):
         self.borrar.clicked.connect(self.pulsar_borrar)
         fila.addWidget(self.borrar)
         vp.addLayout(fila)
+        self.nota_repeticion = etiqueta("", 9, QFont.Weight.Medium, SECUNDARIO)
+        self.nota_repeticion.setWordWrap(True)
+        self.nota_repeticion.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.nota_repeticion.hide()
+        vp.addWidget(self.nota_repeticion)
         self.aviso = etiqueta("", 10, QFont.Weight.DemiBold, BIEN)
         self.aviso.setWordWrap(True)
         self.aviso.setStyleSheet("color: #38cc80; background: rgba(56,204,128,30); border: 1px solid "
@@ -698,6 +721,38 @@ class ContenidoHistorial(QWidget):
             self.borrar.setText(tx("hi_borrar_confirmar"))
             self.borrar.setProperty("confirmar", True)
             self.borrar.style().polish(self.borrar)
+
+    def pulsar_ver_repeticion(self):
+        """El juego no abre repeticiones desde fuera: se abre (si hace falta) y se dice
+        cuál elegir en su lista. El nombre queda copiado."""
+        if self.repeticion is None:
+            return
+        QGuiApplication.clipboard().setText(self.repeticion.stem)
+        abierto = self.juego_abierto()
+        if not abierto:
+            try:
+                self.abrir_juego()
+            except OSError:
+                pass
+        self.nota_repeticion.setText(tx("hi_como_ver" if abierto else "hi_como_ver_abriendo",
+                                        nombre=self.repeticion.stem))
+        self.nota_repeticion.show()
+
+    def pulsar_en_carpeta(self):
+        if self.repeticion is not None:
+            self.mostrar_en_carpeta(self.repeticion)
+
+    def _poner_repeticion(self, sel: dict):
+        antes = sel.get("repeticion")
+        self.repeticion = repeticiones.de_registro(sel)
+        if sel.get("repeticion") != antes:
+            self.historial.guardar()
+        hay = self.repeticion is not None
+        for b in (self.ver_repeticion, self.en_carpeta):
+            b.setEnabled(hay)
+        self.ver_repeticion.setToolTip(tx("hi_ver_repeticion_consejo", nombre=self.repeticion.name) if hay
+                                       else tx("hi_sin_repeticion"))
+        self.nota_repeticion.hide()
 
     def _reiniciar_borrar(self):
         self.borrar.setText(tx("hi_borrar"))
@@ -768,6 +823,7 @@ class ContenidoHistorial(QWidget):
             self.aviso.hide()
 
         self.titulo_detalle.setText(f"{fecha_corta(sel['fecha'])} · {mapa_corto(sel['mapa'])}")
+        self._poner_repeticion(sel)
         for clave, ficha in self.fichas.items():
             res = resumen_hito(regs, clave, excluir=sel["id"])
             pie = []

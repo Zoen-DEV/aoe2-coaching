@@ -51,7 +51,8 @@ def preparar_datos(datos: Path = DATOS, antiguos: Path = ANTIGUOS) -> list[str]:
 
 def configurar_log(archivo: Path = LOG) -> None:
     """Log en %APPDATA%\\AoE2Coaching\\logs (3 archivos de 512 KB como máximo) y los errores
-    no capturados también van allí."""
+    no capturados, también los de los hilos en segundo plano, van allí. El botón
+    "Copiar datos para soporte" del panel copia los últimos (ver soporte.py)."""
     raiz = logging.getLogger("aoe2c")
     if raiz.handlers:
         return
@@ -71,6 +72,16 @@ def configurar_log(archivo: Path = LOG) -> None:
         anterior(tipo, valor, traza)
 
     sys.excepthook = no_capturado
+
+    import threading
+    anterior_hilo = threading.excepthook
+
+    def no_capturado_hilo(a):
+        raiz.error("error no capturado en el hilo %s", a.thread.name if a.thread else "?",
+                   exc_info=(a.exc_type, a.exc_value, a.exc_traceback))
+        anterior_hilo(a)
+
+    threading.excepthook = no_capturado_hilo
 
 
 # --- Steam y el juego -----------------------------------------------------------

@@ -543,6 +543,11 @@ def abrir_juego() -> None:
     os.startfile(f"steam://rungameid/{ID_STEAM_JUEGO}")
 
 
+def abrir_enlace(url: str) -> None:
+    if url.startswith("https://"):
+        os.startfile(url)
+
+
 def abrir_carpeta(carpeta: Path) -> None:
     if Path(carpeta).exists():
         os.startfile(str(carpeta))

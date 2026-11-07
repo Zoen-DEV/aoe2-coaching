@@ -81,6 +81,10 @@ py apps/desktop/pruebas/test_rutas.py
 py apps/desktop/pruebas/test_catalogo.py
 ```
 
+```bash
+py apps/desktop/pruebas/test_soporte.py
+```
+
 Armar el mod de las ovejas:
 
 ```bash

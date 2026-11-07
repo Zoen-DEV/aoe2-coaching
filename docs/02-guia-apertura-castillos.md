@@ -27,7 +27,7 @@ Páginas (barra lateral):
 | **Guías** | Las guías instaladas (descripción, nivel, pasos, meta, versión, mapas recomendados, "Ver pasos", **Usar esta guía**, **Actualizar** si el catálogo tiene una versión nueva y **Quitar**). Debajo, las del catálogo sin instalar (**Instalar**) y las que vendrán. |
 | **Mapas** | Una tarjeta por mapa del catálogo con su imagen, tipo, descripción, guías recomendadas y estado (Instalado, Hay una versión nueva, No instalado, Falta el mapa oficial). Botones **Instalar / Actualizar / Quitar** y **⤓** para guardar una copia del `.rms` y su imagen en otra carpeta. AoE2C arma cada mapa con el oficial del juego. |
 | **MODs** | Los mods de AoE2 Coaching (por ahora, el icono sobre el ganado): estado, si está activo en el juego, **Instalar / Actualizar / Activar / Quitar**. |
-| **Ajustes** | Idioma (español / inglés), abrir el panel al iniciar, iniciar con Windows; y de la guía en partida: posición, opacidad, pasos de "A continuación", aviso de casas, abrir el historial al terminar y la pestaña del historial. Al final, botones para abrir las carpetas del juego, del perfil y del mod. |
+| **Ajustes** | Idioma (español / inglés), abrir el panel al iniciar, iniciar con Windows; y de la guía en partida: posición, opacidad, pasos de "A continuación", aviso de casas, abrir el historial al terminar y la pestaña del historial. Luego, botones para abrir las carpetas del juego, del perfil y del mod. Al final, **Ayuda y soporte**: el Discord de AoE2 Coaching (desactivado hasta tener la invitación), **Copiar datos para soporte** (versión de la app y de Windows, juego y perfil encontrados, contenido instalado y últimos avisos y errores del log, sin el usuario de Windows ni el SteamID) y la carpeta de los logs. |
 
 Los cambios de Ajustes se aplican al momento (el panel y el overlay comparten las preferencias en `%APPDATA%\AoE2Coaching\config.json`). El idioma cambia todo AoE2C: el panel, los menús, los pasos de las guías, la tarjeta de la partida y el historial. La primera vez se usa el idioma de Windows (español si Windows está en español; si no, inglés). Las partidas guardadas antes de que las guías tuvieran inglés muestran sus pasos en español. El panel nativo del juego (`panel_juego`, opcional) sigue en español: sus textos van dentro del script XS.
 
@@ -85,6 +85,7 @@ La ventana recibe clics y la rueda del ratón sin quitarle el foco al juego, y s
   - **Cuatro fichas** con sus hitos, su diferencia con tu media (verde si vas más rápido), tu mejor marca y la referencia.
   - **Evolución** con la partida marcada, para ver dónde queda frente a las demás.
   - **Paso a paso:** hora, diferencia con la referencia y tramo; el tramo más lento sale resaltado. El botón **Borrar** (con un segundo clic para confirmar) quita la partida, por ejemplo una de prueba.
+  - **Ver repetición** y **Mostrar en carpeta**: cada partida va con su `.aoe2record` de `savegame` (la repetición que empezó con ella y se siguió escribiendo hasta su último dato; así no se confunde con una partida reiniciada a los pocos segundos). El juego no abre repeticiones desde fuera, así que "Ver repetición" abre AoE2 si está cerrado, copia el nombre de la repetición y dice cuál elegir en su lista. Si no se encuentra (se borró o es de otro perfil), los dos botones quedan desactivados. El nombre se guarda en la partida (`repeticion` en `historial.json`). Ver [repeticiones.py](../apps/desktop/repeticiones.py).
 
 **Cómo se mide:**
 - El clic y la llegada a cada edad se anotan al ver cambiar el estado de la tecnología en el archivo del juego, con 1 s de precisión. Si el overlay se abrió tarde y no vio el cambio, el clic se toma de la hora del paso equivalente de la guía; la llegada a Feudal, que no tiene paso propio, queda vacía en lugar de inventarse.
@@ -222,6 +223,9 @@ La fuente es [build_orders/scouts_21.json](../content/guias/build_orders/scouts_
 | `apps/desktop/lector.py` | Busca y lee el `.xsdat` que escribe el juego. |
 | `apps/desktop/historial.py` | Registra cada partida (pasos e hitos) y calcula mejores marcas, medias y puntos débiles. |
 | `apps/desktop/historial_ui.py` | La ventana del historial. |
+| `apps/desktop/repeticiones.py` | Vincula cada partida del historial con su `.aoe2record` ("Ver repetición", "Mostrar en carpeta"). |
+| `apps/desktop/soporte.py` | "Copiar datos para soporte" (sin datos personales) y la invitación al Discord. |
+| `apps/desktop/pruebas/test_soporte.py` | Pruebas de las repeticiones y del soporte. |
 | `apps/desktop/estilo.py` | Colores y fuentes comunes del overlay y del historial. |
 | `%APPDATA%\AoE2Coaching\historial.json` | Las partidas guardadas (se crea al jugar la primera). |
 | `apps/desktop/pruebas/test_historial.py` | Pruebas del historial: simula partidas segundo a segundo, sin abrir ventanas (`py apps/desktop/pruebas/test_historial.py`). |
@@ -229,7 +233,7 @@ La fuente es [build_orders/scouts_21.json](../content/guias/build_orders/scouts_
 | `apps/desktop/Iniciar overlay.bat` | Abre AoE2C (`aoe2c.py`) sin ventana de consola. |
 | `apps/desktop/Cerrar overlay.bat` | Cierra el overlay sin usar el menú (por si no está visible). |
 | `%APPDATA%\AoE2Coaching\config.json` | Preferencias del panel y del overlay, y las carpetas elegidas a mano (perfil, juego). |
-| `%APPDATA%\AoE2Coaching\logs\aoe2c.log` | Log de AoE2C (carpetas encontradas y errores no capturados). |
+| `%APPDATA%\AoE2Coaching\logs\aoe2c.log` | Log de AoE2C (versión, carpetas encontradas, avisos y errores no capturados, también de los hilos en segundo plano). |
 | `build/mods/guia-apertura-castillos/resources/_common/xs/guia_fast_castle.xs` | Script final en un solo archivo: utilidades, funciones generadas de los pasos y motor. |
 | `build/mods/guia-apertura-castillos/resources/_common/random-map-scripts/*.rms` | Los mapas. |
 

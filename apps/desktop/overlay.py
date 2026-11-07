@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QApplication, QFileIconProvider, QMenu, QSystemTra
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config as C  # noqa: E402
+import repeticiones  # noqa: E402
 import rutas  # noqa: E402
 import textos  # noqa: E402
 from estilo import (ACENTO, APAGADO, ATENCION, BANDERAS_CLIC, BIEN, BORDE, EMOJI, FONDO, MAL, PISTA,  # noqa: E402
@@ -1078,6 +1079,9 @@ def preparar(config: dict) -> rutas.Entorno:
     """Log, datos en %APPDATA%, inicio con Windows y carpetas del juego y del perfil.
     Es lo único que toca el sistema al arrancar (las pruebas lo sustituyen)."""
     rutas.configurar_log()
+    from soporte import version_windows
+    from version import VERSION
+    log.info("AoE2C v%s · %s", VERSION, version_windows())
     from instalador import actualizar_inicio_con_windows
     if actualizar_inicio_con_windows():
         log.info("inicio con Windows corregido para apuntar a esta copia")
@@ -1160,6 +1164,7 @@ def main():
     global ICONO_JUEGO
     ICONO_JUEGO = entorno.juego / rutas.EXE_JUEGO if entorno.juego else None
     perfil = entorno.perfil.carpeta if entorno.perfil else None
+    repeticiones.poner_perfil(perfil)  # para vincular cada partida del historial con su repetición
     from instalador import Instalador
     instalador = Instalador(perfil=perfil, juego=entorno.juego)  # guías instaladas desde el catálogo
 
@@ -1213,6 +1218,7 @@ def main():
             w.bandeja.showMessage(t("bandeja_titulo"), t("bandeja_texto"), icono_app(), 6000)
 
     def perfil_cambiado(carpeta: Path | None):
+        repeticiones.poner_perfil(carpeta)
         if "--demo" not in args:
             lector.perfil, lector.archivo, lector.mtime = carpeta, None, 0.0
 

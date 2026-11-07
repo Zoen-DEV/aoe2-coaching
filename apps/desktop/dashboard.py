@@ -24,7 +24,7 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
-from PySide6.QtGui import QColor, QFont, QFontMetricsF, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtGui import QColor, QFont, QFontMetricsF, QGuiApplication, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
                                QHBoxLayout, QLabel, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider,
                                QStackedWidget, QVBoxLayout, QWidget)
@@ -32,7 +32,9 @@ from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QComboBox, QDialog
 import catalogo as K
 import config as C
 import instalador as I
+import repeticiones
 import rutas
+import soporte
 import textos
 from estilo import (ACENTO, APAGADO, ATENCION, BIEN, BORDE, EMOJI, MAL, SECUNDARIO, TARJETA, TEXTO, color,
                     fuente)
@@ -838,6 +840,7 @@ class Panel(QWidget):
     # --- Carpetas ---
     def cambiar_perfil(self, carpeta: Path):
         self.instalador.perfil = Path(carpeta)
+        repeticiones.poner_perfil(Path(carpeta))
         self.config["perfil"] = str(carpeta)
         self.guardar_config()
         self.al_cambiar_perfil(Path(carpeta))
@@ -1592,8 +1595,23 @@ class PaginaAjustes(Pagina):
         self._opcion(carpetas, t("carpeta_mod"), str(inst.mod_instalado) if inst.mod_instalado else t("no_encontrada"),
                      self._abrir(inst.mod_instalado))
 
+        # Ayuda y soporte: Discord, datos para un reporte y el log.
+        ayuda = self._seccion(t("ajustes_soporte"))
+        discord = boton(t("abrir_discord"), lambda: I.abrir_enlace(soporte.DISCORD))
+        discord.setEnabled(bool(soporte.DISCORD))
+        self._opcion(ayuda, t("op_discord"), t("op_discord_desc") if soporte.DISCORD else t("op_discord_pronto"),
+                     discord)
+        self._opcion(ayuda, t("op_soporte"), t("op_soporte_desc"), boton(t("copiar"), self.copiar_soporte))
+        self._opcion(ayuda, t("op_log"), t("op_log_desc"), self._abrir(rutas.LOGS))
+
         self.capa.addWidget(etiqueta(t("acerca", version=VERSION), 8.5, QFont.Weight.Medium, APAGADO, envolver=True))
         self.capa.addStretch(1)
+
+    def copiar_soporte(self):
+        panel = self.panel
+        texto = soporte.datos(panel.config, panel.instalador, panel.juego)
+        QGuiApplication.clipboard().setText(texto)
+        panel.avisar(t("soporte_copiado"))
 
     def _seccion(self, titulo: str) -> QVBoxLayout:
         self.capa.addWidget(etiqueta(titulo, 11, QFont.Weight.Bold))
