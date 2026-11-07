@@ -1,0 +1,6 @@
+# App de escritorio (apps/desktop)
+PySide6>=6.12
+
+# Herramientas de sprites (tools/) y mod de las ovejas (content/mods/icono-ovejas)
+numpy>=2.5
+pillow>=12.2

@@ -1,0 +1,155 @@
+{
+  "id": "scouts",
+  "nombre": "Scouts 21",
+  "descripcion": "Exploradores en la Edad Feudal: 21 de población al pulsar Feudal, establo nada más llegar y exploradores sin parar para molestar a los aldeanos enemigos.",
+  "descripcion_en": "Feudal Age Scouts: 21 population when you click Feudal, a stable as soon as you arrive and non-stop scouts to harass enemy villagers.",
+  "nivel": "facil",
+  "mapas_recomendados": ["arabia", "runestones"],
+  "hitos": ["clic_feudal", "feudal", "meta"],
+  "series": ["feudal", "meta"],
+  "hito_principal": "meta",
+  "titulo_final": "¡Exploradores en marcha!",
+  "icono_final": "explorador",
+  "archivo_xs": "guia_scouts.xs",
+  "margen_segundos": 20,
+  "aviso_casas": true,
+  "overlay": true,
+  "panel_juego": false,
+  "pasos_hechos_visibles": 0,
+  "pasos_siguientes_visibles": 3,
+  "mensaje_final": "Siguiente: aldeanos sin parar, granjas, y pasa a arqueros o sube a Castillos con caballeros.",
+  "pasos": [
+    {
+      "titulo": "2 casas",
+      "texto": "Pon a los 3 aldeanos iniciales a construir 2 casas. Crea aldeanos sin parar y trae ganado con el explorador.",
+      "icono": "casa",
+      "referencia": "0:35",
+      "condiciones": [
+        {"edificio": "casa", "min": 2}
+      ]
+    },
+    {
+      "titulo": "6 pastores",
+      "texto": "Manda a los aldeanos al ganado, bajo el centro urbano, hasta tener 6 pastores.",
+      "icono": "oveja",
+      "referencia": "1:20",
+      "condiciones": [
+        {"aldeanos": "pastores", "min": 6}
+      ]
+    },
+    {
+      "titulo": "Campamento y 4 leñadores",
+      "texto": "Con los aldeanos 7 a 10, construye un campamento maderero junto al bosque y ponlos a talar.",
+      "icono": "campamento_maderero",
+      "referencia": "3:10",
+      "condiciones": [
+        {"edificio": "campamento_maderero", "min": 1},
+        {"aldeanos": "lenadores", "min": 4}
+      ]
+    },
+    {
+      "titulo": "Primer jabalí",
+      "texto": "Con el aldeano 11, atrae el primer jabalí hasta el centro urbano y pasa los pastores a cazarlo.",
+      "icono": "jabali",
+      "referencia": "3:30",
+      "condiciones": [
+        {"aldeanos": "cazadores", "min": 1}
+      ]
+    },
+    {
+      "titulo": "Casa, molino y 4 en bayas",
+      "texto": "Con el aldeano 12, construye una casa y un molino junto a las bayas. Los aldeanos 12 a 15 recolectan bayas.",
+      "icono": "molino",
+      "referencia": "5:15",
+      "condiciones": [
+        {"edificio": "casa", "min": 3},
+        {"edificio": "molino", "min": 1},
+        {"aldeanos": "recolectores", "min": 4}
+      ]
+    },
+    {
+      "titulo": "Segundo jabalí, 13 en comida",
+      "texto": "Atrae el segundo jabalí con el aldeano 16 y manda el 17 a la comida. Construye otra casa.",
+      "icono": "jabali",
+      "referencia": "6:00",
+      "condiciones": [
+        {"edificio": "casa", "min": 4},
+        {"aldeanos": "comida", "min": 13}
+      ]
+    },
+    {
+      "titulo": "Cuartel y 6 leñadores",
+      "texto": "Con el aldeano 18, construye un cuartel y luego ponlo a talar. Los aldeanos 19 y 20 van a la madera.",
+      "icono": "cuartel",
+      "referencia": "7:20",
+      "condiciones": [
+        {"edificio": "cuartel", "min": 1},
+        {"aldeanos": "lenadores", "min": 6}
+      ]
+    },
+    {
+      "titulo": "Telar",
+      "texto": "Investiga el Telar en el centro urbano después del aldeano 20.",
+      "icono": "centro_urbano",
+      "referencia": "7:30",
+      "condiciones": [
+        {"tecnologia": "telar", "estado": "terminada"}
+      ]
+    },
+    {
+      "titulo": "Clic en Edad Feudal",
+      "texto": "Sube a la Edad Feudal con 21 de población (20 aldeanos y el explorador).",
+      "icono": "centro_urbano",
+      "referencia": "7:35",
+      "condiciones": [
+        {"tecnologia": "edad_feudal", "estado": "iniciada"}
+      ]
+    },
+    {
+      "titulo": "Edad Feudal",
+      "texto": "Mientras sube: junta 175 de madera para el establo y pasa a granjas a los aldeanos que se queden sin ganado.",
+      "icono": "centro_urbano",
+      "referencia": "9:45",
+      "condiciones": [
+        {"edad": "feudal"}
+      ]
+    },
+    {
+      "titulo": "Establo",
+      "texto": "Nada más llegar a Feudal, construye un establo con 2 leñadores, cerca del bosque.",
+      "icono": "establo",
+      "referencia": "10:20",
+      "condiciones": [
+        {"edificio": "establo", "min": 1}
+      ]
+    },
+    {
+      "titulo": "3 exploradores",
+      "texto": "Crea exploradores sin parar (cuenta el inicial). Ataca a los aldeanos de la madera y el oro, no a sus soldados.",
+      "icono": "explorador",
+      "referencia": "11:20",
+      "condiciones": [
+        {"unidades": "exploradores", "min": 3}
+      ]
+    },
+    {
+      "titulo": "4 granjas y 24 aldeanos",
+      "texto": "No dejes parado el centro urbano: aldeanos sin parar y granjas cuando se acabe la comida de caza.",
+      "icono": "granja",
+      "referencia": "11:40",
+      "condiciones": [
+        {"edificio": "granja", "min": 4},
+        {"aldeanos": "todos", "min": 24}
+      ]
+    },
+    {
+      "titulo": "6 exploradores",
+      "texto": "Sigue con el establo sin parar hasta 6 exploradores. Si pierdes alguno, repón para no quedarte sin presión.",
+      "icono": "explorador",
+      "referencia": "12:50",
+      "condiciones": [
+        {"unidades": "exploradores", "min": 6}
+      ]
+    }
+  ]
+}

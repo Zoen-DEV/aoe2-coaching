@@ -1,0 +1,266 @@
+{
+  "id": "fast_castle",
+  "nombre": "Fast Castle 27+2",
+  "descripcion": "Directo a Castillos sin ejército en Feudal: 27 de población al pulsar Feudal y 2 aldeanos más antes de pulsar Castillos.",
+  "descripcion_en": "Straight to Castle Age with no Feudal army: 27 population when you click Feudal and 2 more villagers before clicking Castle.",
+  "nivel": "media",
+  "mapas_recomendados": [
+    "arena",
+    "black_forest",
+    "fortress",
+    "arabia"
+  ],
+  "hitos": [
+    "clic_feudal",
+    "feudal",
+    "clic_castillos",
+    "castillos"
+  ],
+  "series": [
+    "feudal",
+    "castillos"
+  ],
+  "hito_principal": "castillos",
+  "titulo_final": "¡Llegaste a Castillos!",
+  "icono_final": "castillo",
+  "archivo_xs": "guia_fast_castle.xs",
+  "margen_segundos": 20,
+  "aviso_casas": true,
+  "overlay": true,
+  "panel_juego": false,
+  "pasos_hechos_visibles": 0,
+  "pasos_siguientes_visibles": 3,
+  "mensaje_final": "Siguiente: 2 centros urbanos más, aldeanos sin parar y granjas.",
+  "pasos": [
+    {
+      "titulo": "2 casas",
+      "texto": "Pon a los 3 aldeanos iniciales a construir 2 casas. Crea aldeanos sin parar y trae ganado con el explorador.",
+      "icono": "casa",
+      "referencia": "0:35",
+      "condiciones": [
+        {
+          "edificio": "casa",
+          "min": 2
+        }
+      ]
+    },
+    {
+      "titulo": "6 pastores",
+      "texto": "Manda a los aldeanos al ganado, bajo el centro urbano, hasta tener 6 pastores.",
+      "icono": "oveja",
+      "referencia": "1:20",
+      "condiciones": [
+        {
+          "aldeanos": "pastores",
+          "min": 6
+        }
+      ]
+    },
+    {
+      "titulo": "Campamento y 4 leñadores",
+      "texto": "Con los aldeanos 7 a 10, construye un campamento maderero junto al bosque y ponlos a talar.",
+      "icono": "campamento_maderero",
+      "referencia": "3:10",
+      "condiciones": [
+        {
+          "edificio": "campamento_maderero",
+          "min": 1
+        },
+        {
+          "aldeanos": "lenadores",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "titulo": "Primer jabalí",
+      "texto": "Con el aldeano 11, atrae el primer jabalí hasta el centro urbano y pasa los pastores a cazarlo.",
+      "icono": "jabali",
+      "referencia": "3:30",
+      "condiciones": [
+        {
+          "aldeanos": "cazadores",
+          "min": 1
+        }
+      ]
+    },
+    {
+      "titulo": "Casa, molino y 5 en bayas",
+      "texto": "Con el aldeano 12, construye una casa y un molino junto a las bayas. Los aldeanos 12 a 16 recolectan bayas.",
+      "icono": "molino",
+      "referencia": "5:40",
+      "condiciones": [
+        {
+          "edificio": "casa",
+          "min": 3
+        },
+        {
+          "edificio": "molino",
+          "min": 1
+        },
+        {
+          "aldeanos": "recolectores",
+          "min": 5
+        }
+      ]
+    },
+    {
+      "titulo": "Segundo jabalí, 14 en comida",
+      "texto": "Atrae el segundo jabalí con el aldeano 17 y manda el 18 a la comida. Construye otra casa.",
+      "icono": "jabali",
+      "referencia": "6:25",
+      "condiciones": [
+        {
+          "edificio": "casa",
+          "min": 4
+        },
+        {
+          "aldeanos": "comida",
+          "min": 14
+        }
+      ]
+    },
+    {
+      "titulo": "Segundo campamento, 9 leñadores",
+      "texto": "Con los aldeanos 19 a 23, construye un segundo campamento maderero y otra casa, y ponlos a talar.",
+      "icono": "campamento_maderero",
+      "referencia": "8:35",
+      "condiciones": [
+        {
+          "edificio": "casa",
+          "min": 5
+        },
+        {
+          "edificio": "campamento_maderero",
+          "min": 2
+        },
+        {
+          "aldeanos": "lenadores",
+          "min": 9
+        }
+      ]
+    },
+    {
+      "titulo": "Campamento minero, 3 en oro",
+      "texto": "Con los aldeanos 24 a 26, construye un campamento minero junto al oro y ponlos a minar.",
+      "icono": "campamento_minero",
+      "referencia": "9:55",
+      "condiciones": [
+        {
+          "edificio": "campamento_minero",
+          "min": 1
+        },
+        {
+          "aldeanos": "mineros_oro",
+          "min": 3
+        }
+      ]
+    },
+    {
+      "titulo": "Telar",
+      "texto": "Investiga el Telar en el centro urbano después del aldeano 26.",
+      "icono": "centro_urbano",
+      "referencia": "10:00",
+      "condiciones": [
+        {
+          "tecnologia": "telar",
+          "estado": "terminada"
+        }
+      ]
+    },
+    {
+      "titulo": "Clic en Edad Feudal",
+      "texto": "Sube a la Edad Feudal con 27 de población (26 aldeanos y el explorador).",
+      "icono": "centro_urbano",
+      "referencia": "10:05",
+      "condiciones": [
+        {
+          "tecnologia": "edad_feudal",
+          "estado": "iniciada"
+        }
+      ]
+    },
+    {
+      "titulo": "6 granjas",
+      "texto": "Mientras sube la edad: cuando se acaben el ganado y los jabalíes, pasa esos aldeanos a granjas.",
+      "icono": "granja",
+      "referencia": "12:15",
+      "condiciones": [
+        {
+          "edificio": "granja",
+          "min": 6
+        }
+      ]
+    },
+    {
+      "titulo": "Mercado y Herrería",
+      "texto": "Ya en Feudal: construye un Mercado y una Herrería con 4 leñadores (2 en cada edificio).",
+      "icono": "mercado",
+      "referencia": "13:10",
+      "condiciones": [
+        {
+          "edad": "feudal"
+        },
+        {
+          "edificio": "mercado",
+          "min": 1
+        },
+        {
+          "edificio": "herreria",
+          "min": 1
+        }
+      ]
+    },
+    {
+      "titulo": "28 aldeanos",
+      "texto": "Crea 2 aldeanos más y mándalos a la madera (28 aldeanos, 29 de población).",
+      "icono": "aldeano",
+      "referencia": "13:10",
+      "condiciones": [
+        {
+          "aldeanos": "todos",
+          "min": 28
+        }
+      ]
+    },
+    {
+      "titulo": "Clic en Castillos",
+      "texto": "Sube a la Edad de los Castillos en el centro urbano (800 de comida y 200 de oro).",
+      "icono": "castillo",
+      "referencia": "13:15",
+      "condiciones": [
+        {
+          "tecnologia": "edad_castillos",
+          "estado": "iniciada"
+        }
+      ]
+    },
+    {
+      "titulo": "Hacha de doble filo y Collera",
+      "texto": "Mientras sube: investiga Hacha de doble filo en el campamento maderero y Collera en el molino.",
+      "icono": "campamento_maderero",
+      "referencia": "13:50",
+      "condiciones": [
+        {
+          "tecnologia": "hacha_doble_filo",
+          "estado": "iniciada"
+        },
+        {
+          "tecnologia": "collera",
+          "estado": "iniciada"
+        }
+      ]
+    },
+    {
+      "titulo": "Edad de los Castillos",
+      "texto": "Espera a la Edad de los Castillos. Mientras, sigue haciendo granjas y casas.",
+      "icono": "castillo",
+      "referencia": "15:55",
+      "condiciones": [
+        {
+          "edad": "castillos"
+        }
+      ]
+    }
+  ]
+}

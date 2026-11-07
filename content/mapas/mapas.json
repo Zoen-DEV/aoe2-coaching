@@ -1,0 +1,66 @@
+{
+  "_comentario": "Mapas del mod. Cada uno es una copia de un mapa oficial (base, en gamedata_x2) que carga el script común aoe2c_guia.xs. La guía que se juega la elige el usuario en el panel de AoE2C. 'imagen' es la imagen oficial de la sala (mapicons) cuando su nombre no sigue la regla rm_<base>.png.",
+  "mapas": [
+    {
+      "id": "arabia",
+      "base": "Arabia.rms",
+      "archivo": "[AoE2C] Arabia.rms",
+      "nombre": "Arabia",
+      "tipo": {"es": "Abierto", "en": "Open"},
+      "descripcion": {
+        "es": "El mapa más jugado. Abierto y agresivo: aquí se castigan las aperturas lentas.",
+        "en": "The most played map. Open and aggressive: slow openings get punished here."
+      },
+      "guias": ["scouts", "fast_castle"]
+    },
+    {
+      "id": "arena",
+      "base": "Arena.rms",
+      "archivo": "[AoE2C] Arena.rms",
+      "nombre": "Arena",
+      "tipo": {"es": "Cerrado", "en": "Closed"},
+      "descripcion": {
+        "es": "Base amurallada con piedra. Ideal para practicar un Fast Castle limpio y el boom.",
+        "en": "Stone-walled base. Ideal to practise a clean Fast Castle and booming."
+      },
+      "guias": ["fast_castle"]
+    },
+    {
+      "id": "black_forest",
+      "base": "Black_Forest.rms",
+      "archivo": "[AoE2C] Black Forest.rms",
+      "nombre": "Black Forest",
+      "imagen": "rm_black-forest.png",
+      "tipo": {"es": "Cerrado", "en": "Closed"},
+      "descripcion": {
+        "es": "Bosque denso con pocos accesos. Partidas largas: Fast Castle y economía fuerte.",
+        "en": "Dense forest with few entrances. Long games: Fast Castle and a strong economy."
+      },
+      "guias": ["fast_castle"]
+    },
+    {
+      "id": "runestones",
+      "base": "Runestones.rms",
+      "archivo": "[AoE2C] Runestones.rms",
+      "nombre": "Runestones",
+      "tipo": {"es": "Abierto", "en": "Open"},
+      "descripcion": {
+        "es": "Abierto como Arabia, con más recursos repartidos. Bueno para presionar en Feudal.",
+        "en": "Open like Arabia, with more scattered resources. Good for Feudal pressure."
+      },
+      "guias": ["scouts", "fast_castle"]
+    },
+    {
+      "id": "fortress",
+      "base": "Fortress.rms",
+      "archivo": "[AoE2C] Fortress.rms",
+      "nombre": "Fortress",
+      "tipo": {"es": "Semicerrado", "en": "Semi-closed"},
+      "descripcion": {
+        "es": "Empiezas con murallas de piedra a medio cerrar. Fast Castle con castillo adelantado.",
+        "en": "You start with half-closed stone walls. Fast Castle with a forward castle."
+      },
+      "guias": ["fast_castle"]
+    }
+  ]
+}
