@@ -60,6 +60,13 @@ def mapas_de(guias: dict[str, dict]) -> set[str]:
     return {m.lower() for g in guias.values() for m in g.get("mapas", [])}
 
 
+def es_mapa_aoe2c(nombre: str, conocidos: set[str] = frozenset()) -> bool:
+    """Si un .xsdat es de un mapa [AoE2C]: los de los manifiestos y cualquier otro con el
+    prefijo (los mapas que el catálogo añada después que la guía)."""
+    nombre = nombre.lower()
+    return nombre in conocidos or nombre.startswith("[aoe2c] ")
+
+
 def parsear(data: bytes, guias) -> tuple[dict, Estado] | None:
     """Último registro completo, con la guía a la que corresponde. `guias` es un
     manifiesto, una lista o el diccionario de cargar_guias()."""
@@ -123,9 +130,9 @@ def _parsear_en(data: bytes, pos: int, guia: dict) -> Estado | None:
 class Lector:
     """Busca el .xsdat más reciente de alguna guía y lo relee cuando cambia."""
 
-    def __init__(self, perfil: Path | None = None) -> None:
+    def __init__(self, perfil: Path | None = None, guias: dict[str, dict] | None = None) -> None:
         self.perfil = perfil  # carpeta del perfil del juego (rutas.py); None = no se lee nada
-        self.guias = cargar_guias()
+        self.guias = cargar_guias() if guias is None else guias
         self.mapas = mapas_de(self.guias)
         self.archivo: Path | None = None
         self.guia: dict | None = None
@@ -143,7 +150,7 @@ class Lector:
         for carpeta in (perfil / "profile", perfil, perfil / "resources" / "_common" / "xs"):
             try:
                 for entrada in os.scandir(carpeta):
-                    if entrada.name.lower().endswith(".xsdat") and Path(entrada.name).stem.lower() in self.mapas:
+                    if entrada.name.lower().endswith(".xsdat") and es_mapa_aoe2c(Path(entrada.name).stem, self.mapas):
                         yield Path(entrada.path)
             except OSError:
                 continue

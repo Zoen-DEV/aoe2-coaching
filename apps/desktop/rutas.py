@@ -5,7 +5,8 @@
 - **Perfil.** Las carpetas de %USERPROFILE%\\Games\\Age of Empires 2 DE\\<id>. El id no es
   fijo (con Steam es el SteamID64; "0" es el perfil sin conexión). Si solo una tiene uso
   (repeticiones, mods o datos de la guía), se elige sola; si hay varias, se pregunta.
-- **Datos de AoE2C.** config.json, historial.json y los logs van en %APPDATA%\\AoE2Coaching\\.
+- **Datos de AoE2C.** config.json, historial.json, los logs y el contenido descargado
+  (contenido\\) van en %APPDATA%\\AoE2Coaching\\.
   La primera vez se copian los que había junto al código (versión anterior).
 """
 
@@ -28,6 +29,7 @@ CONFIG = DATOS / "config.json"
 HISTORIAL = DATOS / "historial.json"
 LOGS = DATOS / "logs"
 LOG = LOGS / "aoe2c.log"
+CONTENIDO = DATOS / "contenido"  # guías descargadas, copia del catálogo y estado de lo instalado
 ANTIGUOS = HERE  # donde la versión anterior guardaba config.json e historial.json
 
 

@@ -5,6 +5,7 @@ Guías de apertura paso a paso encima de Age of Empires II: Definitive Edition, 
 - **Estado:** en preparación para la primera versión pública. Plan: [docs/03-plan-compartir-aoe2c.md](docs/03-plan-compartir-aoe2c.md).
 - **Diseño de la guía y del panel:** [docs/02-guia-apertura-castillos.md](docs/02-guia-apertura-castillos.md)
 - **Mod de las ovejas:** [docs/01-icono-ovejas.md](docs/01-icono-ovejas.md)
+- **Catálogo de contenido** (guías, mapas y mods que instala el panel): [docs/04-catalogo-contenido.md](docs/04-catalogo-contenido.md)
 
 ## Estructura
 
@@ -15,10 +16,11 @@ apps/
   web/            página oficial (Astro) - plan 8
   api/            backend en Node - cuando lleguen las cuentas
 content/
+  catalogo.py     arma el catálogo (paquetes + catalogo.json) en build/catalogo
   guias/          build.py + build orders (.json) -> script .xs y manifiesto del overlay
   mapas/          mapas.json: recetas de los mapas [AoE2C]
   mods/
-    icono-ovejas/ build.py + info.json -> sprites .sld con el icono
+    icono-ovejas/ build.py + info.json -> sprites .sld con el icono; catalogo.json: su ficha
 tools/            herramientas de sprites (.sld) y de repeticiones (.aoe2record)
 docs/
 build/            todo lo generado (no se sube a git)
@@ -45,7 +47,13 @@ Armar las guías, los mapas y el mod de AoE2C (sin `--install` no toca el juego)
 py content/guias/build.py
 ```
 
-Abrir la app (overlay y panel). Sus preferencias, el historial y los logs quedan en `%APPDATA%\AoE2Coaching\`:
+Armar el catálogo con lo construido (las guías y el mod de las ovejas). Desde el código, el panel lo usa en vez del publicado en GitHub; `AOE2C_CATALOGO` elige otro (ruta o URL):
+
+```bash
+py content/catalogo.py
+```
+
+Abrir la app (overlay y panel). Sus preferencias, el historial, los logs y el contenido descargado quedan en `%APPDATA%\AoE2Coaching\`:
 
 ```bash
 py apps/desktop/aoe2c.py
@@ -67,6 +75,10 @@ py apps/desktop/pruebas/test_arranque.py
 
 ```bash
 py apps/desktop/pruebas/test_rutas.py
+```
+
+```bash
+py apps/desktop/pruebas/test_catalogo.py
 ```
 
 Armar el mod de las ovejas:

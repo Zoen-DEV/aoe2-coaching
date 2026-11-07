@@ -32,6 +32,8 @@ RAIZ = HERE.parent.parent  # raíz del monorepo
 SALIDA = RAIZ / "build"  # todo lo generado (ignorado por git)
 sys.path.insert(0, str(RAIZ / "apps" / "desktop"))  # rutas.py: busca el juego y el perfil
 import rutas  # noqa: E402
+import mapas as M  # noqa: E402  (arma los .rms y sus imágenes, igual que la app)
+from instalador import INFO_MOD  # noqa: E402
 GAME, PROFILE = rutas.para_scripts()
 GAME_MAPS = GAME / "resources" / "_common" / "drs" / "gamedata_x2"
 LOCAL_MODS = PROFILE / "mods" / "local"
@@ -52,15 +54,7 @@ MOD_DIR = SALIDA / "mods" / INSTALL_NAME
 OUT_XS = MOD_DIR / "resources" / "_common" / "xs"
 OUT_RMS = MOD_DIR / "resources" / "_common" / "random-map-scripts"
 
-INFO = {
-    "Title": "AoE2 Coaching",
-    "Description": (
-        "Mapas con una guía paso a paso de la apertura (Fast Castle, Scouts...). La guía se elige en el "
-        "panel de AoE2C. Cada paso se marca solo al cumplirse y te dice si vas adelantado o tarde. "
-        "En la sala elige Estilo de mapa: Personalizado y un mapa \"[AoE2C] ...\"."
-    ),
-    "Author": "enzoholgadodev",
-}
+INFO = INFO_MOD  # info.json del mod de los mapas
 
 # Ancho aproximado del panel de instrucciones (caracteres por línea antes de partirla).
 ANCHO_PANEL = 50
@@ -147,17 +141,18 @@ ICONOS = {  # icono del panel: ID de la unidad o edificio que se muestra
 
 ID_CASA = EDIFICIOS["casa"][0]
 CLAVES_BUILD_ORDER = {
-    "id", "nombre", "descripcion", "descripcion_en", "nivel", "mapas_recomendados", "hitos", "series",
+    "id", "version", "nombre", "descripcion", "descripcion_en", "nivel", "mapas_recomendados", "hitos", "series",
     "hito_principal", "titulo_final", "icono_final", "archivo_xs", "margen_segundos", "aviso_casas",
     "overlay", "panel_juego",
     "pasos_hechos_visibles", "pasos_siguientes_visibles", "mensaje_final", "pasos",
 }
 OVERLAY_GUIAS = SALIDA / "guias"  # manifiestos que lee el overlay externo
-CLAVES_MAPA = {"id", "base", "archivo", "nombre", "tipo", "descripcion", "guias"}
+CLAVES_MAPA = {"id", "version", "base", "archivo", "nombre", "tipo", "descripcion", "guias"}
 CLAVES_MAPA_OPCIONALES = {"imagen"}
 HITOS_VALIDOS = ["clic_feudal", "feudal", "clic_castillos", "castillos", "meta"]  # meta = último paso
 NIVELES = ("facil", "media", "dificil")
 CLAVES_PASO = {"titulo", "texto", "icono", "referencia", "condiciones"}
+VERSION_RE = r"\d+\.\d+\.\d+"
 
 
 class BuildOrderError(Exception):
@@ -244,6 +239,8 @@ def load_build_order(path: Path) -> dict:
             raise BuildOrderError(f"{name}: falta el texto de {key}")
     if not re.fullmatch(r"[a-z0-9_]+", str(data["id"])):
         raise BuildOrderError(f"{name}: id debe ser minúsculas, números y _ (por ejemplo fast_castle)")
+    if not re.fullmatch(VERSION_RE, str(data["version"])):
+        raise BuildOrderError(f"{name}: version debe ser como 1.0.0 (súbela al cambiar la guía: así se actualiza en el panel)")
     if data["archivo_xs"] == XS_COMUN:
         raise BuildOrderError(f"{name}: {XS_COMUN} está reservado para el script común de los mapas")
     if not re.fullmatch(r"[A-Za-z0-9_]+\.xs", data["archivo_xs"]):
@@ -497,6 +494,7 @@ def build_manifest(bo: dict) -> dict:
     return {
         "version": 2,
         "id": bo["id"],
+        "version_guia": bo["version"],  # versión del contenido (la del catálogo)
         "codigo": codigo_guia(bo),  # va en el .xsdat: así el overlay sabe qué guía se está jugando
         "nombre": bo["nombre"],
         "descripcion": bo["descripcion"],
@@ -535,8 +533,10 @@ def load_maps() -> list[dict]:
         where = f"mapas.json > mapa {n}"
         if not isinstance(mapa, dict) or not CLAVES_MAPA <= set(mapa) <= CLAVES_MAPA | CLAVES_MAPA_OPCIONALES:
             raise BuildOrderError(f"{where}: claves {sorted(CLAVES_MAPA)} (y opcional imagen): {mapa}")
-        if not re.fullmatch(r"[A-Za-z0-9 _()\[\]-]+\.rms", mapa["archivo"]):
-            raise BuildOrderError(f"{where}: 'archivo' debe ser un nombre ASCII que acabe en .rms")
+        if not re.fullmatch(r"\[AoE2C\] [A-Za-z0-9 _()-]+\.rms", mapa["archivo"]):
+            raise BuildOrderError(f"{where}: 'archivo' debe ser \"[AoE2C] <nombre ASCII>.rms\"")
+        if not re.fullmatch(VERSION_RE, str(mapa["version"])):
+            raise BuildOrderError(f"{where}: version debe ser como 1.0.0")
         if not (GAME_MAPS / mapa["base"]).is_file():
             raise BuildOrderError(f"{where}: no existe el mapa base {GAME_MAPS / mapa['base']}")
         if mapa["id"] in vistos or mapa["archivo"].lower() in vistos:
@@ -715,76 +715,23 @@ def lint_xs(code: str, name: str) -> None:
 # --- Mapa ----------------------------------------------------------------------
 
 
-def build_rms(xs_name: str, title: str, base_name: str, source_name: str) -> bytes:
-    base = (GAME_MAPS / base_name).read_bytes()
-    if b"#includeXS" in base:
-        raise SystemExit(f"{base_name} ya incluye un script XS; no se puede añadir la guía sin sustituirlo")
-    header = (
-        f"#includeXS {xs_name}\r\n"
-        f"/* {ascii_only(title)}. Copia de {base_name} que carga el script\r\n"
-        f"   {xs_name}. Generado por mods/guia-apertura-castillos/build.py desde {source_name}. */\r\n"
-        "\r\n"
-    )
-    return header.encode("ascii") + base
+def build_rms(xs_name: str, title: str, base_name: str) -> bytes:
+    try:
+        return M.con_script((GAME_MAPS / base_name).read_bytes(), xs_name, title, base_name)
+    except M.MapaError as e:
+        raise SystemExit(str(e))
 
 
-# --- Imagen del mapa -------------------------------------------------------------
-
-GAME_MAP_ICONS = GAME / "resources" / "_common" / "wpfg" / "resources" / "mapicons"
-_qt_app = None
-
-
-def build_map_image(base_name: str, dest: Path, imagen: str | None = None) -> None:
-    """Imagen de la sala para el mapa: la del mapa oficial (rm_<base>.png, 420x420)
-    con una banda "AoE2 Coaching" encima. El juego la toma de un .png con el mismo
-    nombre que el .rms, en la misma carpeta."""
-    global _qt_app
-    source = GAME_MAP_ICONS / (imagen or f"rm_{Path(base_name).stem.lower()}.png")
-    if not source.is_file():
-        print(f"  aviso: no hay imagen oficial para {base_name} ({source.name}); el mapa queda sin imagen")
+def build_map_image(mapa: dict, dest: Path) -> None:
+    """Imagen de la sala para el mapa (ver mapas.armar_imagen)."""
+    source = M.imagen_oficial(GAME, mapa)
+    if source is None:
+        print(f"  aviso: no hay imagen oficial para {mapa['base']}; el mapa queda sin imagen")
         return
-    # Sin QT_QPA_PLATFORM=offscreen: en Windows esa plataforma no carga las fuentes del sistema.
-    from PySide6.QtCore import QRectF, Qt
-    from PySide6.QtGui import QColor, QFont, QGuiApplication, QImage, QLinearGradient, QPainter, QPainterPath, QPen
-    if QGuiApplication.instance() is None:
-        _qt_app = QGuiApplication([])
-
-    img = QImage(str(source)).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
-    w, h = img.width(), img.height()
-    p = QPainter(img)
-    p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
-
-    # Banda centrada, oscura y con borde dorado, como las placas del juego.
-    bw, bh = w * 0.80, h * 0.20
-    banda = QRectF((w - bw) / 2, (h - bh) / 2, bw, bh)
-    for i in range(8, 0, -1):  # sombra
-        s = QPainterPath()
-        s.addRoundedRect(banda.adjusted(-i, -i + 4, i, i + 4), 12 + i, 12 + i)
-        p.fillPath(s, QColor(0, 0, 0, 10))
-    path = QPainterPath()
-    path.addRoundedRect(banda, 12, 12)
-    fondo = QLinearGradient(banda.topLeft(), banda.bottomLeft())
-    fondo.setColorAt(0, QColor(32, 26, 18, 238))
-    fondo.setColorAt(1, QColor(14, 12, 9, 238))
-    p.fillPath(path, fondo)
-    p.setPen(QPen(QColor(214, 176, 92), 3))
-    p.drawPath(path)
-    p.setPen(QPen(QColor(214, 176, 92, 90), 1))
-    p.drawRoundedRect(banda.adjusted(6, 6, -6, -6), 8, 8)
-
-    f = QFont("Segoe UI")
-    f.setPixelSize(int(bh * 0.46))
-    f.setWeight(QFont.Weight.Bold)
-    p.setFont(f)
-    texto = QRectF(banda.left(), banda.top() + 1, banda.width(), banda.height())
-    p.setPen(QColor(0, 0, 0, 170))
-    p.drawText(texto.translated(0, 2), Qt.AlignmentFlag.AlignCenter, "AoE2 Coaching")
-    p.setPen(QColor(248, 232, 196))
-    p.drawText(texto, Qt.AlignmentFlag.AlignCenter, "AoE2 Coaching")
-    p.end()
-    if not img.save(str(dest)):
-        raise SystemExit(f"no se pudo guardar {dest}")
+    try:
+        M.armar_imagen(source, dest)
+    except M.MapaError as e:
+        raise SystemExit(str(e))
 
 
 # --- Construcción e instalación ----------------------------------------------
@@ -854,11 +801,10 @@ def build(paths: list[Path], ascii_mode: bool, pruebas: bool = False) -> list[di
     except BuildOrderError as e:
         raise SystemExit(f"Error en mapas.json: {e}")
     for mapa in mapas:
-        title = f"Mapa de AoE2 Coaching ({mapa['nombre']})"
-        (OUT_RMS / mapa["archivo"]).write_bytes(build_rms(XS_COMUN, title, mapa["base"], "mapas.json"))
+        (OUT_RMS / mapa["archivo"]).write_bytes(build_rms(XS_COMUN, M.titulo(mapa), mapa["base"]))
         print(f"  -> {OUT_RMS / mapa['archivo']}")
         imagen = OUT_RMS / (Path(mapa["archivo"]).stem + ".png")
-        build_map_image(mapa["base"], imagen, mapa.get("imagen"))
+        build_map_image(mapa, imagen)
         if imagen.exists():
             print(f"  -> {imagen}")
 
@@ -867,7 +813,7 @@ def build(paths: list[Path], ascii_mode: bool, pruebas: bool = False) -> list[di
         for xs_name, rms_name in PRUEBAS:
             xs = finish_xs((PRUEBAS_DIR / xs_name).read_text(encoding="utf-8"), xs_name, ascii_mode)
             (OUT_XS / xs_name).write_text(xs, encoding="ascii", newline="\n")
-            (OUT_RMS / rms_name).write_bytes(build_rms(xs_name, "Prueba de la guia", "Arena.rms", f"pruebas/{xs_name}"))
+            (OUT_RMS / rms_name).write_bytes(build_rms(xs_name, "Prueba de la guia", "Arena.rms"))
             print(f"  -> {OUT_RMS / rms_name}")
     return built
 

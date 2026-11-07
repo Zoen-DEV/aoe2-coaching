@@ -15,6 +15,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")  # nada aparece en pantall
 OVERLAY = Path(__file__).resolve().parent.parent  # apps/desktop
 sys.path.insert(0, str(OVERLAY))
 
+import apoyo  # noqa: E402
 import instalador as I  # noqa: E402
 import lector as L  # noqa: E402
 import rutas as R  # noqa: E402
@@ -114,13 +115,17 @@ def test_datos(tmp: Path):
 
 def test_sin_perfil(tmp: Path):
     print("Sin carpeta del perfil (juego sin abrir nunca)")
-    inst = I.Instalador(perfil=None, juego=None)
+    cat = apoyo.instalador_de_prueba(tmp, "sin_perfil", guias=False).catalogo
+    inst = I.Instalador(perfil=None, juego=None, contenido=tmp / "contenido_sin_perfil", catalogo=cat)
     comprobar(inst.mod_instalado is None and inst.xs_perfil is None and not inst.juego_instalado(), "nada que leer")
     comprobar(inst.guia_instalada({}) is None, "ninguna guía instalada")
     comprobar(inst.activar_guia({"archivo_xs": "guia_scouts.xs"}) == I.SIN_PERFIL, "activar una guía explica el motivo")
     estados = inst.estado_mapas()
-    comprobar(estados and all(e.estado in ("no_instalado", "sin_construir") for e in estados),
-              "los mapas salen sin instalar")
+    comprobar(estados and all(e.estado == "sin_juego" for e in estados),
+              "los mapas salen sin instalar (sin juego no se pueden armar)")
+    comprobar(inst.instalar_mod(cat.de("mod")[0], tmp / "no.zip") == I.SIN_PERFIL and inst.pendientes() == []
+              and all(m.estado == "no_instalado" for m in inst.estado_mods() if m.elemento.compatible()),
+              "los mods tampoco se instalan sin perfil")
     comprobar(inst.instalar_mapa(estados[0].mapa) == I.SIN_PERFIL and inst.quitar_mapa(estados[0].mapa) == I.SIN_PERFIL,
               "instalar o quitar un mapa explica el motivo")
     comprobar(list(L.Lector(None)._candidatos()) == [], "el lector no busca nada")
@@ -147,7 +152,8 @@ def test_panel_perfiles(tmp: Path):
     perfiles = [R.Perfil(a, "Zoen", 63, time.time()), R.Perfil(b, "", 2, time.time() - 1e5)]
     cambios, guardados = [], []
     config = {**__import__("config").DEFECTO}
-    panel = D.Panel(config, H.Historial(None), L.cargar_guias(), I.Instalador(perfil=a), comprobar_juego=False,
+    panel = D.Panel(config, H.Historial(None), L.cargar_guias(), I.Instalador(perfil=a, contenido=tmp / "contenido_rutas"),
+                    comprobar_juego=False,
                     guardar_config=lambda: guardados.append(dict(config)), perfiles=perfiles,
                     al_cambiar_perfil=cambios.append, preguntar_perfil=True)
     textos.poner_idioma("es")

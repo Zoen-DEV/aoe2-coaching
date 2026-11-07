@@ -24,8 +24,9 @@ Páginas (barra lateral):
 |---|---|
 | **Inicio** | La guía activa (con aviso si los mapas aún no la cargan), el estado del juego (cerrado, abierto, partida en curso con el paso), tus números con la guía activa (partidas, mejor marca, media de las últimas 10 frente a las 10 anteriores, % de guías completadas), la última partida y los pasos para jugar. |
 | **Estadísticas** | Una pastilla por guía y, debajo, el mismo contenido que la ventana del historial (resumen general, evolución, dónde pierdes tiempo, detalle de cada partida y Borrar). |
-| **Guías** | Una tarjeta por guía: descripción, nivel, pasos, meta, mapas recomendados, "Ver pasos" y **Usar esta guía**. Debajo, las que vendrán (Arqueros, Drush FC, Hombres de armas → Arqueros, Águilas). |
-| **Mapas** | Una tarjeta por mapa con su imagen, tipo, descripción, guías recomendadas y estado (Instalado, Hay una versión nueva, No instalado). Botones **Instalar / Actualizar / Quitar** y **⤓** para guardar una copia del `.rms` y su imagen en otra carpeta. |
+| **Guías** | Las guías instaladas (descripción, nivel, pasos, meta, versión, mapas recomendados, "Ver pasos", **Usar esta guía**, **Actualizar** si el catálogo tiene una versión nueva y **Quitar**). Debajo, las del catálogo sin instalar (**Instalar**) y las que vendrán. |
+| **Mapas** | Una tarjeta por mapa del catálogo con su imagen, tipo, descripción, guías recomendadas y estado (Instalado, Hay una versión nueva, No instalado, Falta el mapa oficial). Botones **Instalar / Actualizar / Quitar** y **⤓** para guardar una copia del `.rms` y su imagen en otra carpeta. AoE2C arma cada mapa con el oficial del juego. |
+| **MODs** | Los mods de AoE2 Coaching (por ahora, el icono sobre el ganado): estado, si está activo en el juego, **Instalar / Actualizar / Activar / Quitar**. |
 | **Ajustes** | Idioma (español / inglés), abrir el panel al iniciar, iniciar con Windows; y de la guía en partida: posición, opacidad, pasos de "A continuación", aviso de casas, abrir el historial al terminar y la pestaña del historial. Al final, botones para abrir las carpetas del juego, del perfil y del mod. |
 
 Los cambios de Ajustes se aplican al momento (el panel y el overlay comparten las preferencias en `%APPDATA%\AoE2Coaching\config.json`). El idioma cambia el panel y los menús; las guías y la tarjeta de la partida siguen en español.
@@ -200,12 +201,16 @@ La fuente es [build_orders/scouts_21.json](../content/guias/build_orders/scouts_
 | Archivo | Qué es |
 |---|---|
 | `content/guias/build_orders/*.json` | Las build orders, como datos. |
-| `content/mapas/mapas.json` | El catálogo de mapas: mapa oficial de base, nombre, tipo, descripción (español e inglés) y guías recomendadas. |
-| `apps/desktop/dashboard.py` | El panel de AoE2C (sus cinco páginas). |
-| `apps/desktop/instalador.py` | Activa la guía (copia su script como `aoe2c_guia.xs`), instala, quita y exporta mapas, abre el juego y el inicio con Windows. |
+| `content/mapas/mapas.json` | Las recetas de los mapas: mapa oficial de base, nombre, tipo, descripción (español e inglés), guías recomendadas y versión. |
+| `content/catalogo.py` | Arma el catálogo de contenido (paquetes y `catalogo.json`) en `build/catalogo/`. Ver [04-catalogo-contenido.md](04-catalogo-contenido.md). |
+| `apps/desktop/dashboard.py` | El panel de AoE2C (sus seis páginas). |
+| `apps/desktop/catalogo.py` | El formato del catálogo, su descarga y la de los paquetes (con hash). |
+| `apps/desktop/mapas.py` | Arma los mapas [AoE2C] y sus imágenes con los archivos del juego (lo usan la app y `build.py`). |
+| `apps/desktop/instalador.py` | Instala guías y mods del catálogo, activa la guía (copia su script como `aoe2c_guia.xs`), arma, quita y exporta mapas, activa los mods en `mod-status.json`, abre el juego y el inicio con Windows. |
 | `apps/desktop/config.py` | Preferencias compartidas por el panel y el overlay (`config.json`). |
 | `apps/desktop/textos.py` | Textos del panel y los menús en español e inglés. |
 | `apps/desktop/pruebas/test_panel.py` | Pruebas de Scouts, el lector, el instalador, las preferencias, los textos y el panel (`py apps/desktop/pruebas/test_panel.py`). |
+| `apps/desktop/pruebas/test_catalogo.py` | Pruebas del catálogo: formato, hash, guías, mapas, mods, `mod-status.json` y las páginas Guías, Mapas y MODs. |
 | `apps/desktop/pruebas/test_arranque.py` | Arranca el programa entero sin pantalla: animación, panel, segunda copia y Cerrar AoE2C. |
 | `content/guias/xs/utiles.xs` | Funciones de apoyo: contar unidades y edificios, estado de tecnologías, formato de tiempos. |
 | `content/guias/xs/motor.xs` | El motor: estado por jugador, avance de pasos, panel y aviso de casas. |

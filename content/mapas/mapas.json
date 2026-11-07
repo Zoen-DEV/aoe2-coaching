@@ -3,6 +3,7 @@
   "mapas": [
     {
       "id": "arabia",
+      "version": "1.0.0",
       "base": "Arabia.rms",
       "archivo": "[AoE2C] Arabia.rms",
       "nombre": "Arabia",
@@ -15,6 +16,7 @@
     },
     {
       "id": "arena",
+      "version": "1.0.0",
       "base": "Arena.rms",
       "archivo": "[AoE2C] Arena.rms",
       "nombre": "Arena",
@@ -27,6 +29,7 @@
     },
     {
       "id": "black_forest",
+      "version": "1.0.0",
       "base": "Black_Forest.rms",
       "archivo": "[AoE2C] Black Forest.rms",
       "nombre": "Black Forest",
@@ -40,6 +43,7 @@
     },
     {
       "id": "runestones",
+      "version": "1.0.0",
       "base": "Runestones.rms",
       "archivo": "[AoE2C] Runestones.rms",
       "nombre": "Runestones",
@@ -52,6 +56,7 @@
     },
     {
       "id": "fortress",
+      "version": "1.0.0",
       "base": "Fortress.rms",
       "archivo": "[AoE2C] Fortress.rms",
       "nombre": "Fortress",

@@ -20,6 +20,7 @@ MOD = RAIZ / "build" / "mods" / "guia-apertura-castillos"
 sys.path.insert(0, str(OVERLAY))
 sys.path.insert(0, str(GUIAS_DIR))
 
+import apoyo  # noqa: E402
 import config as C  # noqa: E402
 import historial as H  # noqa: E402
 import instalador as I  # noqa: E402
@@ -190,37 +191,47 @@ def test_migracion(tmp: Path):
 
 def test_instalador(tmp: Path):
     print("Instalador: guía activa y mapas (en un perfil de prueba)")
-    perfil = tmp / "perfil"
-    inst = I.Instalador(perfil=perfil)
-    comprobar(inst.guia_instalada(GUIAS) is None, "perfil vacío: ninguna guía instalada")
-    comprobar(inst.activar_guia(SC) is None, "activar Scouts no da error")
+    inst = apoyo.instalador_de_prueba(tmp, "inst")
+    perfil = inst.perfil
+    guias = inst.guias()
+    comprobar(list(guias) == ["fast_castle", "scouts"], "las dos guías del catálogo, instaladas en la app")
+    comprobar(inst.guia_instalada(guias) is None, "perfil vacío: ninguna guía instalada")
+    comprobar(inst.activar_guia(guias["scouts"]) is None, "activar Scouts no da error")
     comun = perfil / "resources" / "_common" / "xs" / "aoe2c_guia.xs"
-    comprobar(comun.is_file() and inst.guia_instalada(GUIAS) == "scouts", "aoe2c_guia.xs = Scouts")
+    comprobar(comun.is_file() and inst.guia_instalada(guias) == "scouts", "aoe2c_guia.xs = Scouts")
     comprobar((inst.mod_instalado / I.XS / "aoe2c_guia.xs").is_file(), "también en la copia del mod")
-    inst.activar_guia(FC)
-    comprobar(inst.guia_instalada(GUIAS) == "fast_castle", "cambiar a Fast Castle")
+    inst.activar_guia(guias["fast_castle"])
+    comprobar(inst.guia_instalada(guias) == "fast_castle", "cambiar a Fast Castle")
     estados = {e.mapa["id"]: e for e in inst.estado_mapas()}
-    comprobar(all(e.estado == "no_instalado" for e in estados.values()), "al principio ningún mapa instalado")
-    comprobar(all(e.imagen is not None for e in estados.values()), "todos tienen imagen")
+    comprobar(len(estados) == 5 and all(e.estado == "no_instalado" for e in estados.values()),
+              "los 5 mapas del catálogo, ninguno instalado")
+    comprobar(all(e.imagen is not None and e.imagen.is_file() for e in estados.values()),
+              "todos tienen imagen (armada con la oficial)")
     arabia = estados["arabia"].mapa
-    comprobar(inst.instalar_mapa(arabia, FC) is None, "instalar Arabia")
+    comprobar(inst.instalar_mapa(arabia, guias["fast_castle"]) is None, "instalar Arabia")
     rms = inst.mod_instalado / I.RMS / "[AoE2C] Arabia.rms"
+    oficial = inst.juego / "resources" / "_common" / "drs" / "gamedata_x2" / "Arabia.rms"
     comprobar(rms.is_file() and rms.with_suffix(".png").is_file() and (inst.mod_instalado / "info.json").is_file(),
-              "copia el .rms, su imagen y el info.json del mod")
+              "arma el .rms, su imagen y el info.json del mod")
+    comprobar(rms.read_bytes().startswith(b"#includeXS aoe2c_guia.xs") and rms.read_bytes().endswith(oficial.read_bytes()),
+              "el .rms es el oficial con la línea que carga la guía")
     comprobar({e.mapa["id"]: e.estado for e in inst.estado_mapas()}["arabia"] == "instalado", "Arabia sale instalado")
-    rms.write_bytes(b"viejo")
+    oficial.write_bytes(oficial.read_bytes() + b"/* parche del juego */\r\n")
     comprobar({e.mapa["id"]: e.estado for e in inst.estado_mapas()}["arabia"] == "desactualizado",
-              "si el mapa instalado es distinto, hay versión nueva")
+              "si el juego cambia el mapa oficial, el instalado queda desactualizado")
+    comprobar(inst.reparar_mapas() == ["Arabia"] and rms.read_bytes().endswith(b"/* parche del juego */\r\n"),
+              "reparar_mapas lo vuelve a armar con el oficial nuevo")
+    comprobar({e.mapa["id"]: e.estado for e in inst.estado_mapas()}["arabia"] == "instalado", "y vuelve a estar al día")
     destino = tmp / "copias"
     destino.mkdir()
     comprobar(inst.exportar_mapa(arabia, destino) is None and (destino / "[AoE2C] Arabia.rms").is_file(),
               "guardar una copia en otra carpeta")
     comprobar(inst.quitar_mapa(arabia) is None and not rms.exists(), "quitar Arabia")
-    otro = I.Instalador(perfil=tmp / "perfil2")
-    otro.instalar_mapa(arabia, SC)
-    comprobar(otro.guia_instalada(GUIAS) == "scouts", "instalar un mapa sin script común instala la guía activa")
-    falso = dict(arabia, archivo="[AoE2C] No existe.rms")
-    comprobar(inst.instalar_mapa(falso) is not None, "un mapa sin construir da un error legible")
+    otro = apoyo.instalador_de_prueba(tmp, "inst2")
+    otro.instalar_mapa(otro.mapas()[0], otro.guias()["scouts"])
+    comprobar(otro.guia_instalada(otro.guias()) == "scouts", "instalar un mapa sin script común instala la guía activa")
+    falso = dict(arabia, base="No_existe.rms")
+    comprobar(inst.instalar_mapa(falso) is not None, "un mapa sin su oficial da un error legible")
 
 
 def test_config(tmp: Path):
@@ -251,7 +262,9 @@ def test_textos():
     usadas |= {f"pagina_{p}" for p in PAGINAS} | {f"sub_{p}" for p in PAGINAS}
     usadas |= {f"proxima_{i}" for i, _ in PROXIMAS} | {f"proxima_{i}_desc" for i, _ in PROXIMAS}
     usadas |= {f"nivel_{n}" for n in ("facil", "media", "dificil")} | {f"como_{n}" for n in (1, 2, 3)}
-    usadas |= {f"mapa_{e}" for e in ("instalado", "desactualizado", "no_instalado", "sin_construir")}
+    usadas |= {f"mapa_{e}" for e in ("instalado", "desactualizado", "no_instalado", "sin_juego", "necesita_app")}
+    usadas |= {f"mod_{e}" for e in ("instalado", "desactualizado", "no_instalado", "necesita_app")}
+    usadas |= {f"activacion_{e}" for e in ("activo", "pendiente", "desactivado", "sin_registrar")}
     usadas |= {f"hito_{k}" for k in ("clic_feudal", "feudal", "clic_castillos", "castillos")}
     faltan = sorted(usadas - set(es))
     comprobar(not faltan, f"todas las claves usadas existen ({len(usadas)}); faltan: {faltan}")
@@ -285,9 +298,9 @@ def test_panel(tmp: Path):
     config = C.cargar(tmp / "nada.json")
     guardados, salidas, ocultados = [], [], []
     hist = H.historial_de_ejemplo(FC, 12)
-    inst = I.Instalador(perfil=tmp / "perfil_panel")
+    inst = apoyo.instalador_de_prueba(tmp, "panel")
     falso = OverlayFalso()
-    p = D.Panel(config, hist, GUIAS, inst, overlay=falso, al_salir=lambda: salidas.append(1),
+    p = D.Panel(config, hist, inst.guias(), inst, overlay=falso, segundo_plano=False, al_salir=lambda: salidas.append(1),
                 al_ocultar=lambda: ocultados.append(1), guardar_config=lambda: guardados.append(dict(config)),
                 comprobar_juego=False)
     for nombre in D.PAGINAS:
@@ -308,7 +321,7 @@ def test_panel(tmp: Path):
     app.processEvents()
     comprobar(config["guia_activa"] == "scouts" and guardados and guardados[-1]["guia_activa"] == "scouts",
               "pulsarlo activa Scouts y guarda la preferencia")
-    comprobar(inst.guia_instalada(GUIAS) == "scouts", "y la instala para los mapas")
+    comprobar(inst.guia_instalada(inst.guias()) == "scouts", "y la instala para los mapas")
     comprobar(p.mensaje.isVisibleTo(p) and "Scouts" in p.mensaje.text(), f"aviso: «{p.mensaje.text()}»")
     p.ir("inicio")
     comprobar(p.p_inicio.nombre_guia.text() == "Scouts 21" and not p.p_inicio.aviso_guia.isVisibleTo(p),

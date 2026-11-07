@@ -9,20 +9,27 @@ Páginas:
 - Inicio: la guía activa, el estado del juego, tus números con esa guía y la última partida.
 - Estadísticas: el historial de partidas por guía (el mismo contenido que la ventana
   que se abre al acabar una partida).
-- Guías: elegir la guía que cargan los mapas [AoE2C] y ver sus pasos.
-- Mapas: ver, instalar, quitar y guardar una copia de los mapas del mod.
+- Guías: instalar guías del catálogo, elegir la que cargan los mapas [AoE2C] y ver sus pasos.
+- Mapas: armar en el juego los mapas del catálogo, quitarlos o guardar una copia.
+- MODs: instalar, actualizar, activar y quitar los mods de AoE2 Coaching.
 - Ajustes: idioma, inicio con Windows y cómo se ve la guía en la partida.
+
+El catálogo (catalogo.py) se descarga en segundo plano al abrir el panel; mientras
+tanto, y sin conexión, se usa la última copia guardada.
 """
 
+import logging
+import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QTimer
+from PySide6.QtCore import QObject, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
                                QHBoxLayout, QLabel, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider,
                                QStackedWidget, QVBoxLayout, QWidget)
 
+import catalogo as K
 import config as C
 import instalador as I
 import rutas
@@ -33,13 +40,14 @@ from historial import (Historial, nombre_hito, pasos_hechos, principal, reloj, r
                        vista_de_guia)
 from historial_ui import ContenidoHistorial, desfase, fecha_corta, mapa_corto
 from textos import t
+from version import VERSION
 
 FONDO_PANEL = "#0d1016"
 FONDO_LATERAL = "#090b10"
 ICONO_GUIA = {"fast_castle": "🏰", "scouts": "🐎"}
+ICONO_MOD = {"icono-ovejas": "🐑"}
 PROXIMAS = [("arqueros", "🏹"), ("drush_fc", "⚔️"), ("hombres_armas", "🛡️"), ("aguilas", "🦅")]
-PAGINAS = ["inicio", "estadisticas", "guias", "mapas", "ajustes"]
-VERSION = "1.0"
+PAGINAS = ["inicio", "estadisticas", "guias", "mapas", "mods", "ajustes"]
 
 ESTILO = f"""
 #raiz {{ background: {FONDO_PANEL}; }}
@@ -206,6 +214,12 @@ def dibujar_icono(p: QPainter, nombre: str, r: QRectF, c: QColor):
         p.drawPolygon(pts)
         p.drawLine(pts[1], pts[6])
         p.drawLine(pts[2], pts[5])
+    elif nombre == "mods":  # pieza de puzle
+        p.drawRoundedRect(QRectF(x + 2.5, y + 5.5, w - 8, h - 8), 2.5, 2.5)
+        p.setBrush(QColor(FONDO_LATERAL))
+        p.drawEllipse(QPointF(x + w / 2 - 1.5, y + 5.5), 2.6, 2.6)
+        p.drawEllipse(QPointF(x + w - 5.5, y + h / 2 + 1.5), 2.6, 2.6)
+        p.setBrush(Qt.BrushStyle.NoBrush)
     elif nombre == "ajustes":
         centro = r.center()
         p.drawEllipse(centro, w * 0.17, w * 0.17)
@@ -382,6 +396,29 @@ class PuntoEstado(QWidget):
         p.end()
 
 
+class Trabajo(QObject):
+    """Una tarea en otro hilo. El resultado vuelve por una señal, así que al_terminar se
+    ejecuta en el hilo de la ventana (Qt no deja tocar la ventana desde otro hilo)."""
+    listo = Signal(object, object)
+
+    def __init__(self, al_terminar, al_acabar):
+        super().__init__()
+        self.al_terminar, self.al_acabar = al_terminar, al_acabar
+        self.listo.connect(self._terminar)
+
+    def ejecutar(self, funcion):
+        try:
+            resultado, error = funcion(), None
+        except Exception as e:  # noqa: BLE001 - se muestra en el panel
+            resultado, error = None, e
+        self.listo.emit(resultado, error)
+
+    @Slot(object, object)
+    def _terminar(self, resultado, error):
+        self.al_acabar(self)
+        self.al_terminar(resultado, error)
+
+
 def limpiar(capa):
     """Quita todos los widgets de un layout."""
     while capa.count():
@@ -401,8 +438,20 @@ class Panel(QWidget):
     def __init__(self, config: dict, historial: Historial, guias: dict[str, dict], instalador: I.Instalador,
                  overlay=None, icono: QIcon | None = None, al_salir=None, al_ocultar=None,
                  guardar_config=None, comprobar_juego: bool = True, perfiles: list | None = None,
-                 al_cambiar_perfil=None, preguntar_perfil: bool = False):
+                 al_cambiar_perfil=None, preguntar_perfil: bool = False, fuente_catalogo: str | None = None,
+                 segundo_plano: bool = True, al_cambiar_guias=None):
         super().__init__(None, Qt.WindowType.Window)
+        # Catálogo: la última copia guardada ya, y el actual en segundo plano al mostrar el panel.
+        # fuente_catalogo=None no descarga nada (pruebas y capturas).
+        self.fuente_catalogo = fuente_catalogo
+        self.segundo_plano = segundo_plano  # False: las descargas se hacen en el acto (pruebas)
+        self.al_cambiar_guias = al_cambiar_guias or (lambda guias: None)
+        if instalador.catalogo is None:
+            instalador.catalogo = K.cargar_copia(instalador.contenido)
+        self.estado_catalogo = ("copia", "") if instalador.catalogo else ("nunca", "")
+        self.descargando: set[tuple[str, str]] = set()
+        self._trabajos: set = set()
+        self._primera_vez = True
         self.perfiles: list[rutas.Perfil] = perfiles or []  # carpetas de perfil encontradas (rutas.py)
         self.al_cambiar_perfil = al_cambiar_perfil or (lambda carpeta: None)
         self._preguntar_perfil = preguntar_perfil  # se pregunta la primera vez que se muestra
@@ -464,8 +513,9 @@ class Panel(QWidget):
         self.p_estadisticas = PaginaEstadisticas(self)
         self.p_guias = PaginaGuias(self)
         self.p_mapas = PaginaMapas(self)
+        self.p_mods = PaginaMods(self)
         self.p_ajustes = PaginaAjustes(self)
-        for pag in (self.p_inicio, self.p_estadisticas, self.p_guias, self.p_mapas, self.p_ajustes):
+        for pag in (self.p_inicio, self.p_estadisticas, self.p_guias, self.p_mapas, self.p_mods, self.p_ajustes):
             self.paginas.addWidget(pag)
         dc.addWidget(self.paginas, 1)
         self.capa.addWidget(derecha, 1)
@@ -522,7 +572,7 @@ class Panel(QWidget):
         self.pagina = nombre
         self.botones_lateral[nombre].setChecked(True)
         pag = {"inicio": self.p_inicio, "estadisticas": self.p_estadisticas, "guias": self.p_guias,
-               "mapas": self.p_mapas, "ajustes": self.p_ajustes}[nombre]
+               "mapas": self.p_mapas, "mods": self.p_mods, "ajustes": self.p_ajustes}[nombre]
         self.paginas.setCurrentWidget(pag)
         self.titulo.setText(t(f"pagina_{nombre}"))
         self.subtitulo.setText(t(f"sub_{nombre}"))
@@ -554,12 +604,15 @@ class Panel(QWidget):
 
     def nombre_guia(self, id_: str) -> str:
         g = self.guias.get(id_)
-        return g["nombre"] if g else id_
+        if g:
+            return g["nombre"]
+        e = self.instalador.catalogo.buscar("guia", id_) if self.instalador.catalogo else None
+        return e.texto("nombre", textos.idioma()) if e else id_
 
     def descripcion(self, guia: dict) -> str:
         return guia.get("descripcion_en" if textos.idioma() == "en" else "descripcion") or guia.get("descripcion", "")
 
-    def usar_guia(self, id_: str):
+    def usar_guia(self, id_: str, aviso: bool = True):
         guia = self.guias.get(id_)
         if not guia:
             return
@@ -568,9 +621,139 @@ class Panel(QWidget):
         self.guardar_config()
         if error:
             self.avisar(t("guia_error", error=error), MAL)
-        else:
+        elif aviso:
             self.avisar(t("guia_activada", nombre=guia["nombre"]))
         self.paginas.currentWidget().refrescar()
+
+    # --- Catálogo ---
+    def en_segundo_plano(self, funcion, al_terminar):
+        """Ejecuta funcion() fuera de la ventana (descargas) y llama a al_terminar(resultado,
+        error) en el hilo de la ventana."""
+        if not self.segundo_plano:
+            try:
+                resultado, error = funcion(), None
+            except Exception as e:  # noqa: BLE001 - se muestra en el panel
+                resultado, error = None, e
+            al_terminar(resultado, error)
+            return
+        trabajo = Trabajo(al_terminar, self._trabajos.discard)
+        self._trabajos.add(trabajo)
+        threading.Thread(target=trabajo.ejecutar, args=(funcion,), daemon=True).start()
+
+    def actualizar_catalogo(self):
+        if self.fuente_catalogo is None or self.estado_catalogo[0] == "buscando":
+            return
+        self.estado_catalogo = ("buscando", "")
+        self.refrescar_contenido()
+        fuente = self.fuente_catalogo
+
+        def listo(resultado, error):
+            if error is not None:
+                logging.getLogger("aoe2c").warning("catálogo: %s", error)
+                self.estado_catalogo = ("sin_conexion" if self.instalador.catalogo else "nunca", str(error))
+            else:
+                cat, datos = resultado
+                K.guardar_copia(datos, cat.origen, self.instalador.contenido)
+                self.instalador.catalogo = cat
+                self.estado_catalogo = ("al_dia", "")
+                self.reparar_mapas()
+            self.refrescar_contenido()
+
+        self.en_segundo_plano(lambda: K.descargar(fuente), listo)
+
+    def refrescar_contenido(self):
+        if self.pagina in ("guias", "mapas", "mods"):
+            self.paginas.currentWidget().refrescar()
+
+    def reparar_mapas(self):
+        """Vuelve a armar los mapas instalados si el juego actualizó el oficial."""
+        reparados = self.instalador.reparar_mapas()
+        if reparados:
+            self.avisar(t("mapas_reparados", mapas=", ".join(reparados)))
+
+    def recargar_guias(self):
+        self.guias = self.instalador.guias()
+        self.al_cambiar_guias(self.guias)
+
+    def instalar_elemento(self, e: K.Elemento):
+        """Descarga el paquete de una guía o un mod (comprobando su hash) y lo instala."""
+        cat = self.instalador.catalogo
+        if cat is None or (e.tipo, e.id) in self.descargando:
+            return
+        if not e.compatible():
+            self.avisar(t("necesita_app_consejo", version=VERSION, minima=e.app_minima), MAL)
+            return
+        nombre = e.texto("nombre", textos.idioma())
+        if e.tipo == "mod" and self.juego and self.instalador.mods_locales is not None \
+                and (self.instalador.mods_locales / e.datos["carpeta"]).exists():
+            self.avisar(t("mod_cerrar_juego", nombre=nombre), ATENCION)
+            return
+        actualizando = e.tipo == "guia" and e.id in self.guias
+        self.descargando.add((e.tipo, e.id))
+        self.refrescar_contenido()
+        carpeta = self.instalador.descargas
+
+        def listo(paquete, error):
+            self.descargando.discard((e.tipo, e.id))
+            if error is None:
+                try:
+                    error = (self.instalador.instalar_guia(e, paquete) if e.tipo == "guia"
+                             else self.instalador.instalar_mod(e, paquete, self.juego))
+                finally:
+                    paquete.unlink(missing_ok=True)
+            if error is not None:
+                logging.getLogger("aoe2c").warning("no se pudo instalar %s %s: %s", e.tipo, e.id, error)
+                self.avisar(t("descarga_error", error=error), MAL)
+            elif e.tipo == "guia":
+                self.recargar_guias()
+                activa = self.config.get("guia_activa")
+                if e.id == activa or activa not in self.guias or self.instalador.guia_instalada(self.guias) is None:
+                    self.usar_guia(e.id, aviso=False)  # la primera guía, o la activa recién actualizada
+                self.avisar(t("guia_actualizada_ok", nombre=nombre, version=e.version) if actualizando
+                            else t("guia_instalada_ok", nombre=nombre))
+            else:
+                self.avisar(t("mod_instalado_ok", nombre=nombre))
+                self.aplicar_pendientes()
+            self.refrescar_contenido()
+
+        self.en_segundo_plano(lambda: K.descargar_paquete(cat, e, carpeta), listo)
+
+    def quitar_guia(self, guia: dict):
+        error = self.instalador.quitar_guia(guia)
+        self.recargar_guias()
+        self.avisar(t("descarga_error", error=error) if error else t("guia_quitada", nombre=guia["nombre"]),
+                    MAL if error else APAGADO)
+        self.refrescar_contenido()
+
+    def quitar_mod(self, e: K.Elemento):
+        nombre = e.texto("nombre", textos.idioma())
+        error = self.instalador.quitar_mod(e, self.juego)
+        if error == I.JUEGO_ABIERTO:
+            self.avisar(t("mod_cerrar_juego", nombre=nombre), ATENCION)
+        elif error:
+            self.avisar(t("mod_activar_error", mods=nombre, error=error), MAL)
+        else:
+            self.avisar(t("mod_quitado", nombre=nombre), APAGADO)
+        self.refrescar_contenido()
+
+    def activar_mod(self, e: K.Elemento):
+        self.instalador.activar_mod(e.datos["carpeta"], e.datos["titulo"], juego_abierto=True)  # solo lo deja pendiente
+        self.aplicar_pendientes()
+        self.refrescar_contenido()
+
+    def aplicar_pendientes(self):
+        """Activa en mod-status.json lo pendiente, si el juego está cerrado."""
+        pendientes = self.instalador.pendientes()
+        if self.juego or not pendientes:
+            return
+        aplicados, error = self.instalador.aplicar_pendientes(False)
+        activados = [p["titulo"] for p in aplicados if p["accion"] == "activar"]
+        if error:
+            logging.getLogger("aoe2c").warning("mod-status.json: %s", error)
+            self.avisar(t("mod_activar_error", mods=", ".join(p["titulo"] for p in pendientes), error=error), MAL)
+        elif activados:
+            self.avisar(t("mod_activado", mods=", ".join(activados)))
+        self.refrescar_contenido()
 
     def firma_historial(self):
         r = self.historial.registros
@@ -591,6 +774,8 @@ class Panel(QWidget):
         if self.comprobar_juego and (forzar or ahora - self._ultima_comprobacion > 3):
             self._ultima_comprobacion = ahora
             self.juego = I.juego_abierto()
+            if not self.juego and self.instalador.pendientes():
+                self.aplicar_pendientes()  # lo que esperaba a que se cerrara el juego
         jugando, texto = self.en_partida()
         if jugando:
             c = BIEN
@@ -642,6 +827,10 @@ class Panel(QWidget):
         self.activateWindow()
         self.tick()
         self.temporizador.start()
+        if self._primera_vez:
+            self._primera_vez = False
+            self.reparar_mapas()
+            self.actualizar_catalogo()
         if self._preguntar_perfil:
             self._preguntar_perfil = False
             QTimer.singleShot(250, self.pedir_perfil)
@@ -863,6 +1052,13 @@ class PaginaInicio(Pagina):
                 self.aviso_guia.show()
             else:
                 self.aviso_guia.hide()
+        else:  # aún no hay ninguna guía instalada
+            self.emblema.emoji = "📘"
+            self.emblema.update()
+            self.nombre_guia.setText(t("sin_guia"))
+            self.desc_guia.setText(t("sin_guia_texto"))
+            limpiar(self.chips_guia)
+            self.aviso_guia.hide()
         self.refrescar_estado()
         self._numeros(guia)
         self._ultima()
@@ -973,8 +1169,49 @@ class PaginaEstadisticas(Pagina):
         self.contenido.mostrar_guia(self.guia)
 
 
+def boton_descarga(panel: Panel, e: K.Elemento, texto: str) -> QPushButton:
+    """Botón que descarga e instala una guía o un mod (o explica por qué no se puede)."""
+    if (e.tipo, e.id) in panel.descargando:
+        b = boton(t("descargando"), None, "primario")
+        b.setEnabled(False)
+    elif not e.compatible():
+        b = boton(t("necesita_app"), None, "primario", t("necesita_app_consejo", version=VERSION, minima=e.app_minima))
+        b.setEnabled(False)
+    else:
+        b = boton(texto, lambda: panel.instalar_elemento(e), "primario")
+    return b
+
+
+def barra_catalogo(panel: Panel) -> QHBoxLayout:
+    """Estado del catálogo (al día, buscando, sin conexión) y el botón «Buscar novedades»."""
+    estado, error = panel.estado_catalogo
+    textos_estado = {"al_dia": (t("catalogo_al_dia"), BIEN), "buscando": (t("catalogo_buscando"), ACENTO),
+                     "copia": (t("catalogo_copia"), APAGADO),
+                     "sin_conexion": (t("catalogo_sin_conexion", error=error), ATENCION),
+                     "nunca": (t("catalogo_nunca", error=error or "—"), ATENCION)}
+    texto, c = textos_estado[estado]
+    f = QHBoxLayout()
+    f.setSpacing(10)
+    f.addWidget(etiqueta(texto, 8.5, QFont.Weight.DemiBold, c, envolver=True), 1)
+    if panel.fuente_catalogo is not None:
+        b = boton(t("buscar_novedades"), panel.actualizar_catalogo)
+        b.setEnabled(estado != "buscando")
+        f.addWidget(b, 0, Qt.AlignmentFlag.AlignVCenter)
+    return f
+
+
+def rejilla_de(tarjetas: list[QWidget], columnas: int) -> QGridLayout:
+    rejilla = QGridLayout()
+    rejilla.setSpacing(16)
+    for k, w in enumerate(tarjetas):
+        rejilla.addWidget(w, k // columnas, k % columnas, Qt.AlignmentFlag.AlignTop)
+    for c in range(columnas):
+        rejilla.setColumnStretch(c, 1)
+    return rejilla
+
+
 class TarjetaGuia(Tarjeta):
-    def __init__(self, panel: Panel, guia: dict, activa: bool, instalada: bool):
+    def __init__(self, panel: Panel, guia: dict, activa: bool, instalada: bool, nueva: K.Elemento | None = None):
         super().__init__(ACENTO if activa else None, color(ACENTO, 16) if activa else TARJETA, margen=20)
         self.panel = panel
         cab = QHBoxLayout()
@@ -994,6 +1231,9 @@ class TarjetaGuia(Tarjeta):
         self.capa.addLayout(cab)
         chips = [pastilla(t(f"nivel_{guia.get('nivel', 'media')}"), ACENTO), pastilla(t("n_pasos", n=len(guia["pasos"]))),
                  pastilla(t("meta_a", meta=guia["pasos"][-1]["titulo"], hora=reloj(guia["pasos"][-1]["referencia"])))]
+        version = panel.instalador.version_guia(guia["id"])
+        if version:
+            chips.append(pastilla(f"v{version}", APAGADO))
         self.capa.addLayout(fila(*chips, espacio=6))
         mapas = [m["nombre"] for m in panel.instalador.mapas() if m["id"] in guia.get("mapas_recomendados", [])]
         if mapas:
@@ -1018,10 +1258,42 @@ class TarjetaGuia(Tarjeta):
         acciones.append(boton(t("ver_estadisticas"), lambda: panel.ver_estadisticas(guia["nombre"])))
         self.capa.addSpacing(4)
         self.capa.addLayout(fila(*acciones))
+        extra = []
+        if nueva is not None:
+            extra.append(boton_descarga(panel, nueva, t("actualizar_a", version=nueva.version)))
+        if not activa:
+            extra.append(boton(t("quitar"), lambda: panel.quitar_guia(guia), consejo=t("quitar_guia_consejo")))
+        if extra:
+            self.capa.addLayout(fila(*extra))
 
     def alternar_pasos(self):
         self.pasos.setVisible(not self.pasos.isVisible())
         self.boton_pasos.setText(t("ocultar_pasos") if self.pasos.isVisible() else t("ver_pasos"))
+
+
+class TarjetaDisponible(Tarjeta):
+    """Una guía del catálogo que aún no está instalada."""
+
+    def __init__(self, panel: Panel, e: K.Elemento):
+        super().__init__(margen=20)
+        idioma = textos.idioma()
+        cab = QHBoxLayout()
+        cab.setSpacing(14)
+        cab.addWidget(Emblema(ICONO_GUIA.get(e.id, "📘"), 46), 0, Qt.AlignmentFlag.AlignTop)
+        tx = QVBoxLayout()
+        tx.setSpacing(3)
+        tx.addWidget(etiqueta(e.texto("nombre", idioma), 13, QFont.Weight.Bold))
+        tx.addWidget(etiqueta(e.texto("descripcion", idioma), 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True))
+        cab.addLayout(tx, 1)
+        self.capa.addLayout(cab)
+        self.capa.addLayout(fila(pastilla(t(f"nivel_{e.datos.get('nivel', 'media')}"), ACENTO),
+                                 pastilla(f"v{e.version}", APAGADO), espacio=6))
+        mapas = [m["nombre"] for m in panel.instalador.mapas() if m["id"] in e.datos.get("mapas_recomendados", [])]
+        if mapas:
+            self.capa.addWidget(etiqueta(t("mapas_recomendados", mapas=", ".join(mapas)), 9, QFont.Weight.Medium,
+                                         APAGADO, envolver=True))
+        self.capa.addSpacing(4)
+        self.capa.addLayout(fila(boton_descarga(panel, e, t("instalar"))))
 
 
 class TarjetaProxima(Tarjeta):
@@ -1043,31 +1315,41 @@ class PaginaGuias(Pagina):
     def refrescar(self):
         limpiar(self.capa)
         panel = self.panel
+        cat = panel.instalador.catalogo
         activa = (panel.guia_activa() or {}).get("id")
         instalada = panel.instalador.guia_instalada(panel.guias)
         self.capa.addWidget(etiqueta(t("guias_intro"), 10, QFont.Weight.Normal, SECUNDARIO, envolver=True))
-        rejilla = QGridLayout()
-        rejilla.setSpacing(16)
-        for k, (id_, guia) in enumerate(panel.guias.items()):
-            rejilla.addWidget(TarjetaGuia(panel, guia, id_ == activa, id_ == instalada), k // 2, k % 2,
-                              Qt.AlignmentFlag.AlignTop)
-        rejilla.setColumnStretch(0, 1)
-        rejilla.setColumnStretch(1, 1)
-        self.capa.addLayout(rejilla)
-        self.capa.addSpacing(6)
-        self.capa.addWidget(etiqueta(t("proximamente_titulo"), 11, QFont.Weight.Bold))
-        proximas = QGridLayout()
-        proximas.setSpacing(12)
-        for k, (id_, emoji) in enumerate(PROXIMAS):
-            proximas.addWidget(TarjetaProxima(id_, emoji), k // 2, k % 2)
-        proximas.setColumnStretch(0, 1)
-        proximas.setColumnStretch(1, 1)
-        self.capa.addLayout(proximas)
+        self.capa.addLayout(barra_catalogo(panel))
+        # Instaladas.
+        if panel.guias:
+            tarjetas = []
+            for id_, guia in panel.guias.items():
+                e = cat.buscar("guia", id_) if cat else None
+                version = panel.instalador.version_guia(id_)
+                nueva = e if e is not None and (version is None or K.mas_nueva(e.version, version)) else None
+                tarjetas.append(TarjetaGuia(panel, guia, id_ == activa, id_ == instalada, nueva))
+            self.capa.addLayout(rejilla_de(tarjetas, 2))
+        else:
+            self.capa.addWidget(etiqueta(t("guias_ninguna"), 10, QFont.Weight.DemiBold, ATENCION, envolver=True))
+        # Del catálogo, sin instalar.
+        disponibles = [e for e in (cat.de("guia") if cat else []) if e.id not in panel.guias]
+        if disponibles:
+            self.capa.addSpacing(6)
+            self.capa.addWidget(etiqueta(t("guias_disponibles"), 11, QFont.Weight.Bold))
+            self.capa.addLayout(rejilla_de([TarjetaDisponible(panel, e) for e in disponibles], 2))
+        proximas = [(i, emoji) for i, emoji in PROXIMAS if not (cat and cat.buscar("guia", i))]
+        if proximas:
+            self.capa.addSpacing(6)
+            self.capa.addWidget(etiqueta(t("proximamente_titulo"), 11, QFont.Weight.Bold))
+            rejilla = rejilla_de([TarjetaProxima(i, emoji) for i, emoji in proximas], 2)
+            rejilla.setSpacing(12)
+            self.capa.addLayout(rejilla)
         self.capa.addStretch(1)
 
 
 class TarjetaMapa(QFrame):
-    ESTADOS = {"instalado": BIEN, "desactualizado": ATENCION, "no_instalado": APAGADO, "sin_construir": MAL}
+    ESTADOS = {"instalado": BIEN, "desactualizado": ATENCION, "no_instalado": APAGADO, "sin_juego": MAL,
+               "necesita_app": MAL}
 
     def __init__(self, panel: Panel, em: I.EstadoMapa):
         super().__init__()
@@ -1081,7 +1363,7 @@ class TarjetaMapa(QFrame):
         cuerpo = QVBoxLayout()
         cuerpo.setContentsMargins(16, 4, 16, 0)
         cuerpo.setSpacing(6)
-        cuerpo.addLayout(fila(etiqueta(m["nombre"], 13, QFont.Weight.Bold),
+        cuerpo.addLayout(fila(etiqueta(m["nombres"].get(idioma, m["nombre"]), 13, QFont.Weight.Bold),
                               pastilla(m["tipo"].get(idioma, m["tipo"]["es"]))))
         cuerpo.addWidget(etiqueta(m["descripcion"].get(idioma, m["descripcion"]["es"]), 9, QFont.Weight.Normal,
                                   SECUNDARIO, envolver=True))
@@ -1092,19 +1374,22 @@ class TarjetaMapa(QFrame):
         cuerpo.addWidget(etiqueta(Path(m["archivo"]).stem, 8.5, QFont.Weight.DemiBold, APAGADO))
         cuerpo.addStretch(1)
         estado = pastilla(("● " if em.estado == "instalado" else "") + t(f"mapa_{em.estado}"), self.ESTADOS[em.estado])
-        acciones = [estado]
+        acciones = []
         if em.estado in ("no_instalado", "desactualizado"):
-            acciones.append(boton(t("instalar") if em.estado == "no_instalado" else t("actualizar"),
-                                  self.instalar, "primario"))
+            b = boton(t("instalar") if em.estado == "no_instalado" else t("actualizar"), self.instalar, "primario")
+            if not panel.guias:
+                b.setEnabled(False)
+                b.setToolTip(t("mapa_sin_guia"))
+            acciones.append(b)
         elif em.estado == "instalado":
             acciones.append(boton(t("quitar"), self.quitar))
-        if em.estado != "sin_construir":
+        if em.estado in ("instalado", "desactualizado", "no_instalado"):
             acciones.append(boton("⤓", self.exportar, consejo=t("guardar_copia")))
         f = QHBoxLayout()
         f.setSpacing(8)
         f.addWidget(estado)
         f.addStretch(1)
-        for a in acciones[1:]:
+        for a in acciones:
             f.addWidget(a)
         cuerpo.addLayout(f)
         capa.addLayout(cuerpo, 1)
@@ -1119,6 +1404,7 @@ class TarjetaMapa(QFrame):
         error = self.panel.instalador.instalar_mapa(self.em.mapa, self.panel.guia_activa())
         self.panel.avisar(t("mapa_error", error=error) if error else t("mapa_instalado_ok", mapa=self.em.mapa["nombre"]),
                           MAL if error else BIEN)
+        self.panel.aplicar_pendientes()
         self.panel.p_mapas.refrescar()
 
     def quitar(self):
@@ -1146,17 +1432,19 @@ class PaginaMapas(Pagina):
         intro.addWidget(etiqueta(t("mapas_intro"), 10, QFont.Weight.Normal, SECUNDARIO, envolver=True), 1)
         todos = boton(t("instalar_todos", n=len(pendientes)), self.instalar_todos, "primario")
         todos.setVisible(bool(pendientes))
+        todos.setEnabled(bool(panel.guias))
+        if not panel.guias:
+            todos.setToolTip(t("mapa_sin_guia"))
         intro.addWidget(todos, 0, Qt.AlignmentFlag.AlignTop)
         self.capa.addLayout(intro)
-        rejilla = QGridLayout()
-        rejilla.setSpacing(16)
-        columnas = 3
-        for k, em in enumerate(estados):
-            rejilla.addWidget(TarjetaMapa(panel, em), k // columnas, k % columnas)
-        for c in range(columnas):
-            rejilla.setColumnStretch(c, 1)
-        self.capa.addLayout(rejilla)
-        self.capa.addWidget(etiqueta(t("mapas_nota"), 9, QFont.Weight.Medium, APAGADO, envolver=True))
+        self.capa.addLayout(barra_catalogo(panel))
+        if not estados:
+            self.capa.addWidget(etiqueta(t("mapas_sin_catalogo"), 10, QFont.Weight.DemiBold, ATENCION, envolver=True))
+        elif not panel.guias:
+            self.capa.addWidget(etiqueta(t("mapa_sin_guia"), 9.5, QFont.Weight.DemiBold, ATENCION, envolver=True))
+        self.capa.addLayout(rejilla_de([TarjetaMapa(panel, em) for em in estados], 3))
+        if estados:
+            self.capa.addWidget(etiqueta(t("mapas_nota"), 9, QFont.Weight.Medium, APAGADO, envolver=True))
         self.capa.addStretch(1)
 
     def instalar_todos(self):
@@ -1164,7 +1452,60 @@ class PaginaMapas(Pagina):
         errores = [e for em in panel.instalador.estado_mapas() if em.estado in ("no_instalado", "desactualizado")
                    if (e := panel.instalador.instalar_mapa(em.mapa, panel.guia_activa()))]
         panel.avisar(t("mapa_error", error=errores[0]) if errores else t("mapas_todos_ok"), MAL if errores else BIEN)
+        panel.aplicar_pendientes()
         self.refrescar()
+
+
+class TarjetaMod(Tarjeta):
+    ESTADOS = {"instalado": BIEN, "desactualizado": ATENCION, "no_instalado": APAGADO, "necesita_app": MAL}
+    ACTIVACION = {"activo": BIEN, "pendiente": ATENCION, "desactivado": ATENCION, "sin_registrar": APAGADO}
+
+    def __init__(self, panel: Panel, em: I.EstadoMod):
+        super().__init__(margen=20)
+        e = em.elemento
+        idioma = textos.idioma()
+        cab = QHBoxLayout()
+        cab.setSpacing(14)
+        cab.addWidget(Emblema(ICONO_MOD.get(e.id, "🧩"), 46), 0, Qt.AlignmentFlag.AlignTop)
+        tx = QVBoxLayout()
+        tx.setSpacing(3)
+        tx.addWidget(etiqueta(e.texto("nombre", idioma), 13, QFont.Weight.Bold))
+        tx.addWidget(etiqueta(e.texto("descripcion", idioma), 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True))
+        cab.addLayout(tx, 1)
+        self.capa.addLayout(cab)
+        chips = [pastilla(("● " if em.estado == "instalado" else "") + t(f"mod_{em.estado}"), self.ESTADOS[em.estado])]
+        if em.estado in ("instalado", "desactualizado"):
+            chips.append(pastilla(t(f"activacion_{em.activacion}"), self.ACTIVACION[em.activacion]))
+        chips.append(pastilla(f"v{em.version or e.version}", APAGADO))
+        self.capa.addLayout(fila(*chips, espacio=6))
+        acciones = []
+        if em.estado in ("no_instalado", "necesita_app"):
+            acciones.append(boton_descarga(panel, e, t("instalar")))
+        elif em.estado == "desactualizado":
+            acciones.append(boton_descarga(panel, e, t("actualizar_a", version=e.version)))
+        if em.estado in ("instalado", "desactualizado"):
+            if em.activacion in ("desactivado", "sin_registrar"):
+                acciones.append(boton(t("activar"), lambda: panel.activar_mod(e), "primario"))
+            acciones.append(boton(t("quitar"), lambda: panel.quitar_mod(e)))
+        self.capa.addSpacing(4)
+        self.capa.addLayout(fila(*acciones))
+
+
+class PaginaMods(Pagina):
+    def refrescar(self):
+        limpiar(self.capa)
+        panel = self.panel
+        self.capa.addWidget(etiqueta(t("mods_intro"), 10, QFont.Weight.Normal, SECUNDARIO, envolver=True))
+        self.capa.addLayout(barra_catalogo(panel))
+        estados = panel.instalador.estado_mods()
+        if not estados:
+            self.capa.addWidget(etiqueta(t("mods_sin_catalogo"), 10, QFont.Weight.DemiBold, ATENCION, envolver=True))
+        elif panel.instalador.perfil is None:
+            self.capa.addWidget(etiqueta(t("mods_sin_perfil"), 10, QFont.Weight.DemiBold, ATENCION, envolver=True))
+        self.capa.addLayout(rejilla_de([TarjetaMod(panel, em) for em in estados], 2))
+        if estados:
+            self.capa.addWidget(etiqueta(t("mods_nota"), 9, QFont.Weight.Medium, APAGADO, envolver=True))
+        self.capa.addStretch(1)
 
 
 class PaginaAjustes(Pagina):

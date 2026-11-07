@@ -1,0 +1,15 @@
+{
+  "_comentario": "Ficha del mod en el catálogo de AoE2C (content/catalogo.py). Sube 'version' cada vez que cambie el mod: así el panel ofrece actualizarlo. 'titulo' es el Title de info.json (el nombre que muestra el juego).",
+  "id": "icono-ovejas",
+  "version": "1.0.0",
+  "app_minima": "1.0.0",
+  "titulo": "Icono sobre el ganado",
+  "nombre": {
+    "es": "Icono sobre el ganado",
+    "en": "Livestock marker"
+  },
+  "descripcion": {
+    "es": "Un marcador flotante sobre las ovejas y el resto del ganado (cerdos, cabras, llamas, pavos, vacas...), del color de su dueño. Así no se te escapa ninguna oveja.",
+    "en": "A floating marker above sheep and other livestock (pigs, goats, llamas, turkeys, cows...), in the owner's colour. You won't lose track of a single sheep."
+  }
+}

@@ -29,7 +29,7 @@ from estilo import (ACENTO, APAGADO, ATENCION, BANDERAS_CLIC, BIEN, BORDE, EMOJI
                     SECUNDARIO, TARJETA, TEXTO, color, fuente)
 from historial import Historial, Seguimiento, comparacion_final, historial_de_ejemplo  # noqa: E402
 from historial_ui import VentanaHistorial  # noqa: E402
-from lector import Estado, Lector, cargar_guias  # noqa: E402
+from lector import Estado, Lector, cargar_guias, mapas_de  # noqa: E402
 from textos import t  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -1136,6 +1136,8 @@ def main():
     global ICONO_JUEGO
     ICONO_JUEGO = entorno.juego / rutas.EXE_JUEGO if entorno.juego else None
     perfil = entorno.perfil.carpeta if entorno.perfil else None
+    from instalador import Instalador
+    instalador = Instalador(perfil=perfil, juego=entorno.juego)  # guías instaladas desde el catálogo
 
     if "--demo" in args:
         # Partida simulada con un historial inventado (no se guarda nada en disco). Al
@@ -1158,7 +1160,7 @@ def main():
 
         fuente_estado = demo
     else:
-        lector = Lector(perfil)
+        lector = Lector(perfil, instalador.guias())
         historial = Historial()
         seguimiento = Seguimiento(historial)
 
@@ -1190,12 +1192,19 @@ def main():
         if "--demo" not in args:
             lector.perfil, lector.archivo, lector.mtime = carpeta, None, 0.0
 
+    def guias_cambiadas(guias: dict):
+        # Se instaló, actualizó o quitó una guía: el lector reconoce sus partidas desde ya.
+        if "--demo" not in args:
+            lector.guias, lector.mapas = guias, mapas_de(guias)
+            lector.archivo, lector.mtime = None, 0.0
+
+    from catalogo import fuente_por_defecto
     from dashboard import Panel
-    from instalador import Instalador
-    panel = Panel(config, historial, cargar_guias(), Instalador(perfil=perfil, juego=entorno.juego), overlay=w,
+    panel = Panel(config, historial, instalador.guias(), instalador, overlay=w,
                   icono=icono_app(), al_salir=app.quit, al_ocultar=ocultado, guardar_config=w.guardar_config,
                   perfiles=entorno.perfiles, al_cambiar_perfil=perfil_cambiado,
-                  preguntar_perfil=entorno.preguntar)
+                  preguntar_perfil=entorno.preguntar, fuente_catalogo=fuente_por_defecto(),
+                  al_cambiar_guias=guias_cambiadas)
     w.al_abrir_panel = panel.mostrar
 
     if "--inicio" in args:
