@@ -23,6 +23,11 @@ import catalogo as K  # noqa: E402
 import instalador as I  # noqa: E402
 import mapas as M  # noqa: E402
 import rutas  # noqa: E402
+import textos  # noqa: E402
+
+# Las pruebas comprueban los textos en español: el idioma inicial no depende del de
+# Windows (en GitHub Actions, Windows está en inglés).
+textos.idioma_de_windows = lambda: "es"
 
 MAPAS = json.loads((RAIZ / "content" / "mapas" / "mapas.json").read_text(encoding="utf-8"))["mapas"]
 MOD_PRUEBA = "icono-prueba"

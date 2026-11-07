@@ -20,8 +20,13 @@ sys.path.insert(0, str(OVERLAY))
 import dashboard as D  # noqa: E402
 import historial as H  # noqa: E402
 import overlay as O  # noqa: E402
+import textos  # noqa: E402
 from PySide6.QtCore import QTimer  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
+
+# Las pruebas comprueban los textos en español: el idioma inicial no depende del de
+# Windows (en GitHub Actions, Windows está en inglés).
+textos.idioma_de_windows = lambda: "es"
 
 registro = {"mostrado": 0, "segunda": None, "salida": None}
 
