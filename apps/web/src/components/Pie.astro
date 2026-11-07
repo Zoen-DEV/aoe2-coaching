@@ -1,0 +1,83 @@
+---
+import T from "./T.astro";
+import { URL_REPO, URL_RELEASES } from "../lib/contenido";
+const anio = new Date().getFullYear();
+---
+<footer class="pie">
+  <div class="contenedor">
+    <div class="pie-arriba">
+      <div class="pie-marca">
+        <img src="/favicon.svg" alt="" width="40" height="40" />
+        <div>
+          <b>AoE2 Coaching</b>
+          <span><T es="Tu entrenador de aperturas para AoE2 DE." en="Your opening coach for AoE2 DE." /></span>
+        </div>
+      </div>
+      <nav class="pie-enlaces">
+        <a href={URL_REPO} target="_blank" rel="noopener">GitHub</a>
+        <a href={URL_RELEASES} target="_blank" rel="noopener"><T es="Versiones" en="Releases" /></a>
+        <a href={`${URL_REPO}/issues`} target="_blank" rel="noopener"><T es="Reportar un problema" en="Report a problem" /></a>
+        <a href="#inicio"><T es="Volver arriba" en="Back to top" /></a>
+      </nav>
+    </div>
+    <p class="aviso">
+      <T
+        es="AoE2 Coaching es un proyecto de fans, sin relación con Microsoft, Xbox Game Studios ni Forgotten Empires. Age of Empires es una marca de Microsoft Corporation."
+        en="AoE2 Coaching is a fan project, not affiliated with Microsoft, Xbox Game Studios or Forgotten Empires. Age of Empires is a trademark of Microsoft Corporation."
+      />
+    </p>
+    <p class="copy">© {anio} <a href="https://zoen.dev" target="_blank" rel="noopener">zoen.dev</a></p>
+  </div>
+</footer>
+
+<style>
+  .pie {
+    padding: 70px 0 40px;
+    border-top: 1px solid var(--borde);
+    background: #080a0f;
+    font-size: 14.5px;
+  }
+  .pie-arriba {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 30px;
+    flex-wrap: wrap;
+  }
+  .pie-marca {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .pie-marca b {
+    display: block;
+    font-family: var(--titulo);
+    font-size: 18px;
+  }
+  .pie-marca span {
+    color: var(--apagado);
+  }
+  .pie-enlaces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 24px;
+    color: var(--secundario);
+  }
+  .pie-enlaces a:hover {
+    color: var(--texto);
+  }
+  .aviso {
+    max-width: 720px;
+    margin: 40px 0 0;
+    color: var(--apagado);
+    font-size: 13px;
+  }
+  .copy {
+    margin: 10px 0 0;
+    color: var(--apagado);
+    font-size: 13px;
+  }
+  .copy a {
+    text-decoration: underline;
+  }
+</style>

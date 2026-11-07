@@ -1,0 +1,159 @@
+---
+import T from "./T.astro";
+
+const preguntas = [
+  {
+    es: ["¿Es gratis?", "Sí. AoE2C es gratis y de código abierto: puedes leer todo el código en GitHub. No tiene anuncios ni cuentas."],
+    en: ["Is it free?", "Yes. AoE2C is free and open source: you can read all of the code on GitHub. No ads, no accounts."],
+  },
+  {
+    es: ["¿Por qué Windows me avisa al instalarlo?", "El instalador todavía no tiene firma digital (cuesta dinero y exige verificar la identidad), así que SmartScreen lo trata como «no reconocido». Pulsa <b>Más información → Ejecutar de todas formas</b>. Cada versión se envía a Microsoft para que la analice, y el código está a la vista en GitHub."],
+    en: ["Why does Windows warn me when installing?", "The installer is not digitally signed yet (it costs money and requires identity verification), so SmartScreen treats it as “unrecognised”. Click <b>More info → Run anyway</b>. Every release is submitted to Microsoft for analysis, and the code is public on GitHub."],
+  },
+  {
+    es: ["¿Funciona con la versión de Xbox o Microsoft Store?", "Por ahora solo con la versión de Steam. AoE2C ya busca la carpeta del perfil por su cuenta, así que el soporte para Xbox llegará cuando se pueda probar."],
+    en: ["Does it work with the Xbox or Microsoft Store version?", "For now, only with the Steam version. AoE2C already finds your profile folder by itself, so Xbox support will come once it can be tested."],
+  },
+  {
+    es: ["¿Funciona en partidas clasificatorias?", "No. La guía solo aparece en los mapas [AoE2C], que son partidas personalizadas: contra la IA, solo o con amigos. Está pensada para practicar la apertura hasta que te salga de memoria."],
+    en: ["Does it work in ranked games?", "No. The guide only appears on [AoE2C] maps, which are custom games: against the AI, alone or with friends. It is made for practising the opening until you know it by heart."],
+  },
+  {
+    es: ["¿Cómo sabe AoE2C lo que pasa en mi partida?", "El mapa [AoE2C] carga un script del propio juego que, cada segundo, escribe en un archivo cuántas casas, aldeanos y tecnologías tienes. AoE2C lee ese archivo y dibuja la tarjeta. No lee la memoria del juego ni modifica el ejecutable."],
+    en: ["How does AoE2C know what happens in my game?", "The [AoE2C] map loads a script from the game itself that, every second, writes to a file how many houses, villagers and technologies you have. AoE2C reads that file and draws the card. It does not read the game's memory or modify the executable."],
+  },
+  {
+    es: ["¿Dónde se guardan mis datos?", "En tu PC, en <code>%APPDATA%\\AoE2Coaching</code>: ajustes, historial y logs. No se envía nada a ningún servidor. Cada partida del historial se enlaza con su repetición (<code>.aoe2record</code>)."],
+    en: ["Where is my data stored?", "On your PC, in <code>%APPDATA%\\AoE2Coaching</code>: settings, history and logs. Nothing is sent to any server. Every game in the history links to its replay (<code>.aoe2record</code>)."],
+  },
+  {
+    es: ["¿Cómo lo desinstalo?", "Desde <b>Configuración → Aplicaciones</b> de Windows. El desinstalador pregunta si quieres quitar también las guías, mapas y mods del juego, y si quieres borrar tu historial (por defecto lo conserva)."],
+    en: ["How do I uninstall it?", "From Windows <b>Settings → Apps</b>. The uninstaller asks whether to also remove the guides, maps and mods from the game, and whether to delete your history (it keeps it by default)."],
+  },
+];
+---
+<section class="seccion preguntas" id="preguntas">
+  <div class="contenedor rejilla">
+    <div class="cab" data-aparece>
+      <span class="antetitulo"><T es="Preguntas frecuentes" en="FAQ" /></span>
+      <h2><T es="Lo que suele preguntarse" en="Common questions" /></h2>
+      <p class="lead">
+        <T es="¿Algo más? Abre un tema en GitHub y te respondemos." en="Anything else? Open an issue on GitHub and we will answer." />
+      </p>
+    </div>
+    <div class="lista">
+      {preguntas.map((p, i) => (
+        <details class="pregunta" data-aparece open={i === 0}>
+          <summary>
+            <span><T es={p.es[0]} en={p.en[0]} /></span>
+            <i aria-hidden="true"></i>
+          </summary>
+          <div class="respuesta">
+            <p><T es={p.es[1]} en={p.en[1]} html /></p>
+          </div>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .preguntas {
+    background: var(--fondo);
+  }
+  .rejilla {
+    display: grid;
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: clamp(40px, 6vw, 90px);
+    align-items: start;
+  }
+  .cab {
+    position: sticky;
+    top: 120px;
+  }
+  .pregunta {
+    border-bottom: 1px solid var(--borde);
+  }
+  .pregunta:first-child {
+    border-top: 1px solid var(--borde);
+  }
+  summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 24px 4px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 18.5px;
+    font-weight: 620;
+    transition: color 0.2s;
+  }
+  summary:hover {
+    color: var(--dorado-claro);
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  summary i {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    border-radius: 50%;
+    border: 1px solid var(--borde-2);
+    transition:
+      transform 0.35s,
+      background 0.35s;
+  }
+  summary i::before,
+  summary i::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 11px;
+    height: 1.6px;
+    margin: -0.8px 0 0 -5.5px;
+    background: currentColor;
+    transition: transform 0.35s;
+  }
+  summary i::after {
+    transform: rotate(90deg);
+  }
+  details[open] summary i {
+    transform: rotate(180deg);
+    background: var(--tarjeta-2);
+  }
+  details[open] summary i::after {
+    transform: rotate(0);
+  }
+  .respuesta {
+    overflow: hidden;
+  }
+  .respuesta p {
+    margin: 0;
+    padding: 0 50px 26px 4px;
+    color: var(--secundario);
+  }
+  .respuesta :global(b) {
+    color: var(--texto);
+  }
+  .respuesta :global(code) {
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--tarjeta-2);
+    font-size: 0.9em;
+  }
+  @media (max-width: 860px) {
+    .rejilla {
+      grid-template-columns: 1fr;
+    }
+    .cab {
+      position: static;
+    }
+    .respuesta p {
+      padding-right: 4px;
+    }
+  }
+</style>

@@ -1,0 +1,429 @@
+---
+/**
+ * Portada con parallax: cinco capas de paisaje (cielo, montes, castillo, pueblo y
+ * primer plano) que se mueven a distinta velocidad al bajar y con el ratón.
+ * Todo el dibujo es SVG hecho para la web.
+ */
+import T from "./T.astro";
+import { URL_REPO } from "../lib/contenido";
+
+interface Props {
+  version: string;
+}
+const { version } = Astro.props;
+
+// Aleatorio con semilla: el mismo dibujo en cada build.
+let semilla = 7;
+const azar = () => ((semilla = (semilla * 16807) % 2147483647) - 1) / 2147483646;
+
+const estrellas = Array.from({ length: 110 }, () => ({
+  x: azar() * 1600,
+  y: azar() * 430,
+  r: azar() * 1.3 + 0.3,
+  o: azar() * 0.7 + 0.2,
+  d: (azar() * 4 + 2).toFixed(1),
+}));
+
+// Pino: tres triángulos apilados sobre un tronco.
+function pino(x: number, base: number, alto: number) {
+  const a = alto / 3;
+  const w = alto * 0.36;
+  return `M${x} ${base - alto} L${x + w * 0.55} ${base - alto + a * 1.2} L${x + w * 0.3} ${base - alto + a * 1.2} L${x + w * 0.8} ${base - a * 0.9} L${x + w * 0.42} ${base - a * 0.9} L${x + w} ${base - alto * 0.12} L${x + w * 0.12} ${base - alto * 0.12} L${x + w * 0.12} ${base} L${x - w * 0.12} ${base} L${x - w * 0.12} ${base - alto * 0.12} L${x - w} ${base - alto * 0.12} L${x - w * 0.42} ${base - a * 0.9} L${x - w * 0.8} ${base - a * 0.9} L${x - w * 0.3} ${base - alto + a * 1.2} L${x - w * 0.55} ${base - alto + a * 1.2} Z`;
+}
+
+// Árboles del pueblo, sobre la colina cercana (y aproximada de la curva).
+const colinaCerca = (x: number) => 760 - 28 * Math.sin((x / 1600) * Math.PI * 2.2 + 0.8);
+const arbolesPueblo = Array.from({ length: 46 }, () => {
+  const x = azar() * 1600;
+  if (x > 1150 && x < 1420) return "";
+  return pino(x, colinaCerca(x) + 14, 34 + azar() * 40);
+}).join(" ");
+
+const arbolesMonte = Array.from({ length: 70 }, () => {
+  const x = azar() * 1600;
+  const y = 660 + 20 * Math.sin(x / 140) + azar() * 18;
+  return pino(x, y, 14 + azar() * 16);
+}).join(" ");
+
+const pinosDelante = [
+  pino(70, 905, 360), pino(190, 915, 270), pino(-10, 910, 300), pino(285, 920, 170),
+  pino(1530, 905, 380), pino(1410, 915, 250), pino(1620, 910, 300), pino(1330, 925, 150),
+].join(" ");
+
+// Casas del pueblo con ventanas encendidas.
+const casas = [
+  [1180, 742], [1225, 748], [1272, 740], [1318, 752], [1365, 746],
+].map(([x, y]) => ({ x, y }));
+
+const brasas = Array.from({ length: 26 }, () => ({
+  izq: (azar() * 100).toFixed(1),
+  ret: (azar() * 9).toFixed(1),
+  dur: (7 + azar() * 7).toFixed(1),
+  tam: (2 + azar() * 3).toFixed(1),
+  deriva: ((azar() - 0.5) * 120).toFixed(0),
+}));
+---
+<section class="hero" id="inicio" data-hero>
+  <div class="capas" aria-hidden="true">
+    <div class="capa cielo" data-capa="0">
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice">
+        <defs>
+          <linearGradient id="g-cielo" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#05070d" />
+            <stop offset="0.35" stop-color="#0f1426" />
+            <stop offset="0.58" stop-color="#2b2142" />
+            <stop offset="0.72" stop-color="#6b3044" />
+            <stop offset="0.8" stop-color="#b65a3c" />
+            <stop offset="0.86" stop-color="#e39550" />
+          </linearGradient>
+          <radialGradient id="g-sol" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#fff1d0" />
+            <stop offset="0.25" stop-color="#ffcb7d" stop-opacity="0.95" />
+            <stop offset="0.5" stop-color="#ff9b52" stop-opacity="0.35" />
+            <stop offset="1" stop-color="#ff7a3a" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        <rect width="1600" height="900" fill="url(#g-cielo)" />
+        <g class="estrellas">
+          {estrellas.map((e) => (
+            <circle cx={e.x} cy={e.y} r={e.r} fill="#fff" opacity={e.o} style={`--d:${e.d}s`} />
+          ))}
+        </g>
+        <circle cx="1040" cy="640" r="260" fill="url(#g-sol)" />
+        <circle cx="1040" cy="640" r="58" fill="#ffe7b8" />
+      </svg>
+    </div>
+
+    <div class="capa" data-capa="1">
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice">
+        <defs>
+          <linearGradient id="g-montes" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#4b3152" />
+            <stop offset="0.5" stop-color="#2a2038" />
+          </linearGradient>
+        </defs>
+        <path fill="url(#g-montes)" d="M0 610 L90 575 L170 592 L300 505 L390 560 L470 540 L560 585 L700 470 L790 540 L860 520 L960 585 L1090 540 L1200 600 L1290 500 L1380 548 L1470 520 L1600 570 V900 H0Z" />
+        <path fill="#e8a0784d" d="M700 470 L740 500 L725 498 L760 525 L700 490 L660 510 Z M300 505 L330 530 L310 527 L280 520 Z M1290 500 L1320 522 L1300 520 L1270 520 Z" />
+        <path fill="#221a30" d="M0 650 C120 630 220 640 330 625 C470 605 560 650 700 640 C830 630 900 600 1040 615 C1180 630 1300 600 1450 620 C1520 628 1560 640 1600 636 V900 H0Z" />
+        <path fill="#1d1729" d={arbolesMonte} />
+      </svg>
+    </div>
+
+    <div class="capa" data-capa="2">
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice">
+        <path fill="#181425" d="M0 715 C180 680 330 668 480 690 C620 710 700 640 820 612 C900 594 1020 600 1110 640 C1250 700 1420 690 1600 672 V900 H0Z" />
+        <g class="castillo" fill="#120f1c">
+          <!-- murallas -->
+          <path d="M760 640 L760 590 L770 590 L770 582 L782 582 L782 590 L796 590 L796 582 L808 582 L808 590 L822 590 L822 582 L834 582 L834 590 L848 590 L848 582 L860 582 L860 590 L1010 590 L1010 582 L1022 582 L1022 590 L1036 590 L1036 582 L1048 582 L1048 590 L1062 590 L1062 582 L1074 582 L1074 590 L1084 590 L1084 640 Z" />
+          <!-- torres de las esquinas -->
+          <path d="M744 640 V560 h-6 v-12 h10 v8 h8 v-8 h10 v8 h8 v-8 h10 v12 h-6 V640Z" />
+          <path d="M1070 640 V560 h-6 v-12 h10 v8 h8 v-8 h10 v8 h8 v-8 h10 v12 h-6 V640Z" />
+          <!-- torre del homenaje -->
+          <path d="M872 600 V505 h-10 v-16 h14 v10 h12 v-10 h14 v10 h12 v-10 h14 v10 h12 v-10 h14 v10 h12 v-10 h14 v16 h-10 V600Z" />
+          <path d="M940 489 V455 h-6 v-12 h9 v7 h7 v-7 h9 v7 h7 v-7 h9 v12 h-6 V489Z" />
+          <rect x="964" y="400" width="3" height="45" />
+          <!-- puerta -->
+          <path d="M904 600 v-30 a18 18 0 0 1 36 0 v30Z" fill="#0b0912" />
+        </g>
+        <path class="bandera" d="M967 402 C985 396 995 410 1016 404 L1016 428 C995 434 985 420 967 426Z" fill="#86202f" />
+        <path d="M985 408 l8 7 l8 -7 v4 l-8 7 l-8 -7z" fill="#c79d63" />
+        <g fill="#ffb86a" class="ventanas">
+          <rect x="898" y="525" width="5" height="10" rx="2.5" />
+          <rect x="930" y="525" width="5" height="10" rx="2.5" />
+          <rect x="962" y="525" width="5" height="10" rx="2.5" />
+          <rect x="994" y="525" width="5" height="10" rx="2.5" />
+          <rect x="953" y="462" width="4" height="9" rx="2" />
+          <rect x="756" y="580" width="4" height="9" rx="2" />
+          <rect x="1083" y="580" width="4" height="9" rx="2" />
+        </g>
+      </svg>
+    </div>
+
+    <div class="niebla" data-capa="2"></div>
+
+    <div class="capa" data-capa="3">
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice">
+        <path fill="#100e19" d={`M0 ${colinaCerca(0)} ${Array.from({ length: 33 }, (_, i) => `L${i * 50} ${colinaCerca(i * 50).toFixed(1)}`).join(" ")} L1600 ${colinaCerca(1600)} V900 H0Z`} />
+        <path fill="#0c0b14" d={arbolesPueblo} />
+        <g fill="#0c0b14">
+          {casas.map((c) => (
+            <path d={`M${c.x - 16} ${c.y} v-18 l16 -14 l16 14 v18Z`} />
+          ))}
+          <path d="M1240 748 v-36 l26 -24 l26 24 v36Z" />
+          <rect x="1278" y="676" width="7" height="18" />
+        </g>
+        <g fill="#ffb86a" class="ventanas">
+          {casas.map((c) => <rect x={c.x - 3} y={c.y - 12} width="6" height="6" rx="1" />)}
+          <rect x="1260" y="722" width="6" height="8" rx="1" />
+        </g>
+        <path d="M1281 676 c-8 -14 6 -18 -2 -34 c10 10 12 22 2 34" fill="#6a5a6f" opacity="0.35" class="humo" />
+      </svg>
+    </div>
+
+    <div class="capa" data-capa="4">
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice">
+        <path fill="#0b0e14" d="M0 850 C260 818 520 842 800 836 C1080 830 1320 806 1600 830 V900 H0Z" />
+        <path fill="#07090e" d={pinosDelante} />
+      </svg>
+    </div>
+
+    <div class="brasas">
+      {brasas.map((b) => (
+        <i style={`left:${b.izq}%;--ret:${b.ret}s;--dur:${b.dur}s;--tam:${b.tam}px;--deriva:${b.deriva}px`} />
+      ))}
+    </div>
+    <div class="desvanecer"></div>
+  </div>
+
+  <div class="hero-texto contenedor" data-hero-texto>
+    <p class="hero-etiqueta" data-intro>
+      <span class="punto"></span>
+      <T es="Gratis · Código abierto · Para AoE2: Definitive Edition" en="Free · Open source · For AoE2: Definitive Edition" />
+    </p>
+    <h1 data-intro>
+      <T es="Domina la apertura." en="Master the opening." />
+      <span class="dorado"><T es="Llega antes a Castillos." en="Reach Castle Age faster." /></span>
+    </h1>
+    <p class="hero-lead" data-intro>
+      <T
+        es="AoE2 Coaching te guía paso a paso encima del juego: qué construir, cuántos aldeanos poner en cada recurso y si vas a tiempo. Después, tu historial te enseña dónde pierdes segundos."
+        en="AoE2 Coaching guides you step by step on top of the game: what to build, how many villagers on each resource and whether you are on time. Afterwards, your history shows you where you lose seconds."
+      />
+    </p>
+    <div class="hero-botones" data-intro>
+      <a class="boton boton-principal" href="#descargar" data-descarga>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 19h16" /></svg>
+        <T es="Descargar para Windows" en="Download for Windows" />
+      </a>
+      <a class="boton" href={URL_REPO} target="_blank" rel="noopener">
+        <T es="Ver el código" en="View the code" />
+      </a>
+    </div>
+    <p class="hero-nota" data-intro>
+      <span data-version>v{version}</span> · Windows 10 / 11 · Steam
+    </p>
+  </div>
+
+  <a class="bajar" href="#como-funciona" aria-label="Bajar">
+    <span></span>
+  </a>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    height: 100svh;
+    min-height: 680px;
+    display: grid;
+    align-items: center;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .capas {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+  .capa,
+  .niebla {
+    position: absolute;
+    inset: -8% -4% -2%;
+    will-change: transform;
+  }
+  .capa svg {
+    width: 100%;
+    height: 100%;
+  }
+  .estrellas circle {
+    animation: titilar var(--d) ease-in-out infinite alternate;
+  }
+  @keyframes titilar {
+    to {
+      opacity: 0.1;
+    }
+  }
+  .niebla {
+    inset: 55% -10% 18%;
+    background:
+      radial-gradient(ellipse 40% 60% at 30% 50%, rgba(214, 140, 120, 0.22), transparent 70%),
+      radial-gradient(ellipse 35% 55% at 75% 45%, rgba(200, 120, 130, 0.18), transparent 70%);
+    filter: blur(20px);
+    animation: niebla 22s ease-in-out infinite alternate;
+  }
+  @keyframes niebla {
+    to {
+      translate: 6% 0;
+    }
+  }
+  .bandera {
+    transform-box: fill-box;
+    transform-origin: 0 50%;
+    animation: ondear 3s ease-in-out infinite;
+  }
+  @keyframes ondear {
+    50% {
+      transform: skewY(-4deg) scaleX(0.94);
+    }
+  }
+  .ventanas rect {
+    animation: vela 4s ease-in-out infinite alternate;
+  }
+  .ventanas rect:nth-child(3n) {
+    animation-delay: -1.3s;
+  }
+  .ventanas rect:nth-child(3n + 1) {
+    animation-delay: -2.6s;
+  }
+  @keyframes vela {
+    to {
+      opacity: 0.55;
+    }
+  }
+  .humo {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: humo 5s ease-in-out infinite;
+  }
+  @keyframes humo {
+    50% {
+      transform: translate(4px, -6px) scale(1.1);
+      opacity: 0.15;
+    }
+  }
+  .brasas i {
+    position: absolute;
+    bottom: -10px;
+    width: var(--tam);
+    height: var(--tam);
+    border-radius: 50%;
+    background: #ffbe6b;
+    box-shadow: 0 0 10px 2px rgba(255, 150, 60, 0.7);
+    opacity: 0;
+    animation: brasa var(--dur) linear var(--ret) infinite;
+  }
+  @keyframes brasa {
+    10% {
+      opacity: 0.9;
+    }
+    80% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(var(--deriva), -70vh);
+    }
+  }
+  .desvanecer {
+    position: absolute;
+    inset: auto 0 0;
+    height: 28%;
+    background: linear-gradient(transparent, var(--fondo));
+  }
+
+  .hero-texto {
+    text-align: center;
+    padding-top: 40px;
+    margin-top: -14vh;
+  }
+  .hero-etiqueta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 26px;
+    padding: 7px 16px 7px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(10, 12, 20, 0.45);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    font-size: 14px;
+    font-weight: 540;
+    color: var(--secundario);
+  }
+  .punto {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bien);
+    box-shadow: 0 0 0 0 rgba(56, 204, 128, 0.6);
+    animation: latido 2s infinite;
+  }
+  @keyframes latido {
+    70% {
+      box-shadow: 0 0 0 9px rgba(56, 204, 128, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(56, 204, 128, 0);
+    }
+  }
+  h1 {
+    font-family: var(--titulo);
+    font-size: clamp(40px, 7.4vw, 96px);
+    letter-spacing: 0.005em;
+    text-shadow: 0 6px 40px rgba(0, 0, 0, 0.5);
+  }
+  h1 > span {
+    display: block;
+  }
+  .hero-lead {
+    max-width: 680px;
+    margin: 26px auto 0;
+    color: #d5dbe4;
+    font-size: clamp(16.5px, 1.6vw, 19.5px);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+    text-wrap: pretty;
+  }
+  .hero-botones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 36px;
+  }
+  .hero-nota {
+    margin: 18px 0 0;
+    font-size: 14px;
+    color: var(--apagado);
+  }
+  .bajar {
+    position: absolute;
+    left: 50%;
+    bottom: 28px;
+    translate: -50% 0;
+    width: 26px;
+    height: 42px;
+    border-radius: 14px;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+  }
+  .bajar span {
+    position: absolute;
+    left: 50%;
+    top: 8px;
+    width: 3px;
+    height: 8px;
+    margin-left: -1.5px;
+    border-radius: 2px;
+    background: var(--texto);
+    animation: rueda 1.8s ease-in-out infinite;
+  }
+  @keyframes rueda {
+    60% {
+      transform: translateY(12px);
+      opacity: 0;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @media (max-width: 640px) {
+    .hero-texto {
+      margin-top: -6vh;
+    }
+    .hero-botones .boton {
+      width: 100%;
+    }
+    .bajar {
+      display: none;
+    }
+  }
+</style>

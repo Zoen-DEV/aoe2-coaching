@@ -1,0 +1,85 @@
+---
+import "../styles/global.css";
+import Nav from "../components/Nav.astro";
+import Hero from "../components/Hero.astro";
+import Demo from "../components/Demo.astro";
+import Pasos from "../components/Pasos.astro";
+import Panel from "../components/Panel.astro";
+import Guias from "../components/Guias.astro";
+import Mapas from "../components/Mapas.astro";
+import Mods from "../components/Mods.astro";
+import Descargar from "../components/Descargar.astro";
+import Preguntas from "../components/Preguntas.astro";
+import Pie from "../components/Pie.astro";
+import { guias, mapas, mods, version } from "../lib/contenido";
+
+const lista = guias();
+const listaMapas = mapas();
+const v = version();
+const guiaDemo = lista.find((g) => g.id === "fast_castle") ?? lista[0];
+
+const meta = {
+  es: {
+    titulo: "AoE2 Coaching — Tu entrenador de aperturas para AoE2 DE",
+    descripcion: "Guías de apertura paso a paso encima de Age of Empires II: Definitive Edition, historial de partidas y un panel para instalar mapas y mods. Gratis y de código abierto.",
+  },
+  en: {
+    titulo: "AoE2 Coaching — Your opening coach for AoE2 DE",
+    descripcion: "Step-by-step opening guides on top of Age of Empires II: Definitive Edition, game history and a panel to install maps and mods. Free and open source.",
+  },
+};
+const url = new URL("/", Astro.site);
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{meta.es.titulo}</title>
+    <meta name="description" content={meta.es.descripcion} />
+    <meta name="theme-color" content="#0b0e14" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/logo-256.png" />
+    <link rel="canonical" href={url} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={url} />
+    <meta property="og:title" content={meta.es.titulo} />
+    <meta property="og:description" content={meta.es.descripcion} />
+    <meta property="og:image" content={new URL("/logo-512.png", Astro.site)} />
+    <meta name="twitter:card" content="summary" />
+    <script is:inline define:vars={{ meta }}>
+      // Idioma antes de pintar (sin parpadeo): el elegido antes o el del navegador.
+      (function () {
+        var idioma;
+        try { idioma = localStorage.getItem("aoe2c-idioma"); } catch (e) {}
+        if (idioma !== "es" && idioma !== "en") {
+          idioma = (navigator.language || "en").toLowerCase().indexOf("es") === 0 ? "es" : "en";
+        }
+        var html = document.documentElement;
+        html.lang = idioma;
+        html.classList.add("js");
+        window.__metaIdioma = meta;
+        document.title = meta[idioma].titulo;
+      })();
+    </script>
+  </head>
+  <body>
+    <Nav />
+    <main>
+      <Hero version={v} />
+      <Demo guia={guiaDemo} />
+      <Pasos />
+      <Panel />
+      <Guias guias={lista} mapas={listaMapas} />
+      <Mapas mapas={listaMapas} guias={lista} />
+      <Mods mods={mods()} />
+      <Descargar version={v} />
+      <Preguntas />
+    </main>
+    <Pie />
+
+    <script>
+      import "../scripts/principal";
+    </script>
+  </body>
+</html>

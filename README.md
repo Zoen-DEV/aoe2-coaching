@@ -6,6 +6,7 @@ Guías de apertura paso a paso encima de Age of Empires II: Definitive Edition, 
 - **Diseño de la guía y del panel:** [docs/02-guia-apertura-castillos.md](docs/02-guia-apertura-castillos.md)
 - **Mod de las ovejas:** [docs/01-icono-ovejas.md](docs/01-icono-ovejas.md)
 - **Catálogo de contenido** (guías, mapas y mods que instala el panel): [docs/04-catalogo-contenido.md](docs/04-catalogo-contenido.md)
+- **Página oficial** (`apps/web`): [docs/05-pagina-oficial.md](docs/05-pagina-oficial.md)
 
 ## Estructura
 
@@ -14,7 +15,7 @@ apps/
   desktop/        app de Windows (Python + PySide6): overlay, panel e instalador de contenido
     empaquetado/  armado con PyInstaller e instalador de Inno Setup
     pruebas/      pruebas de la app (y de la validación de las guías)
-  web/            página oficial (Astro) - plan 8
+  web/            página oficial (Astro, GSAP y Lenis): una sola página en español e inglés
   api/            backend en Node - cuando lleguen las cuentas
 content/
   catalogo.py     arma el catálogo (paquetes + catalogo.json) en build/catalogo
@@ -24,7 +25,7 @@ content/
     icono-ovejas/ build.py + info.json -> sprites .sld con el icono; catalogo.json: su ficha
 tools/            herramientas de sprites (.sld) y de repeticiones (.aoe2record)
 .github/
-  workflows/      desktop.yml (pruebas y publicación de la app) y contenido.yml (catálogo)
+  workflows/      desktop.yml (pruebas y publicación de la app), contenido.yml (catálogo) y web.yml (armado de la web)
   scripts/        juego falso y descarga de mods publicados, para GitHub Actions
 docs/
 build/            todo lo generado (no se sube a git)
@@ -34,7 +35,7 @@ Lo generado va a `build/`: los mapas `.rms` son copias de mapas oficiales y los 
 
 ## Entorno
 
-- Python 3.14 (en Windows se ejecuta con `py`), Git y AoE2 DE en Steam.
+- Python 3.14 (en Windows se ejecuta con `py`), Git y AoE2 DE en Steam. Para la web, Node 22.22 o posterior.
 - Dependencias:
 
 ```bash

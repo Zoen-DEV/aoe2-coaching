@@ -1,0 +1,314 @@
+---
+/**
+ * Descarga e instalación. El aviso de SmartScreen está rehecho en HTML y se anima al
+ * entrar en pantalla: "Más información" → "Ejecutar de todas formas" (decisión 7 del plan).
+ */
+import T from "./T.astro";
+import { URL_RELEASES, URL_REPO } from "../lib/contenido";
+
+interface Props {
+  version: string;
+}
+const { version } = Astro.props;
+const instalador = `AoE2Coaching-Setup-${version}.exe`;
+---
+<section class="seccion descargar" id="descargar">
+  <div class="halo" aria-hidden="true"></div>
+  <div class="contenedor">
+    <div class="cta" data-aparece>
+      <img class="cta-logo" src="/logo-256.png" alt="" width="120" height="120" />
+      <span class="antetitulo"><T es="Descargar" en="Download" /></span>
+      <h2><T es="Gratis. Para siempre." en="Free. Forever." /></h2>
+      <p class="lead">
+        <T
+          es="Código abierto en GitHub. Sin anuncios, sin cuentas y sin tocar los archivos del juego más allá de tus mapas y mods."
+          en="Open source on GitHub. No ads, no accounts, and no changes to game files beyond your maps and mods."
+        />
+      </p>
+      <div class="cta-botones">
+        <a class="boton boton-principal grande" href={`${URL_RELEASES}/latest/download/${instalador}`} data-descarga data-directa>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 19h16" /></svg>
+          <T es="Descargar AoE2C" en="Download AoE2C" />
+          <span class="version" data-version>v{version}</span>
+        </a>
+        <a class="boton" href={URL_RELEASES} target="_blank" rel="noopener"><T es="Todas las versiones" en="All releases" /></a>
+      </div>
+      <p class="requisitos">
+        <T es="Windows 10 u 11 · AoE2: Definitive Edition en Steam · unos 25 MB" en="Windows 10 or 11 · AoE2: Definitive Edition on Steam · about 25 MB" />
+      </p>
+    </div>
+
+    <div class="instalar">
+      <ol class="instalar-pasos">
+        <li data-aparece>
+          <span class="n">1</span>
+          <div>
+            <h3><T es="Abre el instalador" en="Open the installer" /></h3>
+            <p><T es={`Ejecuta ${instalador}. No pide permisos de administrador.`} en={`Run ${instalador}. It does not ask for admin rights.`} /></p>
+          </div>
+        </li>
+        <li data-aparece>
+          <span class="n">2</span>
+          <div>
+            <h3><T es="Si Windows avisa, sigue" en="If Windows warns you, continue" /></h3>
+            <p>
+              <T
+                es="El .exe aún no está firmado, así que SmartScreen puede mostrar un aviso. Pulsa <b>Más información</b> y después <b>Ejecutar de todas formas</b>."
+                en="The .exe is not signed yet, so SmartScreen may show a warning. Click <b>More info</b> and then <b>Run anyway</b>."
+                html
+              />
+            </p>
+          </div>
+        </li>
+        <li data-aparece>
+          <span class="n">3</span>
+          <div>
+            <h3><T es="Elige una guía y juega" en="Pick a guide and play" /></h3>
+            <p><T es="Abre el panel, instala una guía y sus mapas, y crea una partida en un mapa [AoE2C]." en="Open the panel, install a guide and its maps, and start a game on an [AoE2C] map." /></p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="smartscreen" data-smartscreen aria-hidden="true">
+        <div class="ss-dialogo">
+          <div class="ss-cierre">✕</div>
+          <div class="ss-titulo"><T es="Windows protegió su PC" en="Windows protected your PC" /></div>
+          <p class="ss-texto">
+            <T
+              es="SmartScreen de Microsoft Defender impidió el inicio de una aplicación no reconocida."
+              en="Microsoft Defender SmartScreen prevented an unrecognised app from starting."
+            />
+          </p>
+          <span class="ss-enlace" data-ss="mas"><T es="Más información" en="More info" /></span>
+          <div class="ss-detalle" data-ss="detalle">
+            <div><span><T es="Aplicación:" en="App:" /></span> {instalador}</div>
+            <div><span><T es="Editor:" en="Publisher:" /></span> <T es="Editor desconocido" en="Unknown publisher" /></div>
+          </div>
+          <div class="ss-botones">
+            <span class="ss-boton" data-ss="ejecutar"><T es="Ejecutar de todas formas" en="Run anyway" /></span>
+            <span class="ss-boton primario"><T es="No ejecutar" en="Don't run" /></span>
+          </div>
+        </div>
+        <svg class="ss-cursor" data-ss="cursor" viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="#fff" stroke="#000" stroke-width="1.3" stroke-linejoin="round" /></svg>
+        <p class="ss-pie">
+          <T es="¿Desconfías? Revisa el código en " en="Not sure? Check the code on " /><a href={URL_REPO} target="_blank" rel="noopener">GitHub</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .descargar {
+    background: var(--fondo-2);
+    overflow: hidden;
+  }
+  .halo {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 1100px;
+    height: 700px;
+    translate: -50% -30%;
+    background: radial-gradient(ellipse at center, rgba(199, 157, 99, 0.2), rgba(134, 32, 47, 0.12) 40%, transparent 70%);
+    pointer-events: none;
+  }
+  .cta {
+    position: relative;
+    text-align: center;
+  }
+  .cta-logo {
+    width: 104px;
+    height: auto;
+    margin: 0 auto 28px;
+    filter: drop-shadow(0 20px 40px rgba(134, 32, 47, 0.6));
+    animation: flotar-logo 6s ease-in-out infinite;
+  }
+  @keyframes flotar-logo {
+    50% {
+      transform: translateY(-10px) rotate(-2deg);
+    }
+  }
+  .cta .lead {
+    margin-inline: auto;
+  }
+  .cta-botones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 36px;
+  }
+  .grande {
+    min-height: 60px;
+    padding: 0 30px;
+    font-size: 17px;
+  }
+  .version {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(28, 19, 7, 0.15);
+    font-size: 13px;
+  }
+  .requisitos {
+    margin: 18px 0 0;
+    color: var(--apagado);
+    font-size: 14px;
+  }
+
+  .instalar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(30px, 5vw, 70px);
+    align-items: center;
+    margin-top: 100px;
+  }
+  .instalar-pasos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 26px;
+  }
+  .instalar-pasos li {
+    display: flex;
+    gap: 18px;
+  }
+  .n {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    flex: none;
+    border-radius: 50%;
+    border: 1px solid rgba(199, 157, 99, 0.5);
+    color: var(--dorado-claro);
+    font-family: var(--titulo);
+    font-weight: 700;
+  }
+  .instalar-pasos h3 {
+    font-size: 18.5px;
+  }
+  .instalar-pasos p {
+    margin: 6px 0 0;
+    color: var(--secundario);
+    font-size: 15.5px;
+    overflow-wrap: anywhere;
+  }
+  .instalar-pasos :global(b) {
+    color: var(--texto);
+  }
+
+  .smartscreen {
+    position: relative;
+  }
+  .ss-dialogo {
+    position: relative;
+    padding: 30px 30px 24px;
+    background: #0e5a9c;
+    color: #fff;
+    box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.8);
+    font-family: "Segoe UI", var(--cuerpo);
+  }
+  .ss-cierre {
+    position: absolute;
+    right: 16px;
+    top: 10px;
+    font-size: 14px;
+    opacity: 0.8;
+  }
+  .ss-titulo {
+    font-size: 26px;
+    font-weight: 300;
+    line-height: 1.2;
+  }
+  .ss-texto {
+    margin: 16px 0 10px;
+    font-size: 14.5px;
+  }
+  .ss-enlace {
+    font-size: 14.5px;
+    text-decoration: underline;
+    transition: opacity 0.2s;
+  }
+  .ss-enlace:global(.pulsado) {
+    opacity: 0.6;
+  }
+  .ss-detalle {
+    display: grid;
+    gap: 4px;
+    max-height: 0;
+    margin-top: 0;
+    overflow: hidden;
+    font-size: 14px;
+    transition:
+      max-height 0.4s,
+      margin 0.4s;
+  }
+  .ss-detalle span {
+    display: inline-block;
+    min-width: 92px;
+  }
+  .ss-detalle:global(.visible) {
+    max-height: 80px;
+    margin-top: 14px;
+  }
+  .ss-botones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 40px;
+  }
+  .ss-boton {
+    padding: 6px 16px;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    white-space: nowrap;
+    opacity: 0;
+    transition:
+      opacity 0.3s,
+      background 0.2s;
+  }
+  .ss-boton.primario {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.15);
+  }
+  .ss-boton:global(.visible) {
+    opacity: 1;
+  }
+  .ss-boton:global(.pulsado) {
+    background: rgba(255, 255, 255, 0.35);
+  }
+  .ss-cursor {
+    position: absolute;
+    left: 70%;
+    top: 20%;
+    width: 22px;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+    pointer-events: none;
+  }
+  .ss-pie {
+    margin: 16px 0 0;
+    font-size: 14px;
+    color: var(--apagado);
+  }
+  .ss-pie a {
+    color: var(--dorado-claro);
+    text-decoration: underline;
+  }
+  @media (max-width: 860px) {
+    .instalar {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 520px) {
+    .ss-botones {
+      flex-direction: column;
+      align-items: stretch;
+      text-align: center;
+    }
+    .cta-botones .boton {
+      width: 100%;
+    }
+  }
+</style>

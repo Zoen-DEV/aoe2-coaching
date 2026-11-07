@@ -1,0 +1,249 @@
+---
+/**
+ * Mapas [AoE2C]: galería horizontal que avanza con el scroll vertical. Las vistas
+ * aéreas son dibujos generados aquí (no las imágenes oficiales del juego).
+ */
+import T from "./T.astro";
+import type { Guia, Mapa } from "../lib/contenido";
+
+interface Props {
+  mapas: Mapa[];
+  guias: Guia[];
+}
+const { mapas, guias } = Astro.props;
+const nombreGuia = (id: string) => guias.find((g) => g.id === id)?.nombre ?? id;
+
+const JUGADORES = ["#3d7bff", "#ff4d4d", "#3fcf6a", "#ffd23f"];
+
+function vista(id: string): string {
+  let s = [...id].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) % 2147483647;
+  const azar = () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
+  const T = 400;
+  const p: string[] = [];
+  const estilos: Record<string, { suelo: [string, string]; bosque: number; arboles: string }> = {
+    arabia: { suelo: ["#a48a4f", "#7d7a3e"], bosque: 9, arboles: "#2f4a24" },
+    arena: { suelo: ["#6f8a3e", "#557532"], bosque: 14, arboles: "#24401f" },
+    black_forest: { suelo: ["#4f6b31", "#3d5627"], bosque: 0, arboles: "#1c3318" },
+    runestones: { suelo: ["#8b8f4a", "#6a7b3a"], bosque: 10, arboles: "#2b4622" },
+    fortress: { suelo: ["#7b8a45", "#5d7436"], bosque: 11, arboles: "#26421f" },
+  };
+  const e = estilos[id] ?? estilos.arabia;
+  p.push(`<defs><radialGradient id="s-${id}" cx=".5" cy=".5" r=".75"><stop offset="0" stop-color="${e.suelo[0]}"/><stop offset="1" stop-color="${e.suelo[1]}"/></radialGradient></defs>`);
+  p.push(`<rect width="${T}" height="${T}" fill="url(#s-${id})"/>`);
+  // manchas del terreno
+  for (let i = 0; i < 26; i++) {
+    p.push(`<ellipse cx="${azar() * T}" cy="${azar() * T}" rx="${10 + azar() * 40}" ry="${8 + azar() * 26}" fill="#000" opacity="${0.04 + azar() * 0.05}"/>`);
+  }
+  const bosque = (cx: number, cy: number, r: number, n: number) => {
+    for (let i = 0; i < n; i++) {
+      const a = azar() * Math.PI * 2, d = Math.sqrt(azar()) * r;
+      p.push(`<circle cx="${(cx + Math.cos(a) * d).toFixed(1)}" cy="${(cy + Math.sin(a) * d).toFixed(1)}" r="${(4 + azar() * 5).toFixed(1)}" fill="${e.arboles}"/>`);
+    }
+  };
+  if (id === "black_forest") {
+    // casi todo bosque, con claros para las bases y caminos
+    for (let i = 0; i < 520; i++) {
+      const x = azar() * T, y = azar() * T;
+      const enBase = [[100, 100], [300, 300], [300, 100], [100, 300]].some(([bx, by]) => Math.hypot(x - bx, y - by) < 62);
+      const enCamino = Math.abs(x - y) < 16 || Math.abs(x + y - T) < 16;
+      if (!enBase && !enCamino) p.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(5 + azar() * 4).toFixed(1)}" fill="${e.arboles}"/>`);
+    }
+  } else {
+    for (let i = 0; i < e.bosque; i++) bosque(azar() * T, azar() * T, 18 + azar() * 30, 26);
+  }
+  if (id === "runestones") {
+    for (let i = 0; i < 9; i++) {
+      const x = 40 + azar() * 320, y = 40 + azar() * 320;
+      p.push(`<rect x="${x}" y="${y}" width="6" height="12" rx="2" fill="#c9c3b8" stroke="#5c5a55" stroke-width="1"/>`);
+    }
+  }
+  const bases = id === "black_forest" ? [[100, 100], [300, 300], [300, 100], [100, 300]] : [[110, 110], [290, 290], [290, 110], [110, 290]];
+  bases.forEach(([x, y], i) => {
+    if (id === "arena") p.push(`<circle cx="${x}" cy="${y}" r="58" fill="none" stroke="#9aa0a6" stroke-width="5" stroke-dasharray="14 3"/>`);
+    if (id === "fortress") p.push(`<path d="M${x - 50} ${y + 20} V${y - 50} H${x + 20}" fill="none" stroke="#9aa0a6" stroke-width="5"/><path d="M${x + 50} ${y - 20} V${y + 50} H${x - 20}" fill="none" stroke="#9aa0a6" stroke-width="5"/>`);
+    p.push(`<rect x="${x - 9}" y="${y - 9}" width="18" height="18" rx="2" fill="${JUGADORES[i]}" stroke="#000" stroke-opacity=".4"/>`);
+    // oro y piedra
+    p.push(`<circle cx="${x + 30}" cy="${y - 26}" r="5" fill="#f2cf4a"/><circle cx="${x + 37}" cy="${y - 20}" r="4" fill="#f2cf4a"/>`);
+    p.push(`<circle cx="${x - 30}" cy="${y + 28}" r="4.5" fill="#bfc4c9"/><circle cx="${x - 24}" cy="${y + 34}" r="4" fill="#bfc4c9"/>`);
+    // ovejas
+    for (let k = 0; k < 4; k++) p.push(`<circle cx="${x - 22 + azar() * 44}" cy="${y - 22 + azar() * 44}" r="2" fill="#fff"/>`);
+  });
+  return `<svg viewBox="0 0 ${T} ${T}" aria-hidden="true">${p.join("")}</svg>`;
+}
+---
+<section class="mapas-sec" id="mapas" data-mapas>
+  <div class="mapas-pin" data-mapas-pin>
+    <div class="contenedor cab">
+      <div data-aparece>
+        <span class="antetitulo"><T es="Mapas [AoE2C]" en="[AoE2C] maps" /></span>
+        <h2><T es="Los mapas de siempre, con entrenador" en="The usual maps, with a coach" /></h2>
+      </div>
+      <p class="lead" data-aparece>
+        <T
+          es="AoE2C arma cada mapa en tu PC a partir del oficial de tu juego, así siempre coincide con la última versión."
+          en="AoE2C builds each map on your PC from your game's official one, so it always matches the latest version."
+        />
+      </p>
+    </div>
+
+    <div class="pista" data-pista>
+      {mapas.map((m, i) => (
+        <article class="mapa">
+          <div class="mapa-vista">
+            <Fragment set:html={vista(m.id)} />
+            <span class="mapa-num">{String(i + 1).padStart(2, "0")}</span>
+          </div>
+          <div class="mapa-info">
+            <div class="mapa-cab">
+              <h3>[AoE2C] {m.nombre}</h3>
+              <span class="chip"><T es={m.tipo.es} en={m.tipo.en} /></span>
+            </div>
+            <p><T es={m.descripcion.es} en={m.descripcion.en} /></p>
+            <div class="mapa-guias">
+              {m.guias.map((g) => <span class="chip">{nombreGuia(g)}</span>)}
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .mapas-sec {
+    position: relative;
+    background:
+      radial-gradient(ellipse 50% 40% at 20% 30%, rgba(134, 32, 47, 0.18), transparent 70%),
+      var(--fondo);
+  }
+  .mapas-pin {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 100px 0 50px;
+    overflow: hidden;
+  }
+  .cab {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 40px;
+  }
+  .cab .lead {
+    max-width: 420px;
+    margin: 0;
+  }
+  .cab h2 {
+    font-size: clamp(32px, 4.2vw, 52px);
+  }
+  .pista {
+    display: flex;
+    gap: 24px;
+    margin-top: 44px;
+    padding-inline: max(16px, (100vw - var(--ancho)) / 2);
+    width: max-content;
+    will-change: transform;
+  }
+  .mapa {
+    width: 360px;
+    flex: none;
+    border-radius: 22px;
+    border: 1px solid var(--borde);
+    background: var(--fondo-3);
+    overflow: hidden;
+    transition:
+      transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-color 0.3s;
+  }
+  .mapa:hover {
+    transform: translateY(-8px);
+    border-color: rgba(199, 157, 99, 0.45);
+  }
+  .mapa-vista {
+    position: relative;
+    aspect-ratio: 16 / 11;
+    overflow: hidden;
+    background: #222;
+  }
+  .mapa-vista :global(svg) {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 120%;
+    max-width: none;
+    translate: -50% -50%;
+    rotate: 45deg;
+    scale: 0.92 0.6;
+    transition: scale 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .mapa:hover .mapa-vista :global(svg) {
+    scale: 1 0.66;
+  }
+  .mapa-vista::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(transparent 55%, rgba(22, 27, 37, 0.95));
+  }
+  .mapa-num {
+    position: absolute;
+    left: 18px;
+    bottom: 10px;
+    z-index: 1;
+    font-family: var(--titulo);
+    font-weight: 700;
+    font-size: 38px;
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  }
+  .mapa-info {
+    padding: 18px 22px 24px;
+  }
+  .mapa-cab {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .mapa-cab h3 {
+    font-size: 19px;
+  }
+  .mapa-info p {
+    margin: 10px 0 0;
+    color: var(--secundario);
+    font-size: 15px;
+    min-height: 4.6em;
+  }
+  .mapa-guias {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  @media (max-width: 860px) {
+    .cab {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+    }
+    .cab .lead {
+      margin-top: 18px;
+    }
+    .mapas-pin {
+      min-height: 0;
+      padding: 96px 0;
+    }
+    .pista {
+      width: auto;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding-bottom: 12px;
+      scrollbar-width: none;
+    }
+    .mapa {
+      width: min(320px, 82vw);
+      scroll-snap-align: center;
+    }
+  }
+</style>

@@ -1,0 +1,262 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource/cinzel/600.css";
+@import "@fontsource/cinzel/700.css";
+
+/* Colores de la app (apps/desktop/estilo.py) y del logo (apps/desktop/logo.py). */
+:root {
+  --fondo: #0b0e14;
+  --fondo-2: #10141c;
+  --fondo-3: #161b25;
+  --tarjeta: rgba(255, 255, 255, 0.035);
+  --tarjeta-2: rgba(255, 255, 255, 0.06);
+  --borde: rgba(255, 255, 255, 0.09);
+  --borde-2: rgba(255, 255, 255, 0.16);
+  --texto: #f0f3f7;
+  --secundario: #bac2ce;
+  --apagado: #808a9a;
+  --acento: #5ea4ff;
+  --bien: #38cc80;
+  --atencion: #ffb638;
+  --mal: #ff6060;
+  --granate: #86202f;
+  --granate-2: #6c1a2b;
+  --dorado: #c79d63;
+  --dorado-claro: #e9c992;
+
+  --titulo: "Cinzel", "Times New Roman", serif;
+  --cuerpo: "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --ancho: 1180px;
+  --radio: 18px;
+  --sombra: 0 30px 80px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--borde);
+  color-scheme: dark;
+}
+
+/* Idioma: <T es en> escribe los dos textos y aquí se oculta el que no toca. */
+html[lang="es"] .i-en,
+html[lang="en"] .i-es {
+  display: none !important;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--fondo);
+  -webkit-text-size-adjust: 100%;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--cuerpo);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--dorado);
+  color: #1a1206;
+}
+
+:focus-visible {
+  outline: 2px solid var(--dorado-claro);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.contenedor {
+  width: min(var(--ancho), 100% - 32px);
+  margin-inline: auto;
+}
+
+.seccion {
+  position: relative;
+  padding: clamp(96px, 14vw, 170px) 0;
+}
+
+.antetitulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dorado);
+}
+.antetitulo::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+h2 {
+  font-family: var(--titulo);
+  font-size: clamp(34px, 5.2vw, 62px);
+  letter-spacing: 0.01em;
+  margin-top: 18px;
+}
+
+h3 {
+  font-size: 21px;
+  letter-spacing: -0.01em;
+}
+
+.lead {
+  color: var(--secundario);
+  font-size: clamp(17px, 1.6vw, 20px);
+  max-width: 640px;
+  margin: 22px 0 0;
+  text-wrap: pretty;
+}
+
+.dorado {
+  background: linear-gradient(100deg, var(--dorado-claro), var(--dorado) 45%, #f3dcae 70%, var(--dorado));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: brillo 8s linear infinite;
+}
+
+@keyframes brillo {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Botones */
+.boton {
+  --b-fondo: var(--tarjeta-2);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 26px;
+  border-radius: 999px;
+  border: 1px solid var(--borde-2);
+  background: var(--b-fondo);
+  font-weight: 620;
+  font-size: 16px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background 0.25s,
+    border-color 0.25s,
+    box-shadow 0.25s;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.boton:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.boton svg {
+  width: 20px;
+  height: 20px;
+}
+.boton-principal {
+  border: 0;
+  color: #1c1307;
+  background: linear-gradient(180deg, #f1d6a6, var(--dorado) 60%, #b48548);
+  box-shadow:
+    0 10px 30px -8px rgba(199, 157, 99, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  overflow: hidden;
+}
+.boton-principal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.8s;
+}
+.boton-principal:hover::after {
+  transform: translateX(120%);
+}
+.boton-principal:hover {
+  box-shadow:
+    0 16px 40px -8px rgba(199, 157, 99, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background: var(--tarjeta);
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--secundario);
+  white-space: nowrap;
+}
+
+/* Animaciones de entrada: el JS las quita si el usuario prefiere menos movimiento. */
+.js [data-aparece] {
+  opacity: 0;
+  transform: translateY(36px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-aparece] {
+    opacity: 1;
+    transform: none;
+  }
+  .dorado {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -1,0 +1,17 @@
+---
+/**
+ * Texto en los dos idiomas. Se escriben los dos y el CSS muestra el de <html lang>,
+ * así cambiar de idioma no recarga la página y los buscadores leen los dos.
+ */
+interface Props {
+  es: string;
+  en: string;
+  html?: boolean;
+}
+const { es, en, html = false } = Astro.props;
+---
+{html ? (
+  <><span class="i-es" set:html={es} /><span class="i-en" set:html={en} /></>
+) : (
+  <><span class="i-es">{es}</span><span class="i-en">{en}</span></>
+)}

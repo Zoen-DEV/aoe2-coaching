@@ -1,0 +1,154 @@
+---
+import T from "./T.astro";
+
+const pasos = [
+  {
+    es: ["Instala AoE2C", "Un instalador normal de Windows, sin permisos de administrador. Se actualiza solo con un clic."],
+    en: ["Install AoE2C", "A regular Windows installer, no admin rights needed. It updates itself with one click."],
+    icono: '<path d="M12 3v12m0 0 5-5m-5 5-5-5M4 19h16"/>',
+  },
+  {
+    es: ["Elige tu guía", "Desde el panel instalas guías, mapas y mods, y eliges la apertura que quieres practicar."],
+    en: ["Pick your guide", "From the panel you install guides, maps and mods, and choose the opening you want to practise."],
+    icono: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M13 9h5M13 13h5"/>',
+  },
+  {
+    es: ["Juega un mapa [AoE2C]", "Crea una partida en Arabia, Arena… con el prefijo [AoE2C]. La tarjeta aparece sola."],
+    en: ["Play an [AoE2C] map", "Start a game on Arabia, Arena… with the [AoE2C] prefix. The card shows up by itself."],
+    icono: '<path d="M5 4v16M5 4h11l-2 4 2 4H5"/>',
+  },
+  {
+    es: ["Mejora partida a partida", "Tu historial guarda cada intento: mejor marca, media y en qué paso pierdes tiempo."],
+    en: ["Improve game by game", "Your history keeps every attempt: best time, average and on which step you lose time."],
+    icono: '<path d="M4 19V5M4 19h16"/><path d="m7 15 4-4 3 3 5-6"/>',
+  },
+];
+---
+<section class="seccion pasos" data-pasos>
+  <div class="contenedor">
+    <div class="cab" data-aparece>
+      <span class="antetitulo"><T es="Empezar" en="Getting started" /></span>
+      <h2><T es="De cero a tu primera guía en minutos" en="From zero to your first guide in minutes" /></h2>
+    </div>
+
+    <div class="linea-tiempo">
+      <svg class="trazo" viewBox="0 0 1000 4" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="0" y1="2" x2="1000" y2="2" class="fondo-trazo" />
+        <line x1="0" y1="2" x2="1000" y2="2" class="trazo-activo" data-trazo />
+      </svg>
+      <ol>
+        {pasos.map((p, i) => (
+          <li data-paso>
+            <div class="circulo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" set:html={p.icono} />
+              <span>{i + 1}</span>
+            </div>
+            <h3><T es={p.es[0]} en={p.en[0]} /></h3>
+            <p><T es={p.es[1]} en={p.en[1]} /></p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </div>
+</section>
+
+<style>
+  .pasos {
+    background: linear-gradient(var(--fondo), var(--fondo-2));
+  }
+  .cab {
+    text-align: center;
+  }
+  .linea-tiempo {
+    position: relative;
+    margin-top: 80px;
+  }
+  .trazo {
+    position: absolute;
+    top: 36px;
+    left: 12.5%;
+    width: 75%;
+    height: 4px;
+  }
+  .fondo-trazo {
+    stroke: var(--borde-2);
+    stroke-width: 2;
+    stroke-dasharray: 6 8;
+  }
+  .trazo-activo {
+    stroke: var(--dorado);
+    stroke-width: 3;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+  }
+  ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 28px;
+    text-align: center;
+  }
+  .circulo {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 74px;
+    height: 74px;
+    margin: 0 auto 26px;
+    border-radius: 50%;
+    background: var(--fondo-3);
+    border: 1px solid var(--borde-2);
+    color: var(--dorado-claro);
+    box-shadow: 0 0 0 8px var(--fondo-2);
+    transition:
+      background 0.5s,
+      box-shadow 0.5s,
+      color 0.5s;
+  }
+  li:global(.encendido) .circulo {
+    background: linear-gradient(160deg, var(--granate), var(--granate-2));
+    color: #fff;
+    box-shadow:
+      0 0 0 8px var(--fondo-2),
+      0 0 40px rgba(199, 157, 99, 0.35);
+  }
+  .circulo svg {
+    width: 28px;
+  }
+  .circulo span {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--dorado);
+    color: #1c1307;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  li p {
+    margin: 10px auto 0;
+    max-width: 260px;
+    color: var(--secundario);
+    font-size: 15.5px;
+  }
+  @media (max-width: 860px) {
+    .trazo {
+      display: none;
+    }
+    ol {
+      grid-template-columns: 1fr 1fr;
+      row-gap: 50px;
+    }
+  }
+  @media (max-width: 520px) {
+    ol {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

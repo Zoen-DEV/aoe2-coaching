@@ -1,6 +1,6 @@
 # Plan: compartir AoE2 Coaching (primera versión pública)
 
-- **Estado:** plan acordado el 2026-11-07. Pasos 1 a 7 hechos el 2026-11-07 (monorepo en GitHub; juego, perfil y datos sin rutas fijas; catálogo de contenido: [04-catalogo-contenido.md](04-catalogo-contenido.md); todo AoE2C en inglés; repeticiones en el historial y soporte; empaquetado y publicación automática: ver "Empaquetado" y "Publicación automática" abajo). Los dos procesos de GitHub Actions están probados en una copia limpia en esta PC, pero **todavía no se ejecutaron en GitHub**: la primera vez será al subir estos cambios. Falta poner la invitación del Discord en `apps/desktop/soporte.py` cuando se cree el servidor (paso 9).
+- **Estado:** plan acordado el 2026-11-07. Pasos 1 a 8 hechos el 2026-11-07 (monorepo en GitHub; juego, perfil y datos sin rutas fijas; catálogo de contenido: [04-catalogo-contenido.md](04-catalogo-contenido.md); todo AoE2C en inglés; repeticiones en el historial y soporte; empaquetado y publicación automática: ver "Empaquetado" y "Publicación automática" abajo; página oficial: [05-pagina-oficial.md](05-pagina-oficial.md), falta conectarla a Vercel). Los dos procesos de GitHub Actions están probados en una copia limpia en esta PC, pero **todavía no se ejecutaron en GitHub**: la primera vez será al subir estos cambios. Falta poner la invitación del Discord en `apps/desktop/soporte.py` cuando se cree el servidor (paso 9).
 - **Objetivo:** que cualquier jugador pueda descargar AoE2C desde su página oficial, instalarlo como un programa normal (al estilo de Blitz) y, desde el panel, instalar guías, mapas y mods.
 - **Mod actual:** [02-guia-apertura-castillos.md](02-guia-apertura-castillos.md)
 
@@ -65,7 +65,7 @@ aoe2-coaching/
 5. **Historial y soporte.** Vincular las repeticiones, log de errores, botón "Copiar datos para soporte" y acceso al Discord.
 6. **Empaquetado.** PyInstaller en modo carpeta, instalador de Inno Setup con las casillas de desinstalación, y aviso y actualización desde GitHub Releases.
 7. **Publicación automática.** Los dos procesos de GitHub Actions. Ver "Publicación automática" abajo.
-8. **Página oficial.** Astro en Vercel con el subdominio: qué es, capturas, botón de descarga de la última versión, lista de guías y mapas leída del catálogo, y preguntas frecuentes (aviso de Windows, Xbox).
+8. **Página oficial.** Hecho: [05-pagina-oficial.md](05-pagina-oficial.md). Astro en Vercel con el subdominio: qué es, capturas, botón de descarga de la última versión, lista de guías y mapas leída del catálogo, y preguntas frecuentes (aviso de Windows, Xbox).
 9. **Lanzamiento.** Crear el servidor de Discord, cerrar la licencia, enviar el instalador a Microsoft, publicar `desktop-v1.0.0` y `contenido-…`, y probarlo en una PC limpia.
 
 ## Empaquetado (paso 6)

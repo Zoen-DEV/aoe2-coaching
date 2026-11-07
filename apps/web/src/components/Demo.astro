@@ -1,0 +1,493 @@
+---
+/**
+ * La tarjeta del overlay, rehecha en HTML. La sección queda fija mientras se baja y
+ * la tarjeta avanza por los pasos de verdad de la guía Fast Castle (src/scripts/demo.ts).
+ */
+import T from "./T.astro";
+import { CONDICIONES, type Guia } from "../lib/contenido";
+import { ICONOS } from "../lib/iconos";
+
+interface Props {
+  guia: Guia;
+}
+const { guia } = Astro.props;
+
+const datos = {
+  nombre: guia.nombre,
+  total: guia.pasos.length,
+  pasos: guia.pasos,
+  condiciones: CONDICIONES,
+  iconos: ICONOS,
+};
+
+const puntos = [
+  {
+    es: ["Qué hacer ahora", "El paso actual con su instrucción completa y una barra por cada cosa que falta: casas, molino, aldeanos en bayas…"],
+    en: ["What to do now", "The current step with its full instruction and a bar for everything left: houses, mill, villagers on berries…"],
+  },
+  {
+    es: ["Si vas a tiempo", "Cada paso tiene una hora de referencia. La pastilla se pone verde, ámbar o azul según tu ritmo."],
+    en: ["Whether you are on time", "Every step has a reference time. The pill turns green, amber or blue depending on your pace."],
+  },
+  {
+    es: ["Lo que viene", "Los tres pasos siguientes, para que muevas a los aldeanos antes de que haga falta."],
+    en: ["What comes next", "The next three steps, so you move villagers before you need to."],
+  },
+  {
+    es: ["Sin bloquearte de casas", "Un aviso rojo cuando te quedas sin población. Se acabaron los centros urbanos parados."],
+    en: ["Never housed", "A red warning when you run out of population. No more idle Town Centers."],
+  },
+];
+---
+<section class="demo" id="como-funciona" data-demo>
+  <div class="demo-escena" data-demo-escena>
+    <div class="contenedor demo-rejilla">
+      <div class="demo-texto">
+        <span class="antetitulo"><T es="En plena partida" en="In the middle of the game" /></span>
+        <h2><T es="Un entrenador encima del juego" en="A coach on top of the game" /></h2>
+        <ol class="demo-puntos">
+          {puntos.map((p, i) => (
+            <li data-punto={i} class={i === 0 ? "activo" : ""}>
+              <span class="num">{String(i + 1).padStart(2, "0")}</span>
+              <div>
+                <h3><T es={p.es[0]} en={p.en[0]} /></h3>
+                <p><T es={p.es[1]} en={p.en[1]} /></p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div class="demo-visual">
+        <div class="demo-brillo"></div>
+        <div class="tarjeta" data-tarjeta>
+          <div class="t-cab">
+            <span class="t-nombre">{guia.nombre}</span>
+            <span class="t-reloj" data-t="reloj">0:00</span>
+          </div>
+          <div class="t-fila">
+            <span class="t-paso" data-t="paso"><b>1</b> / {guia.pasos.length}</span>
+            <span class="t-ritmo" data-t="ritmo"></span>
+          </div>
+          <div class="t-barra"><i data-t="general"></i></div>
+
+          <div class="t-hecho" data-t="hecho"></div>
+
+          <div class="t-actual" data-t="actual">
+            <div class="t-actual-cab">
+              <span class="t-icono" data-t="icono"></span>
+              <div>
+                <div class="t-titulo" data-t="titulo"></div>
+                <div class="t-objetivo" data-t="objetivo"></div>
+              </div>
+            </div>
+            <p class="t-texto" data-t="texto"></p>
+            <div class="t-conds" data-t="conds"></div>
+          </div>
+
+          <div class="t-siguientes">
+            <div class="t-sub"><T es="A continuación" en="Up next" /></div>
+            <ul data-t="siguientes"></ul>
+          </div>
+
+          <div class="t-aviso" data-t="aviso">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2 1 21h22L12 2Zm-1 7h2v6h-2V9Zm0 8h2v2h-2v-2Z" /></svg>
+            <span data-t="aviso-texto"></span>
+          </div>
+        </div>
+
+        <div class="flotante f1"><T es="Se oculta si cambias de ventana" en="Hides when you switch windows" /></div>
+        <div class="flotante f2"><T es="Deja pasar los clics al juego" en="Clicks go through to the game" /></div>
+      </div>
+    </div>
+  </div>
+  <script type="application/json" id="datos-demo" set:html={JSON.stringify(datos)} />
+</section>
+
+<style>
+  .demo {
+    position: relative;
+    overflow-x: clip;
+    background:
+      radial-gradient(ellipse 60% 50% at 75% 50%, rgba(94, 164, 255, 0.08), transparent 70%),
+      var(--fondo);
+  }
+  .demo-escena {
+    min-height: 100svh;
+    display: grid;
+    align-items: center;
+    padding: 110px 0 60px;
+  }
+  .demo-rejilla {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(40px, 6vw, 90px);
+    align-items: center;
+  }
+  .demo-puntos {
+    list-style: none;
+    margin: 40px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+  }
+  .demo-puntos li {
+    display: flex;
+    gap: 18px;
+    padding: 16px 18px;
+    border-radius: 16px;
+    border: 1px solid transparent;
+    opacity: 0.38;
+    transition:
+      opacity 0.5s,
+      background 0.5s,
+      border-color 0.5s;
+  }
+  .demo-puntos li.activo {
+    opacity: 1;
+    background: var(--tarjeta);
+    border-color: var(--borde);
+  }
+  .demo-puntos .num {
+    font-family: var(--titulo);
+    font-weight: 700;
+    color: var(--dorado);
+    font-size: 15px;
+    padding-top: 2px;
+  }
+  .demo-puntos h3 {
+    font-size: 18px;
+  }
+  .demo-puntos p {
+    margin: 4px 0 0;
+    color: var(--secundario);
+    font-size: 15.5px;
+    line-height: 1.5;
+  }
+
+  .demo-visual {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+  .demo-brillo {
+    position: absolute;
+    width: 120%;
+    aspect-ratio: 1;
+    background: radial-gradient(circle, rgba(94, 164, 255, 0.16), transparent 60%);
+    filter: blur(10px);
+  }
+
+  /* Tarjeta: mismas medidas y colores que el overlay (apps/desktop/overlay.py). */
+  .tarjeta {
+    position: relative;
+    width: min(380px, 100%);
+    padding: 18px 18px 16px;
+    border-radius: 16px;
+    background: rgba(13, 16, 22, 0.98);
+    box-shadow: var(--sombra);
+    font-size: 13.5px;
+    line-height: 1.45;
+    transform: perspective(1200px) rotateY(-6deg) rotateX(3deg);
+  }
+  .t-cab {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--apagado);
+    text-transform: uppercase;
+  }
+  .t-reloj {
+    font-variant-numeric: tabular-nums;
+    color: var(--texto);
+    letter-spacing: 0.02em;
+    font-size: 13px;
+  }
+  .t-fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+  }
+  .t-paso {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--apagado);
+  }
+  .t-paso :global(b) {
+    color: var(--texto);
+  }
+  .t-ritmo {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 650;
+    border: 1px solid;
+    transition:
+      color 0.3s,
+      background 0.3s;
+  }
+  .t-ritmo:global(.bien) {
+    color: var(--bien);
+    background: rgba(56, 204, 128, 0.12);
+  }
+  .t-ritmo:global(.tarde) {
+    color: var(--atencion);
+    background: rgba(255, 182, 56, 0.12);
+  }
+  .t-ritmo:global(.antes) {
+    color: var(--acento);
+    background: rgba(94, 164, 255, 0.12);
+  }
+  .t-barra {
+    height: 4px;
+    margin-top: 12px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+  .t-barra i,
+  .t-cond-barra i {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: var(--acento);
+  }
+  .t-hecho {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(56, 204, 128, 0.35);
+    background: rgba(56, 204, 128, 0.1);
+    color: var(--bien);
+    font-weight: 600;
+    font-size: 13px;
+    transition:
+      opacity 0.3s,
+      transform 0.3s;
+  }
+  .t-hecho:empty {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  .t-actual {
+    margin-top: 12px;
+    padding: 14px 14px 12px 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid var(--borde);
+    border-left: 3px solid var(--acento);
+  }
+  .t-actual:global(.entra) {
+    animation: entra 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @keyframes entra {
+    from {
+      opacity: 0;
+      transform: translateX(14px);
+    }
+  }
+  .t-actual-cab {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .t-icono {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 10px;
+    background: rgba(94, 164, 255, 0.14);
+    color: #9cc7ff;
+  }
+  .t-icono :global(svg) {
+    width: 22px;
+  }
+  .t-titulo {
+    font-size: 15.5px;
+    font-weight: 650;
+  }
+  .t-objetivo {
+    font-size: 12.5px;
+    color: var(--atencion);
+  }
+  .t-texto {
+    margin: 10px 0 0;
+    color: var(--secundario);
+    min-height: 3em;
+  }
+  .t-conds :global(.t-cond) {
+    margin-top: 9px;
+  }
+  .t-conds :global(.t-cond-fila) {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12.5px;
+    color: var(--secundario);
+  }
+  .t-conds :global(.t-cond-fila b) {
+    color: var(--texto);
+    font-variant-numeric: tabular-nums;
+  }
+  .t-conds :global(.t-cond-barra) {
+    height: 3px;
+    margin-top: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .t-conds :global(.ok .t-cond-barra i) {
+    background: var(--bien);
+  }
+  .t-sub {
+    margin: 16px 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--apagado);
+  }
+  .t-siguientes ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 7px;
+  }
+  .t-siguientes :global(li) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--secundario);
+  }
+  .t-siguientes :global(li .n) {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    flex: none;
+    border-radius: 50%;
+    border: 1px solid var(--borde-2);
+    font-size: 11px;
+    font-weight: 650;
+  }
+  .t-siguientes :global(li .h) {
+    margin-left: auto;
+    color: var(--apagado);
+    font-variant-numeric: tabular-nums;
+    font-size: 12.5px;
+  }
+  .t-aviso {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 96, 96, 0.4);
+    background: rgba(255, 96, 96, 0.12);
+    color: #ffb0b0;
+    font-weight: 600;
+    font-size: 13px;
+    transition:
+      opacity 0.3s,
+      max-height 0.3s,
+      margin 0.3s,
+      padding 0.3s;
+    max-height: 60px;
+    overflow: hidden;
+  }
+  .t-aviso:not(:global(.visible)) {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+    padding-block: 0;
+  }
+  .t-aviso svg {
+    width: 16px;
+    flex: none;
+    color: var(--atencion);
+  }
+  .flotante {
+    position: absolute;
+    padding: 9px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--borde-2);
+    background: rgba(22, 27, 37, 0.85);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    font-size: 13px;
+    font-weight: 560;
+    color: var(--secundario);
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+    animation: flotar 6s ease-in-out infinite;
+  }
+  .f1 {
+    top: -34px;
+    left: 50%;
+    translate: -78% -100%;
+  }
+  .f2 {
+    bottom: -34px;
+    left: 50%;
+    translate: -22% 100%;
+    animation-delay: -3s;
+  }
+  .demo-texto h2 {
+    font-size: clamp(34px, 4.2vw, 52px);
+  }
+  @keyframes flotar {
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @media (max-width: 900px) {
+    .demo-escena {
+      padding: 90px 0 30px;
+    }
+    .demo-rejilla {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    .demo-texto h2 {
+      font-size: 30px;
+    }
+    .demo-texto .antetitulo {
+      display: none;
+    }
+    .demo-visual {
+      order: -1;
+    }
+    .demo-puntos {
+      margin-top: 14px;
+    }
+    .demo-puntos li {
+      display: none;
+      padding: 12px 14px;
+    }
+    .demo-puntos li.activo {
+      display: flex;
+    }
+    .tarjeta {
+      transform: none;
+      font-size: 12.5px;
+      padding: 14px;
+    }
+    .t-texto {
+      display: none;
+    }
+    .flotante {
+      display: none;
+    }
+  }
+  @media (max-width: 900px) and (max-height: 760px) {
+    .t-siguientes {
+      display: none;
+    }
+  }
+</style>

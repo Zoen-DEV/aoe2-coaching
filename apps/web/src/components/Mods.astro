@@ -1,0 +1,146 @@
+---
+/** MODs de AoE2 Coaching. La escena (ovejas con su marcador) es SVG hecho para la web. */
+import T from "./T.astro";
+import type { Mod } from "../lib/contenido";
+
+interface Props {
+  mods: Mod[];
+}
+const { mods } = Astro.props;
+
+const ovejas = [
+  { x: 14, y: 58, c: "#3d7bff", s: 1.0, d: 0 },
+  { x: 38, y: 72, c: "#3d7bff", s: 1.15, d: 0.6 },
+  { x: 62, y: 54, c: "#ff4d4d", s: 0.9, d: 1.2 },
+  { x: 82, y: 70, c: "#ffd23f", s: 1.05, d: 0.3 },
+  { x: 50, y: 34, c: "#e8e8e8", s: 0.8, d: 0.9 },
+];
+---
+<section class="seccion mods" id="mods">
+  <div class="contenedor rejilla">
+    <div class="escena" data-aparece data-escena>
+      <div class="cesped"></div>
+      {ovejas.map((o) => (
+        <div class="oveja" style={`left:${o.x}%;top:${o.y}%;--s:${o.s};--d:${o.d}s;--c:${o.c}`}>
+          <svg class="marcador" viewBox="0 0 24 28" aria-hidden="true">
+            <path d="M12 1 22 4v9c0 7-5 11.5-10 14C7 24.5 2 20 2 13V4Z" fill="var(--c)" stroke="#1a1206" stroke-width="1.6" />
+            <path d="M6 6.5 12 5v6H6z" fill="#fff" opacity=".45" />
+          </svg>
+          <svg class="cuerpo" viewBox="0 0 60 40" aria-hidden="true">
+            <ellipse cx="30" cy="34" rx="20" ry="4" fill="#000" opacity=".25" />
+            <path d="M18 26v8M24 27v8M36 27v8M42 26v8" stroke="#3b3530" stroke-width="3" stroke-linecap="round" />
+            <path d="M12 20c-2-6 4-11 9-9 2-4 9-5 12-1 4-3 11-1 11 5 5 1 6 8 1 10-1 4-7 5-10 3-3 3-10 3-13 0-5 2-11-1-10-8Z" fill="#f2efe8" />
+            <path d="M44 14c3-2 9-1 10 3 1 3-1 7-5 7-3 0-6-3-5-10Z" fill="#3b3530" />
+            <circle cx="50" cy="17" r="1.2" fill="#fff" />
+          </svg>
+        </div>
+      ))}
+    </div>
+
+    <div class="texto">
+      <span class="antetitulo" data-aparece><T es="MODs" en="MODs" /></span>
+      {mods.map((m) => (
+        <div data-aparece>
+          <h2><T es={m.nombre.es} en={m.nombre.en} /></h2>
+          <p class="lead"><T es={m.descripcion.es} en={m.descripcion.en} /></p>
+          <ul class="ventajas">
+            <li><T es="Se instala y se activa desde el panel, con el juego cerrado." en="Installed and enabled from the panel, with the game closed." /></li>
+            <li><T es="Respeta tus otros mods y su orden." en="Keeps your other mods and their order." /></li>
+            <li><T es="Funciona en cualquier mapa, no solo en los [AoE2C]." en="Works on any map, not only [AoE2C] ones." /></li>
+          </ul>
+          <span class="chip">v{m.version}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .mods {
+    background: linear-gradient(var(--fondo), var(--fondo-2));
+  }
+  .rejilla {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: clamp(40px, 6vw, 90px);
+    align-items: center;
+  }
+  .escena {
+    position: relative;
+    aspect-ratio: 5 / 4;
+    border-radius: 26px;
+    overflow: hidden;
+    box-shadow: var(--sombra);
+  }
+  .cesped {
+    position: absolute;
+    inset: -10%;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.06) 0 2px, transparent 3px) 0 0 / 34px 34px,
+      radial-gradient(circle at 70% 60%, rgba(0, 0, 0, 0.12) 0 2px, transparent 3px) 0 0 / 46px 46px,
+      radial-gradient(ellipse at 30% 20%, #8fa347, transparent 60%),
+      radial-gradient(ellipse at 80% 90%, #5f7a2f, transparent 60%),
+      #758f3a;
+  }
+  .oveja {
+    position: absolute;
+    width: calc(96px * var(--s));
+    translate: -50% -50%;
+    animation: pastar 7s ease-in-out var(--d) infinite;
+  }
+  .cuerpo {
+    width: 100%;
+  }
+  .marcador {
+    width: 30%;
+    margin: 0 auto 4px;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+    animation: flotar-marcador 1.8s ease-in-out var(--d) infinite;
+  }
+  @keyframes flotar-marcador {
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+  @keyframes pastar {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(14px);
+    }
+  }
+  .texto h2 {
+    margin-top: 18px;
+  }
+  .ventajas {
+    list-style: none;
+    margin: 26px 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+  }
+  .ventajas li {
+    position: relative;
+    padding-left: 30px;
+    color: var(--secundario);
+  }
+  .ventajas li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(56, 204, 128, 0.15)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338cc80' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12 4 4 8-8'/%3E%3C/svg%3E")
+      center / 12px no-repeat;
+  }
+  @media (max-width: 860px) {
+    .rejilla {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

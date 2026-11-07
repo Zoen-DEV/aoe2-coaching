@@ -1,0 +1,32 @@
+# Página oficial: comprueba que se arma en cada cambio de la web o del contenido.
+# Vercel la publica por su cuenta desde main (ver docs/05-pagina-oficial.md).
+
+name: web
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/web/**", "content/**", "apps/desktop/version.py", ".github/workflows/web.yml"]
+  pull_request:
+    paths: ["apps/web/**", "content/**", "apps/desktop/version.py", ".github/workflows/web.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  armar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
