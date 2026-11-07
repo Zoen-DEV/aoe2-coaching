@@ -1,0 +1,90 @@
+# Contenido: con la etiqueta contenido-* (por ejemplo contenido-2026-11-07) arma las
+# guías y el catálogo y los publica en GitHub Releases. El panel de AoE2C lee el
+# catalogo.json de la publicación contenido-* más reciente.
+#
+# - Guías: se arman aquí (el .xs y el manifiesto no dependen del juego; los mapas se
+#   arman con un juego falso solo para que build.py termine, y no se publican).
+# - Mapas: van como receta (content/mapas/mapas.json); la app los arma en cada PC.
+# - Mods: se arman con los sprites del juego, que aquí no está. Se reutiliza el .zip de
+#   la última publicación contenido-* o el subido a mano a la publicación mods-fuente.
+#
+# Ver docs/03-plan-compartir-aoe2c.md (decisión 12 y "Publicación automática").
+
+name: contenido
+
+on:
+  push:
+    tags: ["contenido-*"]
+  workflow_dispatch:  # prueba: arma el catálogo y lo deja como artefacto, sin publicar
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contenido
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  catalogo:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Dependencias
+        run: python -m pip install -r requirements.txt
+
+      - name: Juego falso (en GitHub no está AoE2 DE)
+        shell: bash
+        run: |
+          juego=$(python .github/scripts/juego_falso.py "$RUNNER_TEMP")
+          echo "AOE2C_JUEGO=$juego" >> "$GITHUB_ENV"
+          echo "juego falso: $juego"
+
+      - name: Guías
+        run: python content/guias/build.py
+
+      - name: Pruebas de las guías y del catálogo
+        shell: bash
+        run: |
+          python apps/desktop/pruebas/test_panel.py
+          python apps/desktop/pruebas/test_catalogo.py
+
+      - name: Mods ya publicados
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python .github/scripts/mods_publicados.py build/mods-publicados
+
+      - name: Catálogo
+        run: python content/catalogo.py --mods-previos build/mods-publicados
+
+      - name: Guardar el catálogo como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalogo
+          path: build/catalogo/
+
+      - name: Publicar en GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/contenido-')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notas="Guías, mapas y mods de AoE2 Coaching. El panel de la app los instala solo: no hace falta descargar nada de aquí.
+
+          AoE2 Coaching guides, maps and mods. The app's panel installs them: there's no need to download anything here."
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" build/catalogo/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" build/catalogo/* --title "Contenido $GITHUB_REF_NAME" --notes "$notas" --verify-tag --latest=false
+          fi

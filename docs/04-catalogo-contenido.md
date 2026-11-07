@@ -63,7 +63,7 @@ Una lista publicada en GitHub Releases (`catalogo.json`) con todo lo que el pane
 
 Los `.zip` tienen fechas y orden fijos: si no cambia el contenido, el hash no cambia. **Al cambiar una guía, un mapa o un mod hay que subir su versión**; si no, el panel no ofrece actualizarlo.
 
-Publicarlo (subir los `.zip` y `catalogo.json` a una publicación con etiqueta `contenido-*`) es el paso 7 del plan. La app busca la publicación `contenido-*` más reciente con la API de GitHub.
+Publicarlo (subir los `.zip` y `catalogo.json` a una publicación con etiqueta `contenido-*`) lo hace GitHub Actions: ver "Publicación automática" en [03-plan-compartir-aoe2c.md](03-plan-compartir-aoe2c.md). La app busca la publicación `contenido-*` más reciente con la API de GitHub.
 
 ### Desde el código
 

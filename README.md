@@ -23,6 +23,9 @@ content/
   mods/
     icono-ovejas/ build.py + info.json -> sprites .sld con el icono; catalogo.json: su ficha
 tools/            herramientas de sprites (.sld) y de repeticiones (.aoe2record)
+.github/
+  workflows/      desktop.yml (pruebas y publicación de la app) y contenido.yml (catálogo)
+  scripts/        juego falso y descarga de mods publicados, para GitHub Actions
 docs/
 build/            todo lo generado (no se sube a git)
 ```
@@ -107,6 +110,10 @@ Armar el mod de las ovejas:
 ```bash
 py content/mods/icono-ovejas/build.py
 ```
+
+## Publicar
+
+Con etiquetas de git: `desktop-v<versión>` publica el instalador y `contenido-<fecha>` publica el catálogo. GitHub Actions corre las pruebas antes y no publica nada si alguna falla. Los pasos, y cómo publicar un mod nuevo, en el plan: [Publicación automática](docs/03-plan-compartir-aoe2c.md#publicación-automática-paso-7).
 
 ## Herramientas
 

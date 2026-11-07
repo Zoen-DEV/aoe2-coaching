@@ -1,6 +1,6 @@
 # Plan: compartir AoE2 Coaching (primera versión pública)
 
-- **Estado:** plan acordado el 2026-11-07. Pasos 1 a 6 hechos el 2026-11-07 (monorepo en GitHub; juego, perfil y datos sin rutas fijas; catálogo de contenido: [04-catalogo-contenido.md](04-catalogo-contenido.md); todo AoE2C en inglés; repeticiones en el historial y soporte; empaquetado: ver "Empaquetado" abajo). Falta poner la invitación del Discord en `apps/desktop/soporte.py` cuando se cree el servidor (paso 9).
+- **Estado:** plan acordado el 2026-11-07. Pasos 1 a 7 hechos el 2026-11-07 (monorepo en GitHub; juego, perfil y datos sin rutas fijas; catálogo de contenido: [04-catalogo-contenido.md](04-catalogo-contenido.md); todo AoE2C en inglés; repeticiones en el historial y soporte; empaquetado y publicación automática: ver "Empaquetado" y "Publicación automática" abajo). Los dos procesos de GitHub Actions están probados en una copia limpia en esta PC, pero **todavía no se ejecutaron en GitHub**: la primera vez será al subir estos cambios. Falta poner la invitación del Discord en `apps/desktop/soporte.py` cuando se cree el servidor (paso 9).
 - **Objetivo:** que cualquier jugador pueda descargar AoE2C desde su página oficial, instalarlo como un programa normal (al estilo de Blitz) y, desde el panel, instalar guías, mapas y mods.
 - **Mod actual:** [02-guia-apertura-castillos.md](02-guia-apertura-castillos.md)
 
@@ -64,7 +64,7 @@ aoe2-coaching/
 4. **Inglés completo.** Pasos e instrucciones de las guías, tarjeta del overlay e idioma inicial según Windows.
 5. **Historial y soporte.** Vincular las repeticiones, log de errores, botón "Copiar datos para soporte" y acceso al Discord.
 6. **Empaquetado.** PyInstaller en modo carpeta, instalador de Inno Setup con las casillas de desinstalación, y aviso y actualización desde GitHub Releases.
-7. **Publicación automática.** Los dos procesos de GitHub Actions.
+7. **Publicación automática.** Los dos procesos de GitHub Actions. Ver "Publicación automática" abajo.
 8. **Página oficial.** Astro en Vercel con el subdominio: qué es, capturas, botón de descarga de la última versión, lista de guías y mapas leída del catálogo, y preguntas frecuentes (aviso de Windows, Xbox).
 9. **Lanzamiento.** Crear el servidor de Discord, cerrar la licencia, enviar el instalador a Microsoft, publicar `desktop-v1.0.0` y `contenido-…`, y probarlo en una PC limpia.
 
@@ -75,6 +75,32 @@ aoe2-coaching/
 - **Desinstalar:** una ventana con las dos casillas de la decisión 13. Lo hace la propia app (`AoE2Coaching.exe --desinstalar [--juego] [--datos]`, en [desinstalar.py](../apps/desktop/desinstalar.py)): en todos los perfiles quita `aoe2c_guia.xs` y los `guia_*.xs`, el mod de los mapas, los mods instalados desde el panel y sus líneas de `mod-status.json`; siempre quita el inicio con Windows. Con el juego abierto devuelve 2 y el desinstalador pide cerrarlo (Reintentar) o sigue sin tocar el juego (Cancelar).
 - **Actualizar:** [actualizacion.py](../apps/desktop/actualizacion.py). Al abrir el panel por primera vez, la app instalada busca en GitHub Releases la publicación `desktop-v<versión>` más nueva con su `AoE2Coaching-Setup-<versión>.exe`. Si hay una, el panel muestra "Actualizar a vX" en la barra lateral (y en Ajustes, "Versión de AoE2C"). Al pulsarlo, descarga el instalador, comprueba su tamaño y el SHA-256 que da GitHub, lo abre con `/SILENT` y se cierra; el instalador pone la versión nueva y vuelve a abrir AoE2C. En plena partida no actualiza. Desde el código no busca (`AOE2C_ACTUALIZAR=1` lo fuerza).
 - **Pruebas:** [test_empaquetado.py](../apps/desktop/pruebas/test_empaquetado.py) (elegir y descargar la versión, el panel, la desinstalación con un perfil inventado y `--salir`).
+
+## Publicación automática (paso 7)
+
+Dos procesos de GitHub Actions en `windows-latest`, con Python 3.14. En GitHub no está el juego: [juego_falso.py](../.github/scripts/juego_falso.py) crea uno con los `.rms` inventados de las pruebas y `AOE2C_JUEGO` le dice a `build.py` que lo use. Los mapas armados así no se publican (el catálogo solo lleva las guías y las recetas de los mapas), y los paquetes de las guías salen idénticos a los armados con el juego de verdad.
+
+- **[desktop.yml](../.github/workflows/desktop.yml).** En cada push a `main` y en cada pull request: arma las guías y el catálogo (sin mods) y corre todas las pruebas de `apps/desktop/pruebas`. Con la etiqueta `desktop-v<versión>`, si las pruebas pasan: comprueba que la etiqueta coincide con `apps/desktop/version.py`, instala la última versión de Inno Setup, corre `empaquetar.py` y publica `AoE2Coaching-Setup-<versión>.exe` en la publicación de esa etiqueta.
+- **[contenido.yml](../.github/workflows/contenido.yml).** Con la etiqueta `contenido-*` (por ejemplo `contenido-2026-11-07`): arma las guías, corre `test_panel.py` y `test_catalogo.py`, arma el catálogo y publica `catalogo.json` con los `.zip`. La publicación no queda como "Latest" en GitHub, para que esa marca siga en la última versión de la app. A mano (`workflow_dispatch`) arma el catálogo y lo deja como artefacto, sin publicar.
+- **Mods.** Se arman con los sprites del juego, así que no se pueden armar en GitHub. [mods_publicados.py](../.github/scripts/mods_publicados.py) baja los `mod-*.zip` de la última publicación `contenido-*` y de la publicación **`mods-fuente`**, y `content/catalogo.py --mods-previos` los reutiliza sin cambiar sus bytes (su hash no cambia y el panel no ofrece una actualización falsa). Si falta el `.zip` de una versión, el proceso falla y explica qué hacer.
+
+### Publicar
+
+1. **App:** subir `VERSION` en `apps/desktop/version.py`, hacer commit y subir la etiqueta:
+
+   ```bash
+   git tag desktop-v1.0.0
+   git push origin main desktop-v1.0.0
+   ```
+
+2. **Contenido:** subir la `version` de lo que cambió (build order, `mapas.json` o la ficha del mod) y subir una etiqueta `contenido-<fecha>`. Si la misma fecha ya existe, añadir `-2`.
+
+   ```bash
+   git tag contenido-2026-11-07
+   git push origin main contenido-2026-11-07
+   ```
+
+3. **Mod nuevo o versión nueva de un mod** (antes del paso 2): `py content/mods/<id>/build.py`, después `py content/catalogo.py`, y subir `build/catalogo/mod-<id>-<versión>.zip` a la publicación `mods-fuente` en GitHub (Releases → `mods-fuente` → Edit → adjuntar). La publicación `mods-fuente` se crea una vez, marcada como pre-release; la app la ignora. **Para la primera publicación de contenido hace falta subir así `mod-icono-ovejas-1.0.0.zip`.**
 
 ## Para versiones siguientes
 

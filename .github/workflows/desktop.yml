@@ -1,0 +1,124 @@
+# App de escritorio: pruebas en cada cambio y publicación con la etiqueta desktop-v*.
+#
+# - push a main y pull requests: arma las guías (con un juego falso) y corre las pruebas.
+# - etiqueta desktop-v<versión> (por ejemplo desktop-v1.0.0): además arma la app con
+#   PyInstaller y el instalador con Inno Setup, y los publica en GitHub Releases. La
+#   versión de la etiqueta tiene que ser la de apps/desktop/version.py.
+#
+# Ver docs/03-plan-compartir-aoe2c.md (decisión 12 y "Publicación automática").
+
+name: desktop
+
+on:
+  push:
+    branches: [main]
+    tags: ["desktop-v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  PYTHONUTF8: "1"
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  pruebas:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Dependencias
+        run: python -m pip install -r requirements.txt
+
+      - name: Juego falso (en GitHub no está AoE2 DE)
+        shell: bash
+        run: |
+          juego=$(python .github/scripts/juego_falso.py "$RUNNER_TEMP")
+          echo "AOE2C_JUEGO=$juego" >> "$GITHUB_ENV"
+          echo "juego falso: $juego"
+
+      - name: Guías
+        run: python content/guias/build.py
+
+      - name: Catálogo (sin mods, que necesitan el juego)
+        run: python content/catalogo.py --sin-mods
+
+      - name: Pruebas
+        shell: bash
+        run: |
+          fallos=0
+          for prueba in apps/desktop/pruebas/test_*.py; do
+            echo "::group::$prueba"
+            python "$prueba" || { echo "::error::falló $prueba"; fallos=1; }
+            echo "::endgroup::"
+          done
+          exit $fallos
+
+  publicar:
+    needs: pruebas
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Dependencias
+        run: python -m pip install -r requirements.txt
+
+      - name: La etiqueta coincide con version.py
+        id: version
+        shell: bash
+        run: |
+          version=$(cd apps/desktop && python -c "from version import VERSION; print(VERSION)")
+          if [ "$GITHUB_REF_NAME" != "desktop-v$version" ]; then
+            echo "::error::la etiqueta es $GITHUB_REF_NAME pero apps/desktop/version.py dice $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Instalar Inno Setup
+        shell: pwsh
+        run: |
+          $instalador = Join-Path $env:RUNNER_TEMP "innosetup.exe"
+          Invoke-WebRequest "https://jrsoftware.org/download.php/is.exe" -OutFile $instalador
+          $destino = Join-Path $env:RUNNER_TEMP "InnoSetup"
+          Start-Process $instalador -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/DIR=$destino" -Wait
+          $iscc = Join-Path $destino "ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "no se instaló Inno Setup" }
+          "ISCC=$iscc" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Armar la app y el instalador
+        run: python apps/desktop/empaquetado/empaquetar.py
+
+      - name: Publicar en GitHub Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          instalador="build/instalador/AoE2Coaching-Setup-$VERSION.exe"
+          notas="AoE2 Coaching $VERSION para Windows. Descarga AoE2Coaching-Setup-$VERSION.exe y ábrelo para instalar o actualizar.
+
+          AoE2 Coaching $VERSION for Windows. Download AoE2Coaching-Setup-$VERSION.exe and open it to install or update."
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$instalador" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$instalador" --title "AoE2 Coaching $VERSION" --notes "$notas" --verify-tag
+          fi

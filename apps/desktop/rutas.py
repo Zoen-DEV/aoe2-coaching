@@ -303,13 +303,19 @@ def resolver(config: dict) -> Entorno:
 def para_scripts() -> tuple[Path, Path]:
     """(juego, perfil) para los scripts de desarrollo (build.py, tools/), con las mismas
     reglas que la app y el perfil elegido en el panel. Si algo falta, devuelve una ruta
-    que no existe, con un nombre que lo explica, para que el error lo diga."""
+    que no existe, con un nombre que lo explica, para que el error lo diga.
+
+    La variable AOE2C_JUEGO elige la carpeta del juego: GitHub Actions la usa con un
+    juego falso (.github/scripts/juego_falso.py), porque allí no está el juego."""
     import json
     try:
         config = json.loads(CONFIG.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         config = {}
-    e = resolver(config if isinstance(config, dict) else {})
+    config = config if isinstance(config, dict) else {}
+    if os.environ.get("AOE2C_JUEGO"):
+        config["juego"] = os.environ["AOE2C_JUEGO"]
+    e = resolver(config)
     juego = e.juego or Path("<no se encontró AoE2 DE en las bibliotecas de Steam>")
     perfil = e.perfil.carpeta if e.perfil else carpeta_perfiles() / "<no se encontró la carpeta del perfil>"
     return juego, perfil

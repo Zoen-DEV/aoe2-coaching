@@ -14,7 +14,11 @@ Los .zip salen siempre iguales si no cambia su contenido (fechas fijas), así qu
 solo cambia cuando cambia la guía o el mod. Esto es lo que publica el proceso
 "contenido-*" de GitHub Actions (plan 7).
 
-Uso: py content/catalogo.py [--salida CARPETA] [--sin-mods]
+Uso: py content/catalogo.py [--salida CARPETA] [--sin-mods] [--mods-previos CARPETA]
+
+--mods-previos  para cada mod sin armar en build/mods, usa CARPETA/mod-<id>-<versión>.zip
+                (ya publicado). Lo usa GitHub Actions, donde no está el juego para armarlo
+                (.github/scripts/mods_publicados.py baja esos .zip).
 
 Al ejecutar la app desde el código, el panel usa build/catalogo/catalogo.json si existe.
 """
@@ -91,7 +95,21 @@ def mapas() -> list[K.Elemento]:
     return out
 
 
-def mods(salida: Path) -> list[K.Elemento]:
+def zip_previo(zip_: Path, destino: Path) -> K.Paquete:
+    """Copia un paquete de mod ya publicado, sin cambiar sus bytes (ni su hash)."""
+    try:
+        with zipfile.ZipFile(zip_) as z:
+            nombres = z.namelist()
+            roto = z.testzip()
+    except (OSError, zipfile.BadZipFile) as e:
+        raise SystemExit(f"{zip_.name} no es un .zip válido: {e}")
+    if roto or "info.json" not in nombres:
+        raise SystemExit(f"{zip_.name}: {'archivo dañado: ' + roto if roto else 'le falta info.json en la raíz'}")
+    shutil.copyfile(zip_, destino)
+    return K.Paquete(destino.name, K.sha256_de(destino), destino.stat().st_size)
+
+
+def mods(salida: Path, previos: Path | None = None) -> list[K.Elemento]:
     out = []
     for ficha in sorted(MODS.glob("*/catalogo.json")):
         f = json.loads(ficha.read_text(encoding="utf-8"))
@@ -99,10 +117,18 @@ def mods(salida: Path) -> list[K.Elemento]:
         armado = MODS_ARMADOS / carpeta
         if f.get("id") != carpeta:
             raise SystemExit(f"{ficha}: 'id' debe ser el nombre de la carpeta ({carpeta})")
-        if not (armado / "info.json").is_file():
+        nombre = f"mod-{carpeta}-{f['version']}.zip"
+        if (armado / "info.json").is_file():
+            archivos = [(p.relative_to(armado).as_posix(), p) for p in armado.rglob("*") if p.is_file()]
+            paquete = zip_fijo(salida / nombre, archivos)
+        elif previos and (previos / nombre).is_file():
+            paquete = zip_previo(previos / nombre, salida / nombre)
+        elif previos:
+            raise SystemExit(f"falta {nombre}: es una versión nueva del mod y no se puede armar sin el juego. "
+                             f"Ármalo con py content/mods/{carpeta}/build.py, después py content/catalogo.py, "
+                             f"y sube build/catalogo/{nombre} a la publicación mods-fuente")
+        else:
             raise SystemExit(f"falta {armado}: ejecuta antes py content/mods/{carpeta}/build.py")
-        archivos = [(p.relative_to(armado).as_posix(), p) for p in armado.rglob("*") if p.is_file()]
-        paquete = zip_fijo(salida / f"mod-{carpeta}-{f['version']}.zip", archivos)
         out.append(K.Elemento("mod", carpeta, f["version"], f.get("app_minima", APP_MINIMA), f["nombre"],
                               f["descripcion"], {"carpeta": carpeta, "titulo": f["titulo"]}, paquete))
     return out
@@ -112,10 +138,11 @@ def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     args = sys.argv[1:]
     salida = Path(args[args.index("--salida") + 1]).resolve() if "--salida" in args else SALIDA
+    previos = Path(args[args.index("--mods-previos") + 1]).resolve() if "--mods-previos" in args else None
     if salida.exists():
         shutil.rmtree(salida)
     salida.mkdir(parents=True)
-    elementos = guias(salida) + mapas() + ([] if "--sin-mods" in args else mods(salida))
+    elementos = guias(salida) + mapas() + ([] if "--sin-mods" in args else mods(salida, previos))
     generado = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     texto = K.a_json(K.Catalogo(elementos), generado)
     try:
