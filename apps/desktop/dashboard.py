@@ -24,7 +24,8 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
-from PySide6.QtGui import QColor, QFont, QFontMetricsF, QGuiApplication, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtGui import (QBrush, QColor, QFont, QFontMetricsF, QGuiApplication, QIcon, QLinearGradient, QPainter,
+                           QPainterPath, QPen, QPixmap)
 from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
                                QHBoxLayout, QLabel, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider,
                                QStackedWidget, QVBoxLayout, QWidget)
@@ -37,53 +38,75 @@ import repeticiones
 import rutas
 import soporte
 import textos
-from estilo import (ACENTO, APAGADO, ATENCION, BIEN, BORDE, EMOJI, MAL, SECUNDARIO, TARJETA, TEXTO, color,
-                    fuente)
+from estilo import ATENCION, BIEN, GRANATE, GRANATE_CLARO, MAL, ORO_CLARO, P_BORDE_FUERTE, P_ELEVADA
+from estilo import ORO as ACENTO
+from estilo import P_APAGADO as APAGADO
+from estilo import P_BORDE as BORDE
+from estilo import P_SECUNDARIO as SECUNDARIO
+from estilo import P_TARJETA as TARJETA
+from estilo import P_TEXTO as TEXTO
+from estilo import cargar_fuentes, color, fuente, titulo
 from historial import (Historial, nombre_hito, pasos_hechos, principal, reloj, resumen_hito, valor_principal,
                        vista_de_guia)
 from historial_ui import ContenidoHistorial, desfase, fecha_corta, mapa_corto
 from textos import de, t
 from version import VERSION
 
-FONDO_PANEL = "#0d1016"
-FONDO_LATERAL = "#090b10"
-ICONO_GUIA = {"fast_castle": "🏰", "scouts": "🐎"}
-ICONO_MOD = {"icono-ovejas": "🐑"}
-PROXIMAS = [("arqueros", "🏹"), ("drush_fc", "⚔️"), ("hombres_armas", "🛡️"), ("aguilas", "🦅")]
+FONDO_PANEL = "#13110e"
+FONDO_LATERAL = "#0d0b09"
+# Monograma de cada guía y mod dentro de un escudo (en vez de emojis).
+ICONO_GUIA = {"fast_castle": "FC", "scouts": "SC"}
+ICONO_MOD = {"icono-ovejas": "OV"}
+PROXIMAS = [("arqueros", "AR"), ("drush_fc", "DF"), ("hombres_armas", "HA"), ("aguilas", "AG")]
 PAGINAS = ["inicio", "estadisticas", "guias", "mapas", "mods", "ajustes"]
+ROMANOS = ["I", "II", "III", "IV", "V"]
+
+
+def rgba(c: QColor, alpha: int) -> str:
+    return f"rgba({c.red()},{c.green()},{c.blue()},{alpha})"
+
 
 ESTILO = f"""
 #raiz {{ background: {FONDO_PANEL}; }}
-#lateral {{ background: {FONDO_LATERAL}; border-right: 1px solid rgba(255,255,255,16); }}
-QLabel {{ color: #f0f3f7; background: transparent; }}
+#lateral {{ background: {FONDO_LATERAL}; border-right: 1px solid {rgba(BORDE, 26)}; }}
+QLabel {{ color: {TEXTO.name()}; background: transparent; }}
+QToolTip {{ color: {TEXTO.name()}; background: {P_ELEVADA.name()}; border: 1px solid {rgba(P_BORDE_FUERTE, 90)};
+           padding: 5px 8px; font-family: 'Segoe UI'; font-size: 9pt; }}
 QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
-QScrollBar::handle:vertical {{ background: rgba(255,255,255,40); border-radius: 4px; min-height: 30px; }}
-QScrollBar::handle:vertical:hover {{ background: rgba(255,255,255,70); }}
+QScrollBar::handle:vertical {{ background: {rgba(TEXTO, 36)}; border-radius: 3px; min-height: 30px; }}
+QScrollBar::handle:vertical:hover {{ background: {rgba(TEXTO, 70)}; }}
 QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ height: 0; background: none; }}
-QPushButton {{ color: #dfe5ee; background: rgba(255,255,255,16); border: 1px solid rgba(255,255,255,36);
-              border-radius: 9px; padding: 7px 16px; font-family: 'Segoe UI'; font-size: 9.5pt; font-weight: 600; }}
-QPushButton:hover {{ color: #ffffff; background: rgba(255,255,255,30); border-color: rgba(255,255,255,70); }}
-QPushButton:disabled {{ color: #6f7888; background: rgba(255,255,255,8); border-color: rgba(255,255,255,18); }}
-QPushButton#primario {{ color: #08111f; background: #5ea4ff; border: 1px solid #5ea4ff; }}
-QPushButton#primario:hover {{ background: #80b8ff; border-color: #80b8ff; }}
-QPushButton#primario:disabled {{ color: #6f7888; background: rgba(94,164,255,40); border-color: transparent; }}
-QPushButton#salir {{ color: #ffb4b4; background: rgba(255,96,96,22); border: 1px solid rgba(255,96,96,70);
+QPushButton {{ color: {TEXTO.name()}; background: transparent; border: 1px solid {rgba(P_BORDE_FUERTE, 70)};
+              border-radius: 4px; padding: 7px 16px; font-family: 'Segoe UI'; font-size: 9.5pt; font-weight: 600; }}
+QPushButton:hover {{ background: {rgba(ACENTO, 22)}; border-color: {rgba(ACENTO, 140)}; color: {ORO_CLARO.name()}; }}
+QPushButton:pressed {{ background: {rgba(ACENTO, 40)}; }}
+QPushButton:focus {{ border-color: {ACENTO.name()}; }}
+QPushButton:disabled {{ color: {APAGADO.name()}; background: transparent; border-color: {rgba(BORDE, 30)}; }}
+QPushButton#primario {{ color: #1c140a; background: {ACENTO.name()}; border: 1px solid {ACENTO.name()}; }}
+QPushButton#primario:hover {{ background: {ORO_CLARO.name()}; border-color: {ORO_CLARO.name()}; }}
+QPushButton#primario:pressed {{ background: #b88f52; border-color: #b88f52; }}
+QPushButton#primario:focus {{ border-color: {ORO_CLARO.name()}; }}
+QPushButton#primario:disabled {{ color: {APAGADO.name()}; background: {rgba(ACENTO, 30)}; border-color: transparent; }}
+QPushButton#salir {{ color: {GRANATE_CLARO.name()}; background: transparent; border: 1px solid {rgba(GRANATE, 120)};
                     text-align: left; padding: 9px 14px; }}
-QPushButton#salir:hover {{ color: #ffffff; background: rgba(255,96,96,70); border-color: rgba(255,96,96,140); }}
-QPushButton#chip {{ border-radius: 14px; padding: 5px 14px; font-size: 9pt; }}
-QPushButton#chip:checked {{ color: #08111f; background: #5ea4ff; border-color: #5ea4ff; }}
-QPushButton#enlace {{ background: transparent; border: none; color: #5ea4ff; padding: 2px 0; text-align: left; }}
-QPushButton#enlace:hover {{ color: #9cc8ff; }}
-QComboBox {{ color: #f0f3f7; background: rgba(255,255,255,16); border: 1px solid rgba(255,255,255,36);
-            border-radius: 9px; padding: 6px 12px; font-family: 'Segoe UI'; font-size: 9.5pt; min-width: 140px; }}
-QComboBox:hover {{ border-color: rgba(255,255,255,70); }}
+QPushButton#salir:hover {{ color: #ffffff; background: {GRANATE.name()}; border-color: {GRANATE.name()}; }}
+QPushButton#chip {{ border-radius: 3px; padding: 6px 14px; font-size: 9pt; color: {SECUNDARIO.name()};
+                   border-color: {rgba(P_BORDE_FUERTE, 60)}; }}
+QPushButton#chip:checked {{ color: {ORO_CLARO.name()}; background: {rgba(ACENTO, 28)}; border-color: {ACENTO.name()}; }}
+QPushButton#enlace {{ background: transparent; border: none; color: {ACENTO.name()}; padding: 2px 0; text-align: left; }}
+QPushButton#enlace:hover {{ color: {ORO_CLARO.name()}; text-decoration: underline; }}
+QComboBox {{ color: {TEXTO.name()}; background: {P_ELEVADA.name()}; border: 1px solid {rgba(P_BORDE_FUERTE, 70)};
+            border-radius: 4px; padding: 6px 12px; font-family: 'Segoe UI'; font-size: 9.5pt; min-width: 140px; }}
+QComboBox:hover, QComboBox:focus {{ border-color: {rgba(ACENTO, 160)}; }}
 QComboBox::drop-down {{ border: none; width: 22px; }}
-QComboBox QAbstractItemView {{ color: #f0f3f7; background: #161b24; border: 1px solid rgba(255,255,255,40);
-                              selection-background-color: rgba(94,164,255,90); outline: none; padding: 4px; }}
-QSlider::groove:horizontal {{ height: 4px; background: rgba(255,255,255,30); border-radius: 2px; }}
-QSlider::sub-page:horizontal {{ background: #5ea4ff; border-radius: 2px; }}
-QSlider::handle:horizontal {{ background: #f0f3f7; width: 16px; height: 16px; margin: -6px 0; border-radius: 8px; }}
+QComboBox QAbstractItemView {{ color: {TEXTO.name()}; background: {P_ELEVADA.name()};
+                              border: 1px solid {rgba(P_BORDE_FUERTE, 90)};
+                              selection-background-color: {rgba(ACENTO, 70)}; outline: none; padding: 4px; }}
+QSlider::groove:horizontal {{ height: 3px; background: {rgba(TEXTO, 30)}; border-radius: 1px; }}
+QSlider::sub-page:horizontal {{ background: {ACENTO.name()}; border-radius: 1px; }}
+QSlider::handle:horizontal {{ background: {ORO_CLARO.name()}; width: 14px; height: 14px; margin: -6px 0;
+                              border-radius: 7px; }}
 """
 
 
@@ -136,12 +159,24 @@ def boton(texto: str, al_pulsar=None, tipo: str = "", consejo: str = "") -> QPus
 
 
 def pastilla(texto: str, c: QColor = SECUNDARIO) -> QLabel:
+    """Etiqueta pequeña de estado: esquinas casi rectas, como un sello."""
     lab = QLabel(texto)
-    lab.setFont(fuente(8.5, QFont.Weight.DemiBold))
-    lab.setStyleSheet(f"color: {c.name()}; background: rgba({c.red()},{c.green()},{c.blue()},30); "
-                      f"border: 1px solid rgba({c.red()},{c.green()},{c.blue()},80); border-radius: 10px; "
-                      "padding: 2px 9px;")
+    lab.setFont(fuente(8, QFont.Weight.DemiBold, 0.3))
+    lab.setStyleSheet(f"color: {c.name()}; background: {rgba(c, 22)}; border: 1px solid {rgba(c, 70)}; "
+                      "border-radius: 2px; padding: 2px 7px;")
     lab.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+    return lab
+
+
+def rotulo(texto: str, c: QColor = APAGADO) -> QLabel:
+    """Rótulo de sección en versalitas espaciadas."""
+    return etiqueta(texto.upper(), 7.5, QFont.Weight.Bold, c, 1.6)
+
+
+def meta(*partes: str) -> QLabel:
+    """Datos secundarios en una línea, separados por un rombo (en vez de una fila de pastillas)."""
+    lab = etiqueta("   ◆   ".join(p for p in partes if p), 9, QFont.Weight.Medium, SECUNDARIO, envolver=True)
+    lab.setTextFormat(Qt.TextFormat.PlainText)
     return lab
 
 
@@ -168,23 +203,44 @@ def desplazable(contenido: QWidget) -> QScrollArea:
     return s
 
 
+def esquinas(p: QPainter, r: QRectF, c: QColor, largo: float = 12):
+    """Cuatro escuadras en las esquinas, como el marco de un pergamino (tarjeta destacada)."""
+    p.save()
+    p.setPen(QPen(c, 1.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.SquareCap))
+    x0, y0, x1, y1 = r.left() + 0.5, r.top() + 0.5, r.right() - 0.5, r.bottom() - 0.5
+    for x, y, dx, dy in ((x0, y0, 1, 1), (x1, y0, -1, 1), (x0, y1, 1, -1), (x1, y1, -1, -1)):
+        p.drawLine(QPointF(x, y), QPointF(x + dx * largo, y))
+        p.drawLine(QPointF(x, y), QPointF(x, y + dy * largo))
+    p.restore()
+
+
 class Tarjeta(QFrame):
-    """Caja con borde y esquinas redondeadas; `acento` pinta una franja a la izquierda."""
+    """Caja con borde fino y esquinas casi rectas; `acento` la destaca con un fondo cálido
+    y escuadras doradas en las esquinas."""
+
+    RADIO = 5
 
     def __init__(self, acento: QColor | None = None, relleno: QColor = TARJETA, margen: int = 18):
         super().__init__()
         self.acento = acento
         self.relleno = relleno
         self.capa = QVBoxLayout(self)
-        self.capa.setContentsMargins(margen + (4 if acento else 0), margen - 2, margen, margen)
+        self.capa.setContentsMargins(margen, margen - 2, margen, margen)
         self.capa.setSpacing(8)
 
     def paintEvent(self, _):
         p = pintor(self)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        caja(p, r, 14, self.relleno, BORDE)
         if self.acento:
-            caja(p, QRectF(r.x(), r.y() + 16, 3, r.height() - 32), 1.5, self.acento)
+            fondo = QLinearGradient(r.topLeft(), r.bottomRight())
+            fondo.setColorAt(0, color(self.acento, 26))
+            fondo.setColorAt(0.55, self.relleno)
+            fondo.setColorAt(1, self.relleno)
+            caja(p, r, self.RADIO, self.relleno)
+            caja(p, r, self.RADIO, QBrush(fondo), color(self.acento, 60))
+            esquinas(p, r.adjusted(3, 3, -3, -3), self.acento)
+        else:
+            caja(p, r, self.RADIO, self.relleno, BORDE)
         p.end()
 
 
@@ -263,15 +319,21 @@ class BotonLateral(QAbstractButton):
         p = pintor(self)
         r = QRectF(self.rect()).adjusted(0, 1, 0, -1)
         if self.isChecked():
-            caja(p, r, 10, color(ACENTO, 34), color(ACENTO, 70))
-            caja(p, QRectF(r.x() - 12, r.y() + 10, 4, r.height() - 20), 2, ACENTO)
+            fondo = QLinearGradient(r.topLeft(), r.topRight())
+            fondo.setColorAt(0, color(ACENTO, 38))
+            fondo.setColorAt(1, color(ACENTO, 0))
+            p.fillRect(r, QBrush(fondo))
+            p.fillRect(QRectF(r.x(), r.y(), 2, r.height()), ACENTO)
         elif self.encima:
-            caja(p, r, 10, color(TEXTO, 12))
-        tinta = TEXTO if self.isChecked() or self.encima else SECUNDARIO
-        dibujar_icono(p, self.icono, QRectF(14, r.center().y() - 9, 18, 18), ACENTO if self.isChecked() else tinta)
-        p.setFont(fuente(10, QFont.Weight.DemiBold if self.isChecked() else QFont.Weight.Medium))
+            p.fillRect(r, color(TEXTO, 10))
+        if self.hasFocus():
+            p.setPen(QPen(color(ACENTO, 160), 1))
+            p.drawRect(r.adjusted(0.5, 0.5, -0.5, -0.5))
+        tinta = ORO_CLARO if self.isChecked() else (TEXTO if self.encima else SECUNDARIO)
+        dibujar_icono(p, self.icono, QRectF(16, r.center().y() - 9, 18, 18), ACENTO if self.isChecked() else tinta)
+        p.setFont(fuente(10, QFont.Weight.DemiBold if self.isChecked() else QFont.Weight.Medium, 0.2))
         p.setPen(tinta)
-        p.drawText(QRectF(44, r.y(), r.width() - 50, r.height()), int(Qt.AlignmentFlag.AlignVCenter.value), self.text())
+        p.drawText(QRectF(46, r.y(), r.width() - 52, r.height()), int(Qt.AlignmentFlag.AlignVCenter.value), self.text())
         p.end()
 
 
@@ -289,17 +351,23 @@ class Interruptor(QAbstractButton):
     def paintEvent(self, _):
         p = pintor(self)
         r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
-        caja(p, r, r.height() / 2, ACENTO if self.isChecked() else color(TEXTO, 40))
+        if self.isChecked():
+            caja(p, r, r.height() / 2, ACENTO)
+        else:
+            caja(p, r, r.height() / 2, color(TEXTO, 14), color(P_BORDE_FUERTE, 110))
+        if self.hasFocus():
+            caja(p, r.adjusted(-1, -1, 1, 1), r.height() / 2 + 1, QBrush(Qt.BrushStyle.NoBrush), ORO_CLARO)
         d = r.height() - 6
         x = r.right() - 3 - d if self.isChecked() else r.x() + 3
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor("#ffffff"))
+        p.setBrush(QColor("#1c140a") if self.isChecked() else SECUNDARIO)
         p.drawEllipse(QRectF(x, r.y() + 3, d, d))
         p.end()
 
 
 class Dato(QWidget):
-    """Número grande con su nombre y una línea de detalle (fichas de la página de inicio)."""
+    """Número grande con su nombre y una línea de detalle. Va dentro de un Libro: sin caja
+    propia, separado del siguiente por una línea vertical."""
 
     def __init__(self, nombre: str):
         super().__init__()
@@ -307,7 +375,7 @@ class Dato(QWidget):
         self.valor = "—"
         self.detalle = ""
         self.color_detalle = APAGADO
-        self.setFixedHeight(96)
+        self.setFixedHeight(104)
         self.setMinimumWidth(150)
 
     def poner(self, valor: str, detalle: str = "", c: QColor = APAGADO):
@@ -316,39 +384,90 @@ class Dato(QWidget):
 
     def paintEvent(self, _):
         p = pintor(self)
-        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        caja(p, r, 14, TARJETA, BORDE)
-        w = r.width() - 32
-        p.setFont(fuente(7.5, QFont.Weight.Bold, 1.2))
+        r = QRectF(self.rect())
+        x, w = 22, r.width() - 40
+        izq = int(Qt.AlignmentFlag.AlignLeft.value)
+        p.setFont(fuente(7.5, QFont.Weight.Bold, 1.6))
         p.setPen(APAGADO)
-        p.drawText(QRectF(16, 12, w, 16), int(Qt.AlignmentFlag.AlignLeft.value), self.nombre.upper())
-        p.setFont(fuente(20, QFont.Weight.Bold))
-        p.setPen(TEXTO)
-        p.drawText(QRectF(16, 28, w, 36), int(Qt.AlignmentFlag.AlignLeft.value), self.valor)
+        p.drawText(QRectF(x, 16, w, 16), izq, self.nombre.upper())
+        p.setFont(titulo(21))
+        p.setPen(TEXTO if self.valor != "—" else APAGADO)
+        p.drawText(QRectF(x, 32, w, 38), izq | int(Qt.AlignmentFlag.AlignVCenter.value), self.valor)
         f = fuente(8.5, QFont.Weight.DemiBold)
         p.setFont(f)
         p.setPen(self.color_detalle)
-        p.drawText(QRectF(16, 68, w, 18), int(Qt.AlignmentFlag.AlignLeft.value),
-                   QFontMetricsF(f).elidedText(self.detalle, Qt.TextElideMode.ElideRight, w))
+        p.drawText(QRectF(x, 74, w, 18), izq, QFontMetricsF(f).elidedText(self.detalle, Qt.TextElideMode.ElideRight, w))
         p.end()
 
 
-class Emblema(QWidget):
-    """Emoji grande dentro de un círculo de color (icono de cada guía)."""
+class Libro(QWidget):
+    """Una sola caja con varios Dato en fila, separados por líneas finas (como un libro de cuentas)."""
 
-    def __init__(self, emoji: str, tam: int = 56, c: QColor = ACENTO, apagado: bool = False):
+    def __init__(self, datos: list[Dato]):
         super().__init__()
-        self.emoji, self.c, self.apagado = emoji, c, apagado
+        self.datos = datos
+        capa = QHBoxLayout(self)
+        capa.setContentsMargins(0, 0, 0, 0)
+        capa.setSpacing(0)
+        for d in datos:
+            capa.addWidget(d, 1)
+
+    def paintEvent(self, _):
+        p = pintor(self)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        caja(p, r, Tarjeta.RADIO, TARJETA, BORDE)
+        p.setPen(QPen(BORDE, 1))
+        for d in self.datos[1:]:
+            x = d.geometry().left() + 0.5
+            p.drawLine(QPointF(x, r.top() + 18), QPointF(x, r.bottom() - 18))
+        p.end()
+
+
+def ruta_escudo(r: QRectF) -> QPainterPath:
+    """Escudo heráldico (la forma del logo) dentro de r."""
+    x, y, w, h = r.x(), r.y(), r.width(), r.height()
+    path = QPainterPath()
+    path.moveTo(x + w / 2, y)
+    path.lineTo(x + w, y + h * 0.07)
+    path.lineTo(x + w, y + h * 0.56)
+    path.cubicTo(x + w, y + h * 0.78, x + w * 0.7, y + h * 0.9, x + w / 2, y + h)
+    path.cubicTo(x + w * 0.3, y + h * 0.9, x, y + h * 0.78, x, y + h * 0.56)
+    path.lineTo(x, y + h * 0.07)
+    path.closeSubpath()
+    return path
+
+
+class Emblema(QWidget):
+    """Escudo granate con el monograma dorado de la guía o el mod (FC, SC…)."""
+
+    def __init__(self, monograma: str, tam: int = 56, c: QColor = ACENTO, apagado: bool = False):
+        super().__init__()
+        self.emoji, self.c, self.apagado = monograma, c, apagado  # .emoji: el nombre de siempre
         self.setFixedSize(tam, tam)
 
     def paintEvent(self, _):
         p = pintor(self)
-        r = QRectF(self.rect()).adjusted(1, 1, -1, -1)
-        p.setOpacity(0.45 if self.apagado else 1.0)
-        caja(p, r, r.width() * 0.3, color(self.c, 36), color(self.c, 90))
-        p.setFont(fuente(r.width() * 0.33, familia=EMOJI))
-        p.setPen(TEXTO)
-        p.drawText(r, int(Qt.AlignmentFlag.AlignCenter.value), self.emoji)
+        lado = self.height() - 2
+        r = QRectF((self.width() - lado * 0.82) / 2, 1, lado * 0.82, lado)
+        escudo = ruta_escudo(r)
+        if self.apagado:
+            p.fillPath(escudo, color(TEXTO, 8))
+            p.setPen(QPen(color(TEXTO, 50), 1.2))
+            p.drawPath(escudo)
+            tinta = APAGADO
+        else:
+            mitad = QLinearGradient(r.topLeft(), r.topRight())
+            mitad.setColorAt(0, GRANATE)
+            mitad.setColorAt(0.5, GRANATE)
+            mitad.setColorAt(0.5001, QColor("#6c1a2b"))
+            mitad.setColorAt(1, QColor("#6c1a2b"))
+            p.fillPath(escudo, QBrush(mitad))
+            p.setPen(QPen(color(self.c, 150), 1.2))
+            p.drawPath(escudo)
+            tinta = ORO_CLARO
+        p.setFont(titulo(lado * 0.22))
+        p.setPen(tinta)
+        p.drawText(r.adjusted(0, -lado * 0.08, 0, -lado * 0.08), int(Qt.AlignmentFlag.AlignCenter.value), self.emoji)
         p.end()
 
 
@@ -364,7 +483,7 @@ class ImagenMapa(QWidget):
         p = pintor(self)
         r = QRectF(self.rect())
         path = QPainterPath()
-        path.addRoundedRect(r.adjusted(0, 0, 0, 14), 12, 12)
+        path.addRoundedRect(r.adjusted(0, 0, 0, 14), Tarjeta.RADIO, Tarjeta.RADIO)
         p.setClipPath(path)
         if self.pix.isNull():
             p.fillRect(r, color(TEXTO, 14))
@@ -399,6 +518,32 @@ class PuntoEstado(QWidget):
         p.end()
 
 
+class Filete(QWidget):
+    """Línea dorada bajo el título de la página: se desvanece hacia la derecha y empieza
+    con un rombo."""
+
+    def __init__(self):
+        super().__init__()
+        self.setFixedHeight(9)
+
+    def paintEvent(self, _):
+        p = pintor(self)
+        y = self.height() / 2
+        linea = QLinearGradient(QPointF(0, y), QPointF(self.width(), y))
+        linea.setColorAt(0, color(ACENTO, 170))
+        linea.setColorAt(0.35, color(ACENTO, 50))
+        linea.setColorAt(1, color(ACENTO, 0))
+        p.fillRect(QRectF(12, y - 0.5, self.width() - 12, 1), QBrush(linea))
+        rombo = QPainterPath()
+        rombo.moveTo(0, y)
+        rombo.lineTo(4.5, y - 4.5)
+        rombo.lineTo(9, y)
+        rombo.lineTo(4.5, y + 4.5)
+        rombo.closeSubpath()
+        p.fillPath(rombo, ACENTO)
+        p.end()
+
+
 class Trabajo(QObject):
     """Una tarea en otro hilo. El resultado vuelve por una señal, así que al_terminar se
     ejecuta en el hilo de la ventana (Qt no deja tocar la ventana desde otro hilo)."""
@@ -420,6 +565,35 @@ class Trabajo(QObject):
     def _terminar(self, resultado, error):
         self.al_acabar(self)
         self.al_terminar(resultado, error)
+
+
+def monograma(id_: str | None, nombre: str, tabla: dict | None = None) -> str:
+    """Las dos letras del escudo: las de la tabla o las iniciales del nombre."""
+    if id_ in (tabla or ICONO_GUIA):
+        return (tabla or ICONO_GUIA)[id_]
+    palabras = [p for p in nombre.replace("-", " ").split() if p[:1].isalpha() and len(p) > 2]  # sin «de», «la»
+    return "".join(p[0] for p in palabras[:2]).upper() or nombre[:2].upper()
+
+
+def datos_guia(guia: dict) -> str:
+    """«Intermedia ◆ 16 pasos ◆ Meta: Edad de los Castillos · 15:55»."""
+    return "   ◆   ".join((t(f"nivel_{guia.get('nivel', 'media')}"), t("n_pasos", n=len(guia["pasos"])),
+                           t("meta_a", meta=de(guia["pasos"][-1], "titulo"), hora=reloj(guia["pasos"][-1]["referencia"]))))
+
+
+def nombre_tarjeta(texto: str, tam: float = 12.5) -> QLabel:
+    """Nombre de una guía, un mapa o un mod (Cinzel)."""
+    lab = QLabel(texto)
+    lab.setFont(titulo(tam, 0.3))
+    lab.setStyleSheet(f"color: {TEXTO.name()};")
+    return lab
+
+
+def titulo_seccion(texto: str) -> QLabel:
+    lab = QLabel(texto)
+    lab.setFont(titulo(11.5, 0.5))
+    lab.setStyleSheet(f"color: {TEXTO.name()};")
+    return lab
 
 
 def limpiar(capa):
@@ -478,6 +652,7 @@ class Panel(QWidget):
         self._mensaje_hasta = 0.0
         self.pagina = "inicio"
         textos.poner_idioma(config.get("idioma", "es"))
+        cargar_fuentes()
         if icono:
             self.setWindowIcon(icono)
         self.setWindowTitle("AoE2 Coaching")
@@ -498,13 +673,15 @@ class Panel(QWidget):
         self.capa.addWidget(self._lateral())
         derecha = QWidget()
         dc = QVBoxLayout(derecha)
-        dc.setContentsMargins(34, 26, 34, 24)
-        dc.setSpacing(18)
+        dc.setContentsMargins(36, 28, 36, 24)
+        dc.setSpacing(0)
         cab = QHBoxLayout()
         textos_cab = QVBoxLayout()
-        textos_cab.setSpacing(2)
-        self.titulo = etiqueta("", 20, QFont.Weight.Bold)
-        self.subtitulo = etiqueta("", 10, QFont.Weight.Medium, SECUNDARIO)
+        textos_cab.setSpacing(4)
+        self.titulo = QLabel("")
+        self.titulo.setFont(titulo(21, 0.6))
+        self.titulo.setStyleSheet(f"color: {TEXTO.name()};")
+        self.subtitulo = etiqueta("", 10, QFont.Weight.Normal, SECUNDARIO)
         textos_cab.addWidget(self.titulo)
         textos_cab.addWidget(self.subtitulo)
         cab.addLayout(textos_cab, 1)
@@ -516,6 +693,9 @@ class Panel(QWidget):
         self.boton_jugar.setMinimumWidth(150)
         cab.addWidget(self.boton_jugar, 0, Qt.AlignmentFlag.AlignVCenter)
         dc.addLayout(cab)
+        dc.addSpacing(18)
+        dc.addWidget(Filete())
+        dc.addSpacing(20)
         self.paginas = QStackedWidget()
         self.p_inicio = PaginaInicio(self)
         self.p_estadisticas = PaginaEstadisticas(self)
@@ -535,21 +715,26 @@ class Panel(QWidget):
         lat.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         lat.setFixedWidth(232)
         lc = QVBoxLayout(lat)
-        lc.setContentsMargins(20, 24, 16, 20)
-        lc.setSpacing(4)
+        lc.setContentsMargins(16, 26, 16, 20)
+        lc.setSpacing(2)
         marca = QHBoxLayout()
+        marca.setContentsMargins(4, 0, 0, 0)
+        marca.setSpacing(10)
         logo = QLabel()
         icono = self.windowIcon()
         if not icono.isNull():
-            logo.setPixmap(icono.pixmap(36, 36))
+            logo.setPixmap(icono.pixmap(38, 38))
         marca.addWidget(logo)
         nombres = QVBoxLayout()
-        nombres.setSpacing(0)
-        nombres.addWidget(etiqueta("AoE2 Coaching", 12.5, QFont.Weight.Bold))
+        nombres.setSpacing(1)
+        nombre_app = QLabel("AoE2 Coaching")
+        nombre_app.setFont(titulo(11.5, 0.4))
+        nombre_app.setStyleSheet(f"color: {ORO_CLARO.name()};")
+        nombres.addWidget(nombre_app)
         nombres.addWidget(etiqueta(t("lema"), 8.5, QFont.Weight.Medium, APAGADO))
         marca.addLayout(nombres, 1)
         lc.addLayout(marca)
-        lc.addSpacing(26)
+        lc.addSpacing(30)
         self.grupo = QButtonGroup(self)
         self.grupo.setExclusive(True)
         self.botones_lateral = {}
@@ -606,9 +791,8 @@ class Panel(QWidget):
     def avisar(self, texto: str, c: QColor = BIEN):
         """Mensaje breve junto al título (por ejemplo, «Guía activada»)."""
         self.mensaje.setText(texto)
-        self.mensaje.setStyleSheet(f"color: {c.name()}; background: rgba({c.red()},{c.green()},{c.blue()},30); "
-                                   f"border: 1px solid rgba({c.red()},{c.green()},{c.blue()},80); "
-                                   "border-radius: 10px; padding: 3px 10px;")
+        self.mensaje.setStyleSheet(f"color: {c.name()}; background: {rgba(c, 22)}; border: 1px solid {rgba(c, 80)}; "
+                                   "border-radius: 3px; padding: 4px 10px;")
         self.mensaje.show()
         self._mensaje_hasta = time.monotonic() + 4
 
@@ -951,7 +1135,8 @@ class Panel(QWidget):
             return
         dialogo = QDialog(self)
         dialogo.setWindowTitle("AoE2 Coaching")
-        dialogo.setStyleSheet(ESTILO + " QDialog { background: #12161d; } QRadioButton { color: #f0f3f7; padding: 6px 0; }")
+        dialogo.setStyleSheet(ESTILO + f" QDialog {{ background: {FONDO_PANEL}; }}"
+                              f" QRadioButton {{ color: {TEXTO.name()}; padding: 6px 0; }}")
         capa = QVBoxLayout(dialogo)
         capa.setContentsMargins(28, 24, 28, 24)
         capa.setSpacing(12)
@@ -1030,27 +1215,31 @@ class PaginaInicio(Pagina):
         arriba = QHBoxLayout()
         arriba.setSpacing(16)
 
-        # Guía activa.
-        self.tarjeta_guia = Tarjeta(ACENTO, margen=22)
+        # Guía activa: la tarjeta destacada (escuadras doradas en las esquinas).
+        self.tarjeta_guia = Tarjeta(ACENTO, margen=26)
         tg = self.tarjeta_guia.capa
+        tg.setSpacing(10)
         cab = QHBoxLayout()
-        cab.setSpacing(16)
-        self.emblema = Emblema("🏰", 64)
+        cab.setSpacing(20)
+        self.emblema = Emblema("FC", 76)
         cab.addWidget(self.emblema, 0, Qt.AlignmentFlag.AlignTop)
         tx = QVBoxLayout()
-        tx.setSpacing(4)
-        tx.addWidget(etiqueta(t("guia_activa"), 8, QFont.Weight.Bold, APAGADO, 1.3))
-        self.nombre_guia = etiqueta("", 19, QFont.Weight.Bold)
+        tx.setSpacing(5)
+        tx.addWidget(rotulo(t("guia_activa"), ACENTO))
+        self.nombre_guia = QLabel("")
+        self.nombre_guia.setFont(titulo(19, 0.4))
         tx.addWidget(self.nombre_guia)
         self.desc_guia = etiqueta("", 10, QFont.Weight.Normal, SECUNDARIO, envolver=True)
         tx.addWidget(self.desc_guia)
-        self.chips_guia = QHBoxLayout()
-        self.chips_guia.setSpacing(6)
-        tx.addSpacing(4)
-        tx.addLayout(self.chips_guia)
+        tx.addSpacing(2)
+        self.meta_guia = meta()
+        self.meta_guia.setStyleSheet(f"color: {APAGADO.name()};")
+        tx.addWidget(self.meta_guia)
         cab.addLayout(tx, 1)
         tg.addLayout(cab)
         self.aviso_guia = etiqueta("", 9, QFont.Weight.DemiBold, ATENCION, envolver=True)
+        self.aviso_guia.setStyleSheet(f"color: {ATENCION.name()}; background: {rgba(ATENCION, 16)}; "
+                                      f"border-left: 2px solid {ATENCION.name()}; padding: 6px 10px;")
         tg.addWidget(self.aviso_guia)
         tg.addStretch(1)
         tg.addLayout(fila(boton(t("cambiar_guia"), lambda: panel.ir("guias"), "primario"),
@@ -1059,14 +1248,15 @@ class PaginaInicio(Pagina):
         arriba.addWidget(self.tarjeta_guia, 3)
 
         # Estado del juego.
-        self.tarjeta_estado = Tarjeta(margen=22)
+        self.tarjeta_estado = Tarjeta(margen=24)
         te = self.tarjeta_estado.capa
-        te.addWidget(etiqueta(t("estado"), 8, QFont.Weight.Bold, APAGADO, 1.3))
+        te.setSpacing(10)
+        te.addWidget(rotulo(t("estado")))
         filae = QHBoxLayout()
         filae.setSpacing(10)
         self.punto = PuntoEstado()
-        filae.addWidget(self.punto)
-        self.titulo_estado = etiqueta("", 13, QFont.Weight.Bold, envolver=True)
+        filae.addWidget(self.punto, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.titulo_estado = etiqueta("", 13, QFont.Weight.DemiBold, envolver=True)
         filae.addWidget(self.titulo_estado, 1)
         te.addLayout(filae)
         self.texto_estado = etiqueta("", 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True)
@@ -1075,26 +1265,27 @@ class PaginaInicio(Pagina):
         arriba.addWidget(self.tarjeta_estado, 2)
         self.capa.addLayout(arriba)
 
-        # Números con la guía activa.
-        self.titulo_numeros = etiqueta("", 11, QFont.Weight.Bold)
+        # Números con la guía activa: una sola caja con cuatro columnas.
+        self.capa.addSpacing(8)
+        self.titulo_numeros = QLabel("")
+        self.titulo_numeros.setFont(titulo(11.5, 0.5))
+        self.titulo_numeros.setStyleSheet(f"color: {TEXTO.name()};")
         self.capa.addWidget(self.titulo_numeros)
-        datos = QHBoxLayout()
-        datos.setSpacing(12)
         self.d_partidas = Dato(t("dato_partidas"))
         self.d_mejor = Dato(t("dato_mejor"))
         self.d_media = Dato(t("dato_media"))
         self.d_completadas = Dato(t("dato_completadas"))
-        for d in (self.d_partidas, self.d_mejor, self.d_media, self.d_completadas):
-            datos.addWidget(d)
-        self.capa.addLayout(datos)
+        self.capa.addWidget(Libro([self.d_partidas, self.d_mejor, self.d_media, self.d_completadas]))
+        self.capa.addSpacing(8)
 
         abajo = QHBoxLayout()
         abajo.setSpacing(16)
         # Última partida.
-        self.tarjeta_ultima = Tarjeta(margen=20)
+        self.tarjeta_ultima = Tarjeta(margen=22)
         tu = self.tarjeta_ultima.capa
-        tu.addWidget(etiqueta(t("ultima_partida"), 8, QFont.Weight.Bold, APAGADO, 1.3))
-        self.ultima_titulo = etiqueta("", 13, QFont.Weight.Bold, envolver=True)
+        tu.addWidget(rotulo(t("ultima_partida")))
+        tu.addSpacing(2)
+        self.ultima_titulo = etiqueta("", 13, QFont.Weight.DemiBold, envolver=True)
         tu.addWidget(self.ultima_titulo)
         self.ultima_detalle = etiqueta("", 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True)
         tu.addWidget(self.ultima_detalle)
@@ -1102,17 +1293,18 @@ class PaginaInicio(Pagina):
         self.boton_ultima = boton(t("ver_detalle"), self._ver_ultima, "enlace")
         tu.addWidget(self.boton_ultima, 0, Qt.AlignmentFlag.AlignLeft)
         abajo.addWidget(self.tarjeta_ultima, 1)
-        # Cómo jugar.
-        como = Tarjeta(margen=20)
-        como.capa.addWidget(etiqueta(t("como_jugar"), 8, QFont.Weight.Bold, APAGADO, 1.3))
+        # Cómo jugar: pasos numerados con números romanos.
+        como = Tarjeta(margen=22)
+        como.capa.setSpacing(10)
+        como.capa.addWidget(rotulo(t("como_jugar")))
         for n in range(1, 4):
             f = QHBoxLayout()
-            f.setSpacing(10)
-            num = etiqueta(str(n), 9, QFont.Weight.Bold, ACENTO)
-            num.setFixedWidth(22)
-            num.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            num.setStyleSheet("color: #5ea4ff; background: rgba(94,164,255,30); border-radius: 11px;")
-            num.setFixedHeight(22)
+            f.setSpacing(12)
+            num = QLabel(ROMANOS[n - 1])
+            num.setFont(titulo(11))
+            num.setStyleSheet(f"color: {ACENTO.name()};")
+            num.setFixedWidth(26)
+            num.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
             f.addWidget(num, 0, Qt.AlignmentFlag.AlignTop)
             f.addWidget(etiqueta(t(f"como_{n}"), 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True), 1)
             como.capa.addLayout(f)
@@ -1126,16 +1318,12 @@ class PaginaInicio(Pagina):
         panel = self.panel
         guia = panel.guia_activa()
         if guia:
-            self.emblema.emoji = ICONO_GUIA.get(guia.get("id"), "📘")
+            self.emblema.emoji = monograma(guia.get("id"), guia["nombre"])
             self.emblema.update()
             self.nombre_guia.setText(guia["nombre"])
             self.desc_guia.setText(panel.descripcion(guia))
-            limpiar(self.chips_guia)
-            self.chips_guia.addWidget(pastilla(t(f"nivel_{guia.get('nivel', 'media')}"), ACENTO))
-            self.chips_guia.addWidget(pastilla(t("n_pasos", n=len(guia["pasos"]))))
-            self.chips_guia.addWidget(pastilla(t("meta_a", meta=de(guia["pasos"][-1], "titulo"),
-                                                 hora=reloj(guia["pasos"][-1]["referencia"]))))
-            self.chips_guia.addStretch(1)
+            self.meta_guia.setText(datos_guia(guia))
+            self.meta_guia.show()
             instalada = panel.instalador.guia_instalada(panel.guias)
             if instalada != guia.get("id"):
                 self.aviso_guia.setText(t("guia_pendiente"))
@@ -1143,11 +1331,11 @@ class PaginaInicio(Pagina):
             else:
                 self.aviso_guia.hide()
         else:  # aún no hay ninguna guía instalada
-            self.emblema.emoji = "📘"
+            self.emblema.emoji = "?"
             self.emblema.update()
             self.nombre_guia.setText(t("sin_guia"))
             self.desc_guia.setText(t("sin_guia_texto"))
-            limpiar(self.chips_guia)
+            self.meta_guia.hide()
             self.aviso_guia.hide()
         self.refrescar_estado()
         self._numeros(guia)
@@ -1304,12 +1492,12 @@ class TarjetaGuia(Tarjeta):
         self.panel = panel
         cab = QHBoxLayout()
         cab.setSpacing(14)
-        cab.addWidget(Emblema(ICONO_GUIA.get(guia["id"], "📘"), 52), 0, Qt.AlignmentFlag.AlignTop)
+        cab.addWidget(Emblema(monograma(guia["id"], guia["nombre"]), 58), 0, Qt.AlignmentFlag.AlignTop)
         tx = QVBoxLayout()
         tx.setSpacing(3)
         nombre = QHBoxLayout()
         nombre.setSpacing(8)
-        nombre.addWidget(etiqueta(guia["nombre"], 14, QFont.Weight.Bold))
+        nombre.addWidget(nombre_tarjeta(guia["nombre"], 14))
         if activa:
             nombre.addWidget(pastilla("✓ " + t("activa"), BIEN))
         nombre.addStretch(1)
@@ -1317,12 +1505,8 @@ class TarjetaGuia(Tarjeta):
         tx.addWidget(etiqueta(panel.descripcion(guia), 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True))
         cab.addLayout(tx, 1)
         self.capa.addLayout(cab)
-        chips = [pastilla(t(f"nivel_{guia.get('nivel', 'media')}"), ACENTO), pastilla(t("n_pasos", n=len(guia["pasos"]))),
-                 pastilla(t("meta_a", meta=de(guia["pasos"][-1], "titulo"), hora=reloj(guia["pasos"][-1]["referencia"])))]
         version = panel.instalador.version_guia(guia["id"])
-        if version:
-            chips.append(pastilla(f"v{version}", APAGADO))
-        self.capa.addLayout(fila(*chips, espacio=6))
+        self.capa.addWidget(meta(datos_guia(guia), f"v{version}" if version else ""))
         mapas = [m["nombre"] for m in panel.instalador.mapas() if m["id"] in guia.get("mapas_recomendados", [])]
         if mapas:
             self.capa.addWidget(etiqueta(t("mapas_recomendados", mapas=", ".join(mapas)), 9, QFont.Weight.Medium,
@@ -1330,7 +1514,8 @@ class TarjetaGuia(Tarjeta):
         # Pasos (plegables).
         self.pasos = etiqueta("\n".join(f"{i + 1:>2}.  {de(p, 'titulo')}  ·  {reloj(p['referencia'])}"
                                         for i, p in enumerate(guia["pasos"])), 9.5, QFont.Weight.Normal, SECUNDARIO)
-        self.pasos.setStyleSheet("color: #bac2ce; background: rgba(255,255,255,8); border-radius: 10px; padding: 10px 14px;")
+        self.pasos.setStyleSheet(f"color: {SECUNDARIO.name()}; background: {rgba(TEXTO, 6)}; "
+                                 f"border-left: 2px solid {rgba(ACENTO, 120)}; padding: 10px 14px;")
         self.pasos.hide()
         self.capa.addWidget(self.pasos)
         self.boton_pasos = boton(t("ver_pasos"), self.alternar_pasos)
@@ -1367,15 +1552,14 @@ class TarjetaDisponible(Tarjeta):
         idioma = textos.idioma()
         cab = QHBoxLayout()
         cab.setSpacing(14)
-        cab.addWidget(Emblema(ICONO_GUIA.get(e.id, "📘"), 46), 0, Qt.AlignmentFlag.AlignTop)
+        cab.addWidget(Emblema(monograma(e.id, e.texto("nombre", idioma)), 52), 0, Qt.AlignmentFlag.AlignTop)
         tx = QVBoxLayout()
         tx.setSpacing(3)
-        tx.addWidget(etiqueta(e.texto("nombre", idioma), 13, QFont.Weight.Bold))
+        tx.addWidget(nombre_tarjeta(e.texto("nombre", idioma)))
         tx.addWidget(etiqueta(e.texto("descripcion", idioma), 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True))
         cab.addLayout(tx, 1)
         self.capa.addLayout(cab)
-        self.capa.addLayout(fila(pastilla(t(f"nivel_{e.datos.get('nivel', 'media')}"), ACENTO),
-                                 pastilla(f"v{e.version}", APAGADO), espacio=6))
+        self.capa.addWidget(meta(t(f"nivel_{e.datos.get('nivel', 'media')}"), f"v{e.version}"))
         mapas = [m["nombre"] for m in panel.instalador.mapas() if m["id"] in e.datos.get("mapas_recomendados", [])]
         if mapas:
             self.capa.addWidget(etiqueta(t("mapas_recomendados", mapas=", ".join(mapas)), 9, QFont.Weight.Medium,
@@ -1389,7 +1573,7 @@ class TarjetaProxima(Tarjeta):
         super().__init__(margen=18)
         cab = QHBoxLayout()
         cab.setSpacing(12)
-        cab.addWidget(Emblema(emoji, 40, APAGADO, apagado=True), 0, Qt.AlignmentFlag.AlignTop)
+        cab.addWidget(Emblema(emoji, 46, APAGADO, apagado=True), 0, Qt.AlignmentFlag.AlignTop)
         tx = QVBoxLayout()
         tx.setSpacing(2)
         tx.addLayout(fila(etiqueta(t(f"proxima_{id_}"), 11, QFont.Weight.Bold, SECUNDARIO),
@@ -1423,12 +1607,12 @@ class PaginaGuias(Pagina):
         disponibles = [e for e in (cat.de("guia") if cat else []) if e.id not in panel.guias]
         if disponibles:
             self.capa.addSpacing(6)
-            self.capa.addWidget(etiqueta(t("guias_disponibles"), 11, QFont.Weight.Bold))
+            self.capa.addWidget(titulo_seccion(t("guias_disponibles")))
             self.capa.addLayout(rejilla_de([TarjetaDisponible(panel, e) for e in disponibles], 2))
         proximas = [(i, emoji) for i, emoji in PROXIMAS if not (cat and cat.buscar("guia", i))]
         if proximas:
             self.capa.addSpacing(6)
-            self.capa.addWidget(etiqueta(t("proximamente_titulo"), 11, QFont.Weight.Bold))
+            self.capa.addWidget(titulo_seccion(t("proximamente_titulo")))
             rejilla = rejilla_de([TarjetaProxima(i, emoji) for i, emoji in proximas], 2)
             rejilla.setSpacing(12)
             self.capa.addLayout(rejilla)
@@ -1451,7 +1635,7 @@ class TarjetaMapa(QFrame):
         cuerpo = QVBoxLayout()
         cuerpo.setContentsMargins(16, 4, 16, 0)
         cuerpo.setSpacing(6)
-        cuerpo.addLayout(fila(etiqueta(m["nombres"].get(idioma, m["nombre"]), 13, QFont.Weight.Bold),
+        cuerpo.addLayout(fila(nombre_tarjeta(m["nombres"].get(idioma, m["nombre"])),
                               pastilla(m["tipo"].get(idioma, m["tipo"]["es"]))))
         cuerpo.addWidget(etiqueta(m["descripcion"].get(idioma, m["descripcion"]["es"]), 9, QFont.Weight.Normal,
                                   SECUNDARIO, envolver=True))
@@ -1485,7 +1669,7 @@ class TarjetaMapa(QFrame):
 
     def paintEvent(self, _):
         p = pintor(self)
-        caja(p, QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 13, TARJETA, BORDE)
+        caja(p, QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), Tarjeta.RADIO, TARJETA, BORDE)
         p.end()
 
     def instalar(self):
@@ -1554,10 +1738,10 @@ class TarjetaMod(Tarjeta):
         idioma = textos.idioma()
         cab = QHBoxLayout()
         cab.setSpacing(14)
-        cab.addWidget(Emblema(ICONO_MOD.get(e.id, "🧩"), 46), 0, Qt.AlignmentFlag.AlignTop)
+        cab.addWidget(Emblema(monograma(e.id, e.texto("nombre", idioma), ICONO_MOD), 52), 0, Qt.AlignmentFlag.AlignTop)
         tx = QVBoxLayout()
         tx.setSpacing(3)
-        tx.addWidget(etiqueta(e.texto("nombre", idioma), 13, QFont.Weight.Bold))
+        tx.addWidget(nombre_tarjeta(e.texto("nombre", idioma)))
         tx.addWidget(etiqueta(e.texto("descripcion", idioma), 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True))
         cab.addLayout(tx, 1)
         self.capa.addLayout(cab)
@@ -1709,7 +1893,7 @@ class PaginaAjustes(Pagina):
         panel.avisar(t("soporte_copiado"))
 
     def _seccion(self, titulo: str) -> QVBoxLayout:
-        self.capa.addWidget(etiqueta(titulo, 11, QFont.Weight.Bold))
+        self.capa.addWidget(titulo_seccion(titulo))
         tarjeta = Tarjeta(margen=6)
         tarjeta.capa.setSpacing(0)
         tarjeta.capa.setContentsMargins(20, 6, 20, 6)
@@ -1720,7 +1904,7 @@ class PaginaAjustes(Pagina):
         if capa.count():
             linea = QFrame()
             linea.setFixedHeight(1)
-            linea.setStyleSheet("background: rgba(255,255,255,18);")
+            linea.setStyleSheet(f"background: {rgba(BORDE, 30)};")
             capa.addWidget(linea)
         f = QHBoxLayout()
         f.setContentsMargins(0, 12, 0, 12)

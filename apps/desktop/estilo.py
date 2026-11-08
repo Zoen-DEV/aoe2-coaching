@@ -22,6 +22,47 @@ PISTA = QColor(255, 255, 255, 20)
 SERIE_FEUDAL = QColor("#C9692A")
 SERIE_CASTILLOS = QColor("#3D8FF5")
 
+# --- Panel e historial ---------------------------------------------------------
+# Negro cálido, oro del logo y granate: la marca de la web (apps/web) en vez del azul
+# genérico. El overlay de la partida sigue con los colores de arriba (se lee mejor sobre
+# el juego). Los textos pasan 4.5:1 de contraste sobre P_TARJETA.
+P_FONDO = QColor("#13110e")
+P_LATERAL = QColor("#0d0b09")
+P_TARJETA = QColor("#1b1814")
+P_ELEVADA = QColor("#25211b")
+P_BORDE = QColor(236, 214, 178, 26)
+P_BORDE_FUERTE = QColor(236, 214, 178, 52)
+P_TEXTO = QColor("#f1ebe0")
+P_SECUNDARIO = QColor("#c2b7a5")
+P_APAGADO = QColor("#968b7b")
+ORO = QColor("#d2aa6c")
+ORO_CLARO = QColor("#e9c992")
+GRANATE = QColor("#86202f")
+GRANATE_CLARO = QColor("#c25562")
+
+TITULO = "Cinzel"  # fuente_titulos.py; si no carga, Qt usa una serif del sistema
+_fuentes_cargadas = False
+
+
+def cargar_fuentes():
+    """Registra Cinzel (va dentro del código). Hace falta una QApplication."""
+    global _fuentes_cargadas
+    if _fuentes_cargadas:
+        return
+    _fuentes_cargadas = True
+    from PySide6.QtCore import QByteArray
+    from PySide6.QtGui import QFontDatabase
+    import fuente_titulos
+    QFontDatabase.addApplicationFontFromData(QByteArray(fuente_titulos.TTF))
+
+
+def titulo(size: float, espacio: float = 0.0) -> QFont:
+    """Letra de los títulos (Cinzel Bold)."""
+    f = fuente(size, QFont.Weight.Bold, espacio, TITULO)
+    f.setStyleHint(QFont.StyleHint.Serif)
+    return f
+
+
 # Ventanas que reciben clics sin quitarle el foco al juego.
 BANDERAS_CLIC = (Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
                  | Qt.WindowType.Tool | Qt.WindowType.WindowDoesNotAcceptFocus)

@@ -20,13 +20,22 @@ from PySide6.QtGui import QColor, QFont, QFontMetricsF, QGuiApplication, QPainte
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout,
                                QWidget)
 
-from estilo import (ACENTO, APAGADO, ATENCION, BANDERAS_CLIC, BIEN, BORDE, FONDO, PISTA, SECUNDARIO,
-                    SERIE_CASTILLOS, SERIE_FEUDAL, TARJETA, TEXTO, color, fuente)
+# Mismos colores que el panel (estilo.py, «Panel e historial»), no los del overlay.
+from estilo import ATENCION, BANDERAS_CLIC, BIEN, ORO_CLARO, PISTA, SERIE_CASTILLOS, SERIE_FEUDAL
+from estilo import ORO as ACENTO
+from estilo import P_APAGADO as APAGADO
+from estilo import P_BORDE as BORDE
+from estilo import P_FONDO as FONDO
+from estilo import P_SECUNDARIO as SECUNDARIO
+from estilo import P_TARJETA as TARJETA
+from estilo import P_TEXTO as TEXTO
+from estilo import cargar_fuentes, color, fuente, titulo
 from historial import (VENTANA_MEDIA, Historial, comparacion_final, duracion, nombre_hito, pasos_hechos, principal,
                        puntos_debiles, reloj, resumen_hito, tramos, valor_principal, vista)
 from textos import t as tx
 
 MARGEN = 14  # sombra alrededor de la tarjeta
+RADIO = 5
 PARTIDAS_GRAFICO = 20
 IZQ = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
 DER = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
@@ -71,6 +80,12 @@ def caja(p: QPainter, r: QRectF, radio: float, relleno, borde=None):
         p.drawPath(path)
 
 
+def seleccion(p: QPainter, r: QRectF):
+    """Fila elegida en la barra lateral: fondo dorado tenue y una franja a la izquierda."""
+    caja(p, r, 3, color(ACENTO, 30))
+    p.fillRect(QRectF(r.x(), r.y() + 6, 2, r.height() - 12), ACENTO)
+
+
 def pintor(w: QWidget) -> QPainter:
     p = QPainter(w)
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -99,11 +114,11 @@ class Ficha(QWidget):
     def paintEvent(self, _):
         p = pintor(self)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        caja(p, r, 12, TARJETA, BORDE)
+        caja(p, r, RADIO, TARJETA, BORDE)
         x, w = 14, r.width() - 28
         texto(p, QRectF(x, 10, w, 16), self.nombre.upper(), fuente(7.5, QFont.Weight.Bold, 1.2), APAGADO)
         grande = reloj(self.valor) if self.valor is not None else "—"
-        f_grande = fuente(18, QFont.Weight.Bold)
+        f_grande = titulo(17)
         texto(p, QRectF(x, 26, w, 32), grande, f_grande, TEXTO)
         ancho_pie = w
         if self.valor is not None and self.comparado is not None:
@@ -116,7 +131,7 @@ class Ficha(QWidget):
                 # Ficha estrecha: la diferencia baja a la línea de abajo para no pisar el tiempo.
                 chip.moveTop(61)
                 ancho_pie = w - ancho - 8
-            caja(p, chip, 10, color(c, 34), color(c, 80))
+            caja(p, chip, 2, color(c, 24), color(c, 80))
             texto(p, chip, t, f, c, CEN)
         f_pie = fuente(8.5, QFont.Weight.Medium)
         pie = self.pie
@@ -178,7 +193,7 @@ class Grafico(QWidget):
     def paintEvent(self, _):
         p = pintor(self)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        caja(p, r, 12, TARJETA, BORDE)
+        caja(p, r, RADIO, TARJETA, BORDE)
         texto(p, QRectF(16, 10, 200, 20), tx("hi_evolucion"), fuente(10.5, QFont.Weight.Bold), TEXTO)
         texto(p, QRectF(16, 26, r.width() - 32, 16), tx("hi_evolucion_nota"),
               fuente(8, QFont.Weight.Medium), APAGADO)
@@ -216,7 +231,7 @@ class Grafico(QWidget):
         # Partida elegida: banda vertical.
         for i, reg in enumerate(self.registros):
             if reg["id"] == self.seleccion:
-                caja(p, QRectF(self._x(i, z) - 9, z.top() - 4, 18, z.height() + 8), 9, color(TEXTO, 14))
+                caja(p, QRectF(self._x(i, z) - 9, z.top() - 4, 18, z.height() + 8), 3, color(TEXTO, 12))
         # Series.
         for clave, _, c in self.SERIES:
             puntos = [(i, reg["hitos"].get(clave)) for i, reg in enumerate(self.registros)]
@@ -260,7 +275,7 @@ class Grafico(QWidget):
                 lineas.append(f"{nombre}  {reloj(reg['hitos'].get(clave))}")
             ancho, alto = 168, 16 + 17 * len(lineas)
             bx = x + 12 if x + 12 + ancho < r.right() else x - 12 - ancho
-            caja(p, QRectF(bx, z.top(), ancho, alto), 8, color(FONDO, 250), color(TEXTO, 40))
+            caja(p, QRectF(bx, z.top(), ancho, alto), 4, color(FONDO, 250), color(ACENTO, 90))
             for k, linea in enumerate(lineas):
                 peso = QFont.Weight.DemiBold if k == 0 else QFont.Weight.Medium
                 texto(p, QRectF(bx + 10, z.top() + 8 + 17 * k, ancho - 20, 17), linea, fuente(8.5, peso),
@@ -313,7 +328,7 @@ class PuntosDebiles(QWidget):
     def paintEvent(self, _):
         p = pintor(self)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        caja(p, r, 12, TARJETA, BORDE)
+        caja(p, r, RADIO, TARJETA, BORDE)
         texto(p, QRectF(16, 10, r.width() - 32, 20), tx("hi_donde_pierdes"), fuente(10.5, QFont.Weight.Bold), TEXTO)
         n = min(self.partidas, VENTANA_MEDIA)
         texto(p, QRectF(16, 26, r.width() - 32, 16),
@@ -362,9 +377,9 @@ class FilaResumen(QWidget):
         p = pintor(self)
         r = QRectF(self.rect()).adjusted(2, 1, -2, -1)
         if self.elegida:
-            caja(p, r, 8, color(ACENTO, 40), color(ACENTO, 90))
+            seleccion(p, r)
         elif self.encima:
-            caja(p, r, 8, color(TEXTO, 14))
+            caja(p, r, 3, color(TEXTO, 10))
         texto(p, QRectF(12, 8, r.width() - 20, 18), tx("hi_resumen"), fuente(9.5, QFont.Weight.Bold), TEXTO)
         n = self.partidas
         texto(p, QRectF(12, 26, r.width() - 20, 16),
@@ -416,9 +431,9 @@ class ListaPartidas(QWidget):
             fila = QRectF(2, y + 1, w - 4, self.FILA - 2)
             elegida = reg["id"] == self.seleccion
             if elegida:
-                caja(p, fila, 8, color(ACENTO, 40), color(ACENTO, 90))
+                seleccion(p, fila)
             elif k == self.encima:
-                caja(p, fila, 8, color(TEXTO, 14))
+                caja(p, fila, 3, color(TEXTO, 10))
             ancho = w - 24
             castillos = valor_principal(reg)
             texto(p, QRectF(12, y + 8, ancho - 60, 18), fecha_corta(reg["fecha"]), fuente(9.5, QFont.Weight.Bold),
@@ -485,7 +500,7 @@ class TablaPasos(QWidget):
         y = 22
         for f in self.filas:
             if peor is not None and peor >= 10 and f["tramo"] == peor:
-                caja(p, QRectF(2, y + 1, w - 4, self.FILA - 2), 8, color(ATENCION, 26), color(ATENCION, 70))
+                caja(p, QRectF(2, y + 1, w - 4, self.FILA - 2), 3, color(ATENCION, 22), color(ATENCION, 70))
             hecho = f["hora"] is not None
             texto(p, QRectF(8, y, w - 196, self.FILA), f"{f['n']}. {f['titulo']}", fuente(9, QFont.Weight.Medium),
                   SECUNDARIO if hecho else APAGADO)
@@ -506,21 +521,25 @@ class TablaPasos(QWidget):
 # --- Ventana -----------------------------------------------------------------
 
 
-ESTILO = """
-QLabel { color: #f0f3f7; background: transparent; }
-QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; border: none; }
-QScrollBar:vertical { background: transparent; width: 8px; margin: 2px; }
-QScrollBar::handle:vertical { background: rgba(255,255,255,40); border-radius: 3px; min-height: 30px; }
-QScrollBar::handle:vertical:hover { background: rgba(255,255,255,70); }
-QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page { height: 0; background: none; }
-QPushButton { color: #bac2ce; background: rgba(255,255,255,14); border: 1px solid rgba(255,255,255,34);
-              border-radius: 13px; padding: 4px 12px; font-family: 'Segoe UI'; font-size: 9pt; font-weight: 600; }
-QPushButton:hover { color: #f0f3f7; background: rgba(255,255,255,34); border-color: rgba(255,255,255,70); }
-QPushButton:disabled { color: rgba(186,194,206,90); background: rgba(255,255,255,6); border-color: rgba(255,255,255,18); }
-QPushButton#cerrar { padding: 0; min-width: 26px; max-width: 26px; min-height: 26px; max-height: 26px;
-                     font-size: 10pt; }
-QPushButton#borrar[confirmar="true"] { color: #ffc4c4; border-color: rgba(255,96,96,140);
-                                       background: rgba(255,96,96,40); }
+def _rgba(c: QColor, a: int) -> str:
+    return f"rgba({c.red()},{c.green()},{c.blue()},{a})"
+
+
+ESTILO = f"""
+QLabel {{ color: {TEXTO.name()}; background: transparent; }}
+QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
+QScrollBar:vertical {{ background: transparent; width: 8px; margin: 2px; }}
+QScrollBar::handle:vertical {{ background: {_rgba(TEXTO, 36)}; border-radius: 3px; min-height: 30px; }}
+QScrollBar::handle:vertical:hover {{ background: {_rgba(TEXTO, 70)}; }}
+QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ height: 0; background: none; }}
+QPushButton {{ color: {SECUNDARIO.name()}; background: transparent; border: 1px solid {_rgba(BORDE, 60)};
+              border-radius: 3px; padding: 4px 12px; font-family: 'Segoe UI'; font-size: 9pt; font-weight: 600; }}
+QPushButton:hover {{ color: {ORO_CLARO.name()}; background: {_rgba(ACENTO, 22)}; border-color: {_rgba(ACENTO, 140)}; }}
+QPushButton:disabled {{ color: {_rgba(APAGADO, 140)}; background: transparent; border-color: {_rgba(BORDE, 24)}; }}
+QPushButton#cerrar {{ padding: 0; min-width: 26px; max-width: 26px; min-height: 26px; max-height: 26px;
+                     font-size: 10pt; }}
+QPushButton#borrar[confirmar="true"] {{ color: #ffc4c4; border-color: rgba(255,96,96,140);
+                                       background: rgba(255,96,96,40); }}
 """
 
 
@@ -545,7 +564,7 @@ class Panel(QWidget):
 
     def paintEvent(self, _):
         p = pintor(self)
-        caja(p, QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 12, TARJETA, BORDE)
+        caja(p, QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), RADIO, TARJETA, BORDE)
         p.end()
 
 
@@ -586,6 +605,7 @@ class ContenidoHistorial(QWidget):
 
     def __init__(self, historial: Historial, al_titular=None):
         super().__init__()
+        cargar_fuentes()
         self.historial = historial
         self.al_titular = al_titular or (lambda _t: None)  # recibe el subtítulo ("Guía · N partidas")
         self.seleccion: str | None = None  # None = resumen general
@@ -623,7 +643,7 @@ class ContenidoHistorial(QWidget):
         ll.addWidget(self.resumen)
         separador = QFrame()
         separador.setFixedHeight(1)
-        separador.setStyleSheet("background: rgba(255,255,255,26);")
+        separador.setStyleSheet(f"background: {_rgba(BORDE, 30)};")
         ll.addWidget(separador)
         ll.addWidget(etiqueta("  " + tx("hi_partidas"), 7.5, QFont.Weight.Bold, APAGADO, 1.2))
         self.lista = ListaPartidas(self.elegir)
@@ -675,7 +695,7 @@ class ContenidoHistorial(QWidget):
         self.aviso = etiqueta("", 10, QFont.Weight.DemiBold, BIEN)
         self.aviso.setWordWrap(True)
         self.aviso.setStyleSheet("color: #38cc80; background: rgba(56,204,128,30); border: 1px solid "
-                                 "rgba(56,204,128,80); border-radius: 10px; padding: 8px 12px;")
+                                 "rgba(56,204,128,80); border-radius: 3px; padding: 8px 12px;")
         vp.addWidget(self.aviso)
         self.fichas = FilaFichas()
         vp.addWidget(self.fichas)
@@ -911,5 +931,5 @@ class VentanaHistorial(QWidget):
             path = QPainterPath()
             path.addRoundedRect(tarjeta.adjusted(-i, -i + 3, i, i + 3), 18 + i, 18 + i)
             p.fillPath(path, QColor(0, 0, 0, int(5 * (11 - i) / 3)))
-        caja(p, tarjeta, 18, FONDO, BORDE)
+        caja(p, tarjeta, 8, FONDO, BORDE)
         p.end()
