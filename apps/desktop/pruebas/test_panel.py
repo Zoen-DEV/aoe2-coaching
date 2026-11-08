@@ -63,6 +63,8 @@ def test_guias():
     print("Guías generadas por build.py")
     comprobar(list(GUIAS)[:2] == ["fast_castle", "scouts"], f"dos guías, Fast Castle primero: {list(GUIAS)}")
     comprobar(FC["codigo"] != SC["codigo"], "cada guía tiene su código para el .xsdat")
+    comprobar(all(0 <= g["codigo"] < 1_000_000_000 for g in GUIAS.values()),
+              "los códigos tienen como mucho 9 cifras (el compilador XS no acepta más)")
     comprobar(SC["hito_principal"] == "meta" and SC["nombre_meta"] == "6 exploradores", "la meta de Scouts son 6 exploradores")
     comprobar(FC["hito_principal"] == "castillos", "Fast Castle se resume con la llegada a Castillos")
     etiquetas = {c["etiqueta"] for p in SC["pasos"] for c in p["condiciones"]}

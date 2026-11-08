@@ -553,8 +553,12 @@ def build_manifest(bo: dict) -> dict:
 
 
 def codigo_guia(bo: dict) -> int:
-    """Número fijo de la guía (sale de su id), para reconocerla en el .xsdat."""
-    return zlib.crc32(bo["id"].encode("ascii")) & 0x7FFFFFFF
+    """Número fijo de la guía (sale de su id), para reconocerla en el .xsdat.
+
+    Como mucho 9 cifras: el compilador XS rechaza enteros más largos
+    ("more than 9 digits in the integer constant").
+    """
+    return (zlib.crc32(bo["id"].encode("ascii")) & 0x7FFFFFFF) % 1_000_000_000
 
 
 def load_maps() -> list[dict]:
