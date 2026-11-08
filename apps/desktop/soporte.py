@@ -18,9 +18,9 @@ from pathlib import Path
 import rutas
 from version import VERSION
 
-# Invitación al Discord de AoE2 Coaching (canal de errores). Vacía hasta crear el servidor
-# (paso 9 del plan): entonces el botón del panel queda desactivado.
-DISCORD = ""
+# Invitación al Discord de AoE2 Coaching (canal de errores). Si se deja vacía, el botón
+# del panel queda desactivado.
+DISCORD = "https://discord.gg/yR6e99cbh"
 
 LINEAS_LOG = 30  # avisos y errores (con sus trazas) que se copian
 STEAMID = re.compile(r"\b7656\d{13}\b")

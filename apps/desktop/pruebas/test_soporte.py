@@ -192,8 +192,8 @@ def test_panel(tmp: Path):
     p.ir("ajustes")
     app.processEvents()
     botones = {b.text(): b for b in p.p_ajustes.findChildren(QPushButton)}
-    comprobar(textos.t("abrir_discord") in botones and not botones[textos.t("abrir_discord")].isEnabled(),
-              "«Abrir Discord» desactivado hasta tener la invitación")
+    comprobar(textos.t("abrir_discord") in botones and botones[textos.t("abrir_discord")].isEnabled(),
+              "«Abrir Discord» activo con la invitación")
     botones[textos.t("copiar")].click()
     app.processEvents()
     comprobar(QGuiApplication.clipboard().text().startswith("AoE2 Coaching v"), "«Copiar» deja los datos en el portapapeles")

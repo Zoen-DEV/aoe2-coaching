@@ -1,6 +1,6 @@
 ---
 import T from "./T.astro";
-import { URL_REPO, URL_RELEASES } from "../lib/contenido";
+import { URL_REPO, URL_RELEASES, URL_DISCORD } from "../lib/contenido";
 const anio = new Date().getFullYear();
 ---
 <footer class="pie">
@@ -16,6 +16,7 @@ const anio = new Date().getFullYear();
       <nav class="pie-enlaces">
         <a href={URL_REPO} target="_blank" rel="noopener">GitHub</a>
         <a href={URL_RELEASES} target="_blank" rel="noopener"><T es="Versiones" en="Releases" /></a>
+        <a href={URL_DISCORD} target="_blank" rel="noopener">Discord</a>
         <a href={`${URL_REPO}/issues`} target="_blank" rel="noopener"><T es="Reportar un problema" en="Report a problem" /></a>
         <a href="#inicio"><T es="Volver arriba" en="Back to top" /></a>
       </nav>

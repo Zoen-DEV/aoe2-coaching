@@ -14,6 +14,7 @@ const CONTENT = join(RAIZ, "content");
 export const REPO = "Zoen-DEV/aoe2-coaching";
 export const URL_REPO = `https://github.com/${REPO}`;
 export const URL_RELEASES = `${URL_REPO}/releases`;
+export const URL_DISCORD = "https://discord.gg/yR6e99cbh";
 
 export type Texto = { es: string; en: string };
 

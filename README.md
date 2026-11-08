@@ -6,7 +6,8 @@ Guías de apertura paso a paso encima de Age of Empires II: Definitive Edition, 
 - **Diseño de la guía y del panel:** [docs/02-guia-apertura-castillos.md](docs/02-guia-apertura-castillos.md)
 - **Mod de las ovejas:** [docs/01-icono-ovejas.md](docs/01-icono-ovejas.md)
 - **Catálogo de contenido** (guías, mapas y mods que instala el panel): [docs/04-catalogo-contenido.md](docs/04-catalogo-contenido.md)
-- **Página oficial** (`apps/web`): [docs/05-pagina-oficial.md](docs/05-pagina-oficial.md)
+- **Página oficial:** <https://aoec.zoen.dev> (código en `apps/web`, ver [docs/05-pagina-oficial.md](docs/05-pagina-oficial.md))
+- **Discord** (dudas y reportes de errores): <https://discord.gg/yR6e99cbh>
 
 ## Estructura
 
@@ -136,4 +137,4 @@ Con etiquetas de git: `desktop-v<versión>` publica el instalador y `contenido-<
 
 ## Licencia
 
-Pendiente de decidir (GPL o AGPL); ver el plan.
+[GNU AGPL v3](LICENSE). Puedes usar, modificar y compartir el código; si distribuyes una versión modificada (o la ofreces como servicio en red), tienes que publicar su código con la misma licencia.

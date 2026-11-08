@@ -49,12 +49,10 @@ El resultado queda en `apps/web/dist`. [web.yml](../.github/workflows/web.yml) c
 
 1. En Vercel, **Add New → Project** e importar `Zoen-DEV/aoe2-coaching`.
 2. **Root Directory:** `apps/web`. Vercel reconoce Astro solo (build `npm run build`, salida `dist`). Dejar marcada la opción de incluir los archivos de fuera de la carpeta raíz: la web lee `content/` y `apps/desktop/version.py`.
-3. **Settings → Domains:** añadir `aoe2c.zoen.dev` y crear en el DNS de `zoen.dev` el registro CNAME que indique Vercel.
+3. **Settings → Domains:** añadir `aoec.zoen.dev` y crear en el DNS de `zoen.dev` el registro CNAME que indique Vercel.
 
 Después, cada push a `main` publica la web, y cada pull request tiene su vista previa.
 
 ## Pendiente
 
-- Conectar Vercel y el subdominio (el `site` de `astro.config.mjs` ya es `https://aoe2c.zoen.dev`).
-- Enlace al Discord cuando exista (paso 9 del plan).
 - Imagen para compartir en redes (`og:image`), ahora es el logo.
