@@ -93,11 +93,15 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      # Versión fija desde GitHub: la dirección de "la última" de jrsoftware.org cambió y
+      # ya va por la 7, que no está probada con aoe2c.iss.
       - name: Instalar Inno Setup
         shell: pwsh
         run: |
           $instalador = Join-Path $env:RUNNER_TEMP "innosetup.exe"
-          Invoke-WebRequest "https://jrsoftware.org/download.php/is.exe" -OutFile $instalador
+          Invoke-WebRequest "https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe" -OutFile $instalador
+          $hash = (Get-FileHash $instalador -Algorithm SHA256).Hash
+          if ($hash -ne "A549929319F9120716677C685535CA4671E4B937B5FDC87E2585F32D8EB30E8C") { throw "el instalador de Inno Setup no coincide: $hash" }
           $destino = Join-Path $env:RUNNER_TEMP "InnoSetup"
           Start-Process $instalador -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/DIR=$destino" -Wait
           $iscc = Join-Path $destino "ISCC.exe"
