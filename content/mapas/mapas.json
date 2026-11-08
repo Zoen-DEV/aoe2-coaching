@@ -12,7 +12,7 @@
         "es": "El mapa más jugado. Abierto y agresivo: aquí se castigan las aperturas lentas.",
         "en": "The most played map. Open and aggressive: slow openings get punished here."
       },
-      "guias": ["scouts", "fast_castle"]
+      "guias": ["scouts", "fast_castle", "aguilas", "arqueros", "drush_fc", "hombres_armas"]
     },
     {
       "id": "arena",
@@ -52,7 +52,7 @@
         "es": "Abierto como Arabia, con más recursos repartidos. Bueno para presionar en Feudal.",
         "en": "Open like Arabia, with more scattered resources. Good for Feudal pressure."
       },
-      "guias": ["scouts", "fast_castle"]
+      "guias": ["scouts", "fast_castle", "aguilas", "arqueros", "drush_fc"]
     },
     {
       "id": "fortress",

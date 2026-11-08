@@ -75,11 +75,16 @@ EDIFICIOS = {  # nombre: (ID, etiqueta singular, etiqueta plural)
     "cuartel": (12, "Cuartel", "Cuarteles"),
     "centro_urbano": (109, "Centro urbano", "Centros urbanos"),
     "establo": (101, "Establo", "Establos"),
+    "galeria_tiro": (87, "Galería de tiro", "Galerías de tiro"),
 }
 
 # Unidades militares (se cuentan las vivas; la inicial también cuenta).
 UNIDADES = {  # nombre: (etiqueta, IDs)
     "exploradores": ("Exploradores", [448]),  # caballería de exploración
+    "arqueros": ("Arqueros", [4]),
+    "milicianos": ("Milicianos", [74, 75]),  # con la mejora pasan a hombres de armas (75)
+    "hombres_armas": ("Hombres de armas", [75]),
+    "aguilas": ("Águilas", [751, 753]),  # águila exploradora (la inicial de los mesoamericanos) y guerrera
 }
 
 # El aldeano cambia de unidad según su tarea; cada tarea tiene una ID por sexo.
@@ -112,6 +117,8 @@ TECNOLOGIAS = {  # nombre: (ID, etiqueta)
     "arado_pesado": (13, "Arado pesado"),
     "carretilla": (213, "Carretilla"),
     "mineria_aurifera": (55, "Minería aurífera"),
+    "emplumado": (199, "Emplumado"),
+    "hombre_de_armas": (222, "Hombre de armas"),  # mejora del miliciano en el cuartel
 }
 ESTADOS_TECH = {"iniciada": 1, "terminada": 2}  # iniciada = en cola, investigándose o terminada
 
@@ -137,6 +144,11 @@ ICONOS = {  # icono del panel: ID de la unidad o edificio que se muestra
     "jabali": 48,
     "establo": 101,
     "explorador": 448,
+    "galeria_tiro": 87,
+    "arquero": 4,
+    "miliciano": 74,
+    "hombre_armas": 75,
+    "aguila": 751,
 }
 
 ID_CASA = EDIFICIOS["casa"][0]
@@ -366,13 +378,15 @@ ETIQUETAS_EN = {
     "Granja": "Farm", "Granjas": "Farms", "Mercado": "Market", "Mercados": "Markets",
     "Herrería": "Blacksmith", "Herrerías": "Blacksmiths", "Cuartel": "Barracks", "Cuarteles": "Barracks",
     "Centro urbano": "Town Center", "Centros urbanos": "Town Centers", "Establo": "Stable", "Establos": "Stables",
+    "Galería de tiro": "Archery Range", "Galerías de tiro": "Archery Ranges",
+    "Arqueros": "Archers", "Milicianos": "Militia", "Hombres de armas": "Men-at-Arms", "Águilas": "Eagles",
     "Exploradores": "Scouts", "Pastores": "Shepherds", "Leñadores": "Lumberjacks", "Cazadores": "Hunters",
     "Bayas": "Berries", "Oro": "Gold", "Piedra": "Stone", "Granjeros": "Farmers", "Pescadores": "Fishermen",
     "Constructores": "Builders", "En comida": "On food", "Aldeanos": "Villagers",
     "Telar": "Loom", "Edad Feudal": "Feudal Age", "Edad de los Castillos": "Castle Age",
     "Edad Imperial": "Imperial Age", "Hacha de doble filo": "Double-Bit Axe", "Sierra de arco": "Bow Saw",
     "Collera": "Horse Collar", "Arado pesado": "Heavy Plow", "Carretilla": "Wheelbarrow",
-    "Minería aurífera": "Gold Mining",
+    "Minería aurífera": "Gold Mining", "Emplumado": "Fletching", "Hombre de armas": "Man-at-Arms",
 }
 
 

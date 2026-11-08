@@ -55,9 +55,10 @@ from version import VERSION
 FONDO_PANEL = "#13110e"
 FONDO_LATERAL = "#0d0b09"
 # Monograma de cada guía y mod dentro de un escudo (en vez de emojis).
-ICONO_GUIA = {"fast_castle": "FC", "scouts": "SC"}
+ICONO_GUIA = {"fast_castle": "FC", "scouts": "SC", "arqueros": "AR", "drush_fc": "DF", "hombres_armas": "HA",
+              "aguilas": "AG"}
 ICONO_MOD = {"icono-ovejas": "OV"}
-PROXIMAS = [("arqueros", "AR"), ("drush_fc", "DF"), ("hombres_armas", "HA"), ("aguilas", "AG")]
+PROXIMAS: list[tuple[str, str]] = []  # (id, monograma) de guías anunciadas; textos proxima_<id> y proxima_<id>_desc
 PAGINAS = ["inicio", "estadisticas", "guias", "mapas", "mods", "ajustes"]
 ROMANOS = ["I", "II", "III", "IV", "V"]
 

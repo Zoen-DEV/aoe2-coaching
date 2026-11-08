@@ -6,6 +6,7 @@ Usa carpetas temporales como perfil del juego: no toca el juego, el perfil real 
 config.json.
 """
 
+import json
 import os
 import re
 import sys
@@ -61,7 +62,11 @@ def partida_scouts(hasta: int = 900, retraso: int = 15):
 
 def test_guias():
     print("Guías generadas por build.py")
-    comprobar(list(GUIAS)[:2] == ["fast_castle", "scouts"], f"dos guías, Fast Castle primero: {list(GUIAS)}")
+    ids = {json.loads(p.read_text(encoding="utf-8"))["id"] for p in (GUIAS_DIR / "build_orders").glob("*.json")}
+    comprobar(set(GUIAS) == ids, f"una guía por build order: {sorted(GUIAS)}")
+    comprobar({"fast_castle", "scouts", "arqueros", "drush_fc", "hombres_armas", "aguilas"} <= ids,
+              "Fast Castle, Scouts, Arqueros, Drush FC, Hombres de armas y Águilas")
+    comprobar(len({g["codigo"] for g in GUIAS.values()}) == len(GUIAS), "ningún código repetido")
     comprobar(FC["codigo"] != SC["codigo"], "cada guía tiene su código para el .xsdat")
     comprobar(all(0 <= g["codigo"] < 1_000_000_000 for g in GUIAS.values()),
               "los códigos tienen como mucho 9 cifras (el compilador XS no acepta más)")
@@ -205,7 +210,7 @@ def test_instalador(tmp: Path):
     inst = apoyo.instalador_de_prueba(tmp, "inst")
     perfil = inst.perfil
     guias = inst.guias()
-    comprobar(list(guias) == ["fast_castle", "scouts"], "las dos guías del catálogo, instaladas en la app")
+    comprobar(set(guias) == set(GUIAS), "todas las guías del catálogo, instaladas en la app")
     comprobar(inst.guia_instalada(guias) is None, "perfil vacío: ninguna guía instalada")
     comprobar(inst.activar_guia(guias["scouts"]) is None, "activar Scouts no da error")
     comun = perfil / "resources" / "_common" / "xs" / "aoe2c_guia.xs"
@@ -352,7 +357,7 @@ class OverlayFalso:
 
 def test_panel(tmp: Path):
     print("Panel: páginas, guía activa, ✕ y Cerrar AoE2C")
-    from PySide6.QtWidgets import QApplication, QPushButton
+    from PySide6.QtWidgets import QApplication, QLabel, QPushButton
     app = QApplication.instance() or QApplication(sys.argv)
     import dashboard as D
     import overlay as O
@@ -377,7 +382,15 @@ def test_panel(tmp: Path):
     comprobar(p.p_inicio.d_mejor.valor == H.reloj(mejor), f"inicio: mejor marca {H.reloj(mejor)}")
     p.ir("guias")
     usar = [b for b in p.p_guias.findChildren(QPushButton) if b.text() == textos.t("usar_guia")]
-    comprobar(len(usar) == 1, "en Guías, un botón «Usar esta guía» (la otra está activa)")
+    comprobar(len(usar) == len(GUIAS) - 1, "en Guías, un botón «Usar esta guía» por guía (menos la activa)")
+
+    def de_scouts(b) -> bool:
+        tarjeta = b.parent()
+        while tarjeta is not None and type(tarjeta).__name__ != "TarjetaGuia":
+            tarjeta = tarjeta.parent()
+        return tarjeta is not None and any(e.text() == "Scouts 21" for e in tarjeta.findChildren(QLabel))
+    usar = [b for b in usar if de_scouts(b)]
+    comprobar(len(usar) == 1, "uno de ellos es el de Scouts")
     usar[0].click()
     app.processEvents()
     comprobar(config["guia_activa"] == "scouts" and guardados and guardados[-1]["guia_activa"] == "scouts",

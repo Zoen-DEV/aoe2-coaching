@@ -1,13 +1,13 @@
 # Idea 2: AoE2 Coaching (guía de apertura hasta Castillos)
 
-- **Estado:** v4 instalada: **panel de AoE2C** (dashboard), guía de **Scouts 21** y elección de guía desde el panel, con 5 mapas. Probado con tests de código y capturas en memoria; **falta probarlo en una partida** (ver "Cómo probarlo en el juego").
+- **Estado:** v4 instalada: **panel de AoE2C** (dashboard), 6 guías (**Fast Castle 27+2**, **Scouts 21**, **Arqueros 22**, **Drush FC**, **Hombres de armas + arqueros** y **Águilas 22**) y elección de guía desde el panel, con 5 mapas. Probado con tests de código y capturas en memoria; **falta probarlo en una partida** (ver "Cómo probarlo en el juego").
 - **Tipo de mod:** mapa aleatorio con script XS, más un overlay en Python (PySide6)
 - **Juego:** Age of Empires II: Definitive Edition
 - **Código:** [content/guias/build.py](../content/guias/build.py) y [apps/desktop/aoe2c.py](../apps/desktop/aoe2c.py) (el programa único: overlay y panel)
 
 ## Qué hace
 
-Son copias de mapas oficiales que cargan un script XS: **"[AoE2C] Arabia"**, **"[AoE2C] Arena"**, **"[AoE2C] Black Forest"**, **"[AoE2C] Runestones"** y **"[AoE2C] Fortress"**. El script sigue la apertura elegida (**Fast Castle 27+2** o **Scouts 21**) y, cada segundo, vuelca el estado en un archivo. **AoE2C**, un programa aparte, lee ese archivo y dibuja la guía encima del juego; además tiene un **panel** (dashboard) con estadísticas y ajustes.
+Son copias de mapas oficiales que cargan un script XS: **"[AoE2C] Arabia"**, **"[AoE2C] Arena"**, **"[AoE2C] Black Forest"**, **"[AoE2C] Runestones"** y **"[AoE2C] Fortress"**. El script sigue la apertura elegida (**Fast Castle 27+2**, **Scouts 21**, **Arqueros 22**, **Drush FC**, **Hombres de armas + arqueros** o **Águilas 22**) y, cada segundo, vuelca el estado en un archivo. **AoE2C**, un programa aparte, lee ese archivo y dibuja la guía encima del juego; además tiene un **panel** (dashboard) con estadísticas y ajustes.
 
 ### El panel de AoE2C (dashboard)
 
@@ -33,7 +33,7 @@ Los cambios de Ajustes se aplican al momento (el panel y el overlay comparten la
 
 ### Elegir la guía
 
-Todos los mapas cargan el mismo script, `aoe2c_guia.xs`, de la carpeta `xs` del perfil. **Usar esta guía** copia encima el script de la guía elegida (`guia_fast_castle.xs` o `guia_scouts.xs`). Vale desde la siguiente partida, sin reiniciar el juego. El script escribe en el archivo de estado el **código de la guía**, así el overlay sabe qué guía se está jugando aunque el mapa sea el mismo.
+Todos los mapas cargan el mismo script, `aoe2c_guia.xs`, de la carpeta `xs` del perfil. **Usar esta guía** copia encima el script de la guía elegida (`guia_fast_castle.xs`, `guia_scouts.xs`, `guia_arqueros.xs`...). Vale desde la siguiente partida, sin reiniciar el juego. El script escribe en el archivo de estado el **código de la guía**, así el overlay sabe qué guía se está jugando aunque el mapa sea el mismo.
 
 ### El overlay (por defecto)
 
@@ -126,7 +126,7 @@ Al llegar a Castillos, el panel muestra los últimos pasos, la hora de llegada f
 
 | Decisión | Elegido |
 |---|---|
-| Build order | Fast Castle (27+2) y Scouts 21; se elige en el panel |
+| Build order | Fast Castle (27+2), Scouts 21, Arqueros 22, Drush FC, Hombres de armas + arqueros y Águilas 22; se elige en el panel |
 | Elección de guía | Un script común (`aoe2c_guia.xs`) que el panel sustituye, en vez de un mapa por guía |
 | Panel | Ventana normal (no encima del juego); la ✕ la esconde en la bandeja |
 | Civilización | Genérica (empieza con 3 aldeanos y granjas normales) |
@@ -183,7 +183,20 @@ La fuente es [build_orders/scouts_21.json](../content/guias/build_orders/scouts_
 
 **Tiempos de referencia:** calculados como en Fast Castle (un aldeano cada 25 s, Feudal 130 s, exploradores de 30 s en un solo establo) más unos segundos de camino. Son una primera estimación: conviene ajustarlos con tus partidas.
 
-**Exploradores:** se cuentan las unidades de caballería de exploración (ID 448) vivas, incluida la inicial. Si pierdes el explorador inicial, hace falta uno más. Las civilizaciones que empiezan con águila (aztecas, mayas, incas) no pueden seguir esta guía.
+**Exploradores:** se cuentan las unidades de caballería de exploración (ID 448) vivas, incluida la inicial. Si pierdes el explorador inicial, hace falta uno más. Las civilizaciones que empiezan con águila (aztecas, mayas, incas) tienen su propia guía, **Águilas 22**.
+
+### Arqueros 22, Drush FC, Hombres de armas + arqueros y Águilas 22
+
+Comparten la Alta Edad Media con Scouts (6 pastores, 4 leñadores, jabalíes, 4 en bayas) y cambian a partir del cuartel. Los pasos completos están en cada JSON; aquí, lo que las distingue:
+
+| Guía | Fuente | Clic Feudal | Qué hace | Meta (historial) |
+|---|---|---|---|---|
+| Arqueros 22 | [arqueros_22.json](../content/guias/build_orders/arqueros_22.json) | 8:00, 22 de población (2 en oro antes de subir) | 2 galerías de tiro al llegar, 6 en oro y arqueros sin parar | 10 arqueros (13:45) |
+| Drush FC | [drush_fc.json](../content/guias/build_orders/drush_fc.json) | 8:55, 27 de población (23 aldeanos, 3 milicianos y el explorador) | Cuartel a las 4:10, 3 milicianos a molestar y después el Fast Castle de siempre (mercado, herrería, 25 aldeanos) | Edad de los Castillos (14:40) |
+| Hombres de armas + arqueros | [hombres_armas_arqueros.json](../content/guias/build_orders/hombres_armas_arqueros.json) | 8:25, 23 de población (3 en oro) | 3 milicianos mientras sube, mejora a Hombre de armas al llegar y 2 galerías de tiro | 6 arqueros (13:30) |
+| Águilas 22 | [aguilas_22.json](../content/guias/build_orders/aguilas_22.json) | 8:05, 22 de población (4 en oro: las águilas cuestan oro) | Segundo cuartel al llegar, 8 en oro y águilas sin parar | 8 águilas (12:45) |
+
+**Unidades y tecnologías nuevas** (IDs comprobadas en `CivTechTrees`): arqueros (4), milicianos (74, y 75 cuando ya son hombres de armas, para que la mejora no los descuente), hombres de armas (75), águilas (751 la exploradora, que también es la inicial, y 753 la guerrera), galería de tiro (87), Emplumado (199) y la mejora Hombre de armas (222). Los tiempos de referencia se calcularon igual que en Scouts (arqueros y águilas de 35 s, milicianos de 21 s) y son una primera estimación.
 
 ## Cómo funciona
 

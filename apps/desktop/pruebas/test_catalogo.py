@@ -26,6 +26,8 @@ import historial as H  # noqa: E402
 import instalador as I  # noqa: E402
 import textos  # noqa: E402
 
+GUIAS_FUENTE = sorted((Path(__file__).resolve().parents[3] / "content" / "guias" / "build_orders").glob("*.json"))
+
 
 def comprobar(cond, msg):
     if not cond:
@@ -49,8 +51,8 @@ def test_formato(tmp: Path):
     ruta = apoyo.catalogo_de_prueba(tmp / "formato")
     datos = json.loads(ruta.read_text(encoding="utf-8"))
     cat = K.leer(datos, str(ruta), estricto=True)
-    comprobar([e.tipo for e in cat.elementos].count("mapa") == 5 and len(cat.de("guia")) == 2 and len(cat.de("mod")) == 2,
-              "2 guías, 5 mapas y 2 mods")
+    comprobar([e.tipo for e in cat.elementos].count("mapa") == 5 and len(cat.de("guia")) == len(GUIAS_FUENTE) and len(cat.de("mod")) == 2,
+              f"{len(GUIAS_FUENTE)} guías (una por build order), 5 mapas y 2 mods")
     fc = cat.buscar("guia", "fast_castle")
     comprobar(fc.paquete and len(fc.paquete.sha256) == 64 and fc.texto("descripcion", "en").startswith("Straight"),
               "cada guía lleva paquete con SHA-256 y textos en los dos idiomas")
@@ -90,7 +92,8 @@ def test_descargas(tmp: Path):
     print("Descargas: hash, tamaño, paquetes peligrosos y copia sin conexión")
     ruta = apoyo.catalogo_de_prueba(tmp / "descargas")
     cat, datos = K.descargar(str(ruta))
-    comprobar(len(cat.elementos) == 9 and datos == ruta.read_bytes(), "descargar el catálogo (ruta local)")
+    comprobar(len(cat.elementos) == len(GUIAS_FUENTE) + 7 and datos == ruta.read_bytes(),
+              "descargar el catálogo (ruta local): las guías, 5 mapas y 2 mods")
     fc = cat.buscar("guia", "fast_castle")
     zip_ = K.descargar_paquete(cat, fc, tmp / "bajadas")
     comprobar(zip_.is_file() and K.sha256_de(zip_) == fc.paquete.sha256, "el paquete llega y su hash coincide")
@@ -117,7 +120,7 @@ def test_descargas(tmp: Path):
     comprobar(K.cargar_copia(copia) is None, "sin copia guardada no hay catálogo")
     K.guardar_copia(datos, cat.origen, copia)
     guardado = K.cargar_copia(copia)
-    comprobar(guardado and len(guardado.elementos) == 9 and guardado.origen == str(ruta),
+    comprobar(guardado and len(guardado.elementos) == len(GUIAS_FUENTE) + 7 and guardado.origen == str(ruta),
               "la copia guardada sirve sin conexión (con su origen, para los paquetes)")
     os.environ["AOE2C_CATALOGO"] = "https://ejemplo/catalogo.json"
     comprobar(K.fuente_por_defecto() == "https://ejemplo/catalogo.json", "AOE2C_CATALOGO elige otro catálogo")
@@ -287,8 +290,9 @@ def test_panel(tmp: Path):
     comprobar(p.estado_catalogo[0] == "al_dia" and inst.catalogo and K.cargar_copia(inst.contenido),
               "«Buscar novedades» descarga el catálogo y guarda una copia")
     instalar = [b for b in p.p_guias.findChildren(QPushButton) if b.text() == textos.t("instalar")]
-    comprobar(len(instalar) == 2, "Guías ofrece instalar las dos guías del catálogo")
-    instalar[1].click()
+    ids = [e.id for e in inst.catalogo.de("guia")]  # las tarjetas salen en el orden del catálogo
+    comprobar(len(instalar) == len(ids) == len(GUIAS_FUENTE), "Guías ofrece instalar todas las guías del catálogo")
+    instalar[ids.index("scouts")].click()
     app.processEvents()
     comprobar(list(p.guias) == ["scouts"] and cambios and list(cambios[-1]) == ["scouts"],
               "instalar Scouts: el panel y el lector la reciben")

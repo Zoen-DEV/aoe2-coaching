@@ -1,0 +1,198 @@
+{
+  "id": "aguilas",
+  "version": "1.0.0",
+  "nombre": "Águilas 22",
+  "descripcion": "La alternativa a Scouts para aztecas, mayas e incas: 22 de población al pulsar Feudal, oro antes de subir, un segundo cuartel al llegar y águilas sin parar.",
+  "descripcion_en": "The Scouts alternative for Aztecs, Mayans and Incas: 22 population when you click Feudal, gold before aging up, a second Barracks on arrival and non-stop eagles.",
+  "nivel": "media",
+  "mapas_recomendados": ["arabia", "runestones"],
+  "hitos": ["clic_feudal", "feudal", "meta"],
+  "series": ["feudal", "meta"],
+  "hito_principal": "meta",
+  "titulo_final": "¡Águilas en marcha!",
+  "titulo_final_en": "Eagles on the move!",
+  "icono_final": "aguila",
+  "archivo_xs": "guia_aguilas.xs",
+  "margen_segundos": 20,
+  "aviso_casas": true,
+  "overlay": true,
+  "panel_juego": false,
+  "pasos_hechos_visibles": 0,
+  "pasos_siguientes_visibles": 3,
+  "mensaje_final": "Siguiente: herrería con armadura de infantería, aldeanos sin parar, granjas y prepara la subida a Castillos.",
+  "mensaje_final_en": "Next: Blacksmith with infantry armor, non-stop villagers, farms and get ready to click up to Castle Age.",
+  "pasos": [
+    {
+      "titulo": "2 casas",
+      "titulo_en": "2 houses",
+      "texto": "Pon a los 3 aldeanos iniciales a construir 2 casas. Crea aldeanos sin parar y trae ganado con el águila inicial.",
+      "texto_en": "Put the 3 starting villagers on 2 houses. Make villagers non-stop and bring sheep with your starting eagle.",
+      "icono": "casa",
+      "referencia": "0:35",
+      "condiciones": [
+        {"edificio": "casa", "min": 2}
+      ]
+    },
+    {
+      "titulo": "6 pastores",
+      "titulo_en": "6 on sheep",
+      "texto": "Manda a los aldeanos al ganado, bajo el centro urbano, hasta tener 6 pastores. El águila ve menos: explora en círculos cerca de casa.",
+      "texto_en": "Send villagers to the sheep under the Town Center until you have 6 shepherds. The eagle sees less: scout in circles close to home.",
+      "icono": "oveja",
+      "referencia": "1:20",
+      "condiciones": [
+        {"aldeanos": "pastores", "min": 6}
+      ]
+    },
+    {
+      "titulo": "Campamento y 4 leñadores",
+      "titulo_en": "Lumber camp and 4 on wood",
+      "texto": "Con los aldeanos 7 a 10, construye un campamento maderero junto al bosque y ponlos a talar.",
+      "texto_en": "With villagers 7 to 10, build a lumber camp next to the woodline and put them on wood.",
+      "icono": "campamento_maderero",
+      "referencia": "3:10",
+      "condiciones": [
+        {"edificio": "campamento_maderero", "min": 1},
+        {"aldeanos": "lenadores", "min": 4}
+      ]
+    },
+    {
+      "titulo": "Primer jabalí",
+      "titulo_en": "First boar",
+      "texto": "Con el aldeano 11, atrae el primer jabalí hasta el centro urbano y pasa los pastores a cazarlo.",
+      "texto_en": "With villager 11, lure the first boar to the Town Center and move the shepherds onto it.",
+      "icono": "jabali",
+      "referencia": "3:30",
+      "condiciones": [
+        {"aldeanos": "cazadores", "min": 1}
+      ]
+    },
+    {
+      "titulo": "Casa, molino y 4 en bayas",
+      "titulo_en": "House, mill and 4 on berries",
+      "texto": "Con el aldeano 12, construye una casa y un molino junto a las bayas. Los aldeanos 12 a 15 recolectan bayas.",
+      "texto_en": "With villager 12, build a house and a mill next to the berries. Villagers 12 to 15 gather berries.",
+      "icono": "molino",
+      "referencia": "5:15",
+      "condiciones": [
+        {"edificio": "casa", "min": 3},
+        {"edificio": "molino", "min": 1},
+        {"aldeanos": "recolectores", "min": 4}
+      ]
+    },
+    {
+      "titulo": "Segundo jabalí, 12 en comida",
+      "titulo_en": "Second boar, 12 on food",
+      "texto": "Atrae el segundo jabalí con el aldeano 16. Construye otra casa.",
+      "texto_en": "Lure the second boar with villager 16. Build another house.",
+      "icono": "jabali",
+      "referencia": "5:40",
+      "condiciones": [
+        {"edificio": "casa", "min": 4},
+        {"aldeanos": "comida", "min": 12}
+      ]
+    },
+    {
+      "titulo": "Cuartel y 5 leñadores",
+      "titulo_en": "Barracks and 5 on wood",
+      "texto": "Con el aldeano 17, construye un cuartel cerca del bosque y luego ponlo a talar.",
+      "texto_en": "With villager 17, build a Barracks close to the woodline, then send it to wood.",
+      "icono": "cuartel",
+      "referencia": "6:40",
+      "condiciones": [
+        {"edificio": "cuartel", "min": 1},
+        {"aldeanos": "lenadores", "min": 5}
+      ]
+    },
+    {
+      "titulo": "Campamento minero, 4 en oro",
+      "titulo_en": "Mining camp, 4 on gold",
+      "texto": "Con los aldeanos 18 a 21, construye un campamento minero junto al oro y ponlos a minar. Las águilas cuestan 50 de oro.",
+      "texto_en": "With villagers 18 to 21, build a mining camp next to the gold and put them on it. Eagles cost 50 gold each.",
+      "icono": "campamento_minero",
+      "referencia": "7:35",
+      "condiciones": [
+        {"edificio": "campamento_minero", "min": 1},
+        {"aldeanos": "mineros_oro", "min": 4}
+      ]
+    },
+    {
+      "titulo": "Telar",
+      "titulo_en": "Loom",
+      "texto": "Investiga el Telar en el centro urbano después del aldeano 21.",
+      "texto_en": "Research Loom at the Town Center after villager 21.",
+      "icono": "centro_urbano",
+      "referencia": "8:00",
+      "condiciones": [
+        {"tecnologia": "telar", "estado": "terminada"}
+      ]
+    },
+    {
+      "titulo": "Clic en Edad Feudal",
+      "titulo_en": "Click Feudal Age",
+      "texto": "Sube a la Edad Feudal con 22 de población (21 aldeanos y el águila inicial).",
+      "texto_en": "Advance to the Feudal Age at 22 population (21 villagers and the starting eagle).",
+      "icono": "centro_urbano",
+      "referencia": "8:05",
+      "condiciones": [
+        {"tecnologia": "edad_feudal", "estado": "iniciada"}
+      ]
+    },
+    {
+      "titulo": "Edad Feudal",
+      "titulo_en": "Feudal Age",
+      "texto": "Mientras sube: junta 175 de madera para un segundo cuartel y pasa a granjas a los aldeanos que se queden sin caza.",
+      "texto_en": "While aging up: gather 175 wood for a second Barracks and move villagers to farms as the hunt runs out.",
+      "icono": "centro_urbano",
+      "referencia": "10:15",
+      "condiciones": [
+        {"edad": "feudal"}
+      ]
+    },
+    {
+      "titulo": "Segundo cuartel",
+      "titulo_en": "Second Barracks",
+      "texto": "Nada más llegar, empieza a crear águilas en el cuartel y construye un segundo cuartel con 2 leñadores.",
+      "texto_en": "As soon as you arrive, start making eagles at the Barracks and build a second Barracks with 2 lumberjacks.",
+      "icono": "cuartel",
+      "referencia": "10:55",
+      "condiciones": [
+        {"edificio": "cuartel", "min": 2}
+      ]
+    },
+    {
+      "titulo": "4 águilas",
+      "titulo_en": "4 eagles",
+      "texto": "Crea águilas sin parar en los 2 cuarteles (cuenta la inicial). Ataca a los aldeanos de la madera y el oro.",
+      "texto_en": "Make eagles non-stop from both Barracks (the starting one counts). Hit the villagers on wood and gold.",
+      "icono": "aguila",
+      "referencia": "11:30",
+      "condiciones": [
+        {"unidades": "aguilas", "min": 4}
+      ]
+    },
+    {
+      "titulo": "8 en oro y 4 granjas",
+      "titulo_en": "8 on gold and 4 farms",
+      "texto": "Los aldeanos 22 a 25 van al oro. Cuando se acabe la caza, pasa esos aldeanos a granjas.",
+      "texto_en": "Villagers 22 to 25 go to gold. When the hunt runs out, move those villagers to farms.",
+      "icono": "granja",
+      "referencia": "12:00",
+      "condiciones": [
+        {"aldeanos": "mineros_oro", "min": 8},
+        {"edificio": "granja", "min": 4}
+      ]
+    },
+    {
+      "titulo": "8 águilas",
+      "titulo_en": "8 eagles",
+      "texto": "Sigue con los 2 cuarteles sin parar hasta 8 águilas. Ataca aldeanos y arqueros sueltos, y no pelees bajo sus torres.",
+      "texto_en": "Keep both Barracks producing up to 8 eagles. Hit villagers and loose archers, and avoid fighting under towers.",
+      "icono": "aguila",
+      "referencia": "12:45",
+      "condiciones": [
+        {"unidades": "aguilas", "min": 8}
+      ]
+    }
+  ]
+}

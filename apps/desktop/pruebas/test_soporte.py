@@ -173,7 +173,7 @@ def test_datos(tmp: Path):
                    "C:\\Users\\Jugador\\Games\\Age of Empires 2 DE\\76561199524040890\\profile\n", encoding="utf-8")
     inst = apoyo.instalador_de_prueba(tmp, "soporte")
     texto = S.datos(C.cargar(tmp / "nada.json"), inst, False, log)
-    for parte in (f"v{S.VERSION}", "Windows", "Juego: encontrado (cerrado)", "Guías: fast_castle", "Mapas:", "Mods:",
+    for parte in (f"v{S.VERSION}", "Windows", "Juego: encontrado (cerrado)", "Guías:", "fast_castle 1.", "Mapas:", "Mods:",
                   "Últimos avisos y errores (1):"):
         comprobar(parte in texto, f"incluye «{parte}»")
     comprobar("Jugador" not in texto and "76561199524040890" not in texto, "sin el usuario ni el SteamID")

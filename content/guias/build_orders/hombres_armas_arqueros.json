@@ -1,0 +1,209 @@
+{
+  "id": "hombres_armas",
+  "version": "1.0.0",
+  "nombre": "Hombres de armas + arqueros",
+  "descripcion": "Tres hombres de armas al llegar a Feudal para molestar pronto y transición a arqueros: 23 de población al pulsar Feudal y milicianos mientras sube la edad.",
+  "descripcion_en": "Three Men-at-Arms as you reach Feudal for early harassment, then a transition into archers: 23 population when you click Feudal and militia while aging up.",
+  "nivel": "media",
+  "mapas_recomendados": ["arabia"],
+  "hitos": ["clic_feudal", "feudal", "meta"],
+  "series": ["feudal", "meta"],
+  "hito_principal": "meta",
+  "titulo_final": "¡Presión en marcha!",
+  "titulo_final_en": "Pressure on the way!",
+  "icono_final": "arquero",
+  "archivo_xs": "guia_hombres_armas.xs",
+  "margen_segundos": 20,
+  "aviso_casas": true,
+  "overlay": true,
+  "panel_juego": false,
+  "pasos_hechos_visibles": 0,
+  "pasos_siguientes_visibles": 3,
+  "mensaje_final": "Siguiente: herrería y Emplumado, más arqueros y usa los hombres de armas para proteger a tus arqueros.",
+  "mensaje_final_en": "Next: Blacksmith and Fletching, more archers, and use the Men-at-Arms to protect your archers.",
+  "pasos": [
+    {
+      "titulo": "2 casas",
+      "titulo_en": "2 houses",
+      "texto": "Pon a los 3 aldeanos iniciales a construir 2 casas. Crea aldeanos sin parar y trae ganado con el explorador.",
+      "texto_en": "Put the 3 starting villagers on 2 houses. Make villagers non-stop and bring sheep with your scout.",
+      "icono": "casa",
+      "referencia": "0:35",
+      "condiciones": [
+        {"edificio": "casa", "min": 2}
+      ]
+    },
+    {
+      "titulo": "6 pastores",
+      "titulo_en": "6 on sheep",
+      "texto": "Manda a los aldeanos al ganado, bajo el centro urbano, hasta tener 6 pastores.",
+      "texto_en": "Send villagers to the sheep under the Town Center until you have 6 shepherds.",
+      "icono": "oveja",
+      "referencia": "1:20",
+      "condiciones": [
+        {"aldeanos": "pastores", "min": 6}
+      ]
+    },
+    {
+      "titulo": "Campamento y 4 leñadores",
+      "titulo_en": "Lumber camp and 4 on wood",
+      "texto": "Con los aldeanos 7 a 10, construye un campamento maderero junto al bosque y ponlos a talar.",
+      "texto_en": "With villagers 7 to 10, build a lumber camp next to the woodline and put them on wood.",
+      "icono": "campamento_maderero",
+      "referencia": "3:10",
+      "condiciones": [
+        {"edificio": "campamento_maderero", "min": 1},
+        {"aldeanos": "lenadores", "min": 4}
+      ]
+    },
+    {
+      "titulo": "Primer jabalí",
+      "titulo_en": "First boar",
+      "texto": "Con el aldeano 11, atrae el primer jabalí hasta el centro urbano y pasa los pastores a cazarlo.",
+      "texto_en": "With villager 11, lure the first boar to the Town Center and move the shepherds onto it.",
+      "icono": "jabali",
+      "referencia": "3:30",
+      "condiciones": [
+        {"aldeanos": "cazadores", "min": 1}
+      ]
+    },
+    {
+      "titulo": "Casa, molino y 4 en bayas",
+      "titulo_en": "House, mill and 4 on berries",
+      "texto": "Con el aldeano 12, construye una casa y un molino junto a las bayas. Los aldeanos 12 a 15 recolectan bayas.",
+      "texto_en": "With villager 12, build a house and a mill next to the berries. Villagers 12 to 15 gather berries.",
+      "icono": "molino",
+      "referencia": "5:15",
+      "condiciones": [
+        {"edificio": "casa", "min": 3},
+        {"edificio": "molino", "min": 1},
+        {"aldeanos": "recolectores", "min": 4}
+      ]
+    },
+    {
+      "titulo": "Segundo jabalí, 13 en comida",
+      "titulo_en": "Second boar, 13 on food",
+      "texto": "Atrae el segundo jabalí con el aldeano 16 y manda el 17 a la comida. Construye otra casa.",
+      "texto_en": "Lure the second boar with villager 16 and send villager 17 to food. Build another house.",
+      "icono": "jabali",
+      "referencia": "6:00",
+      "condiciones": [
+        {"edificio": "casa", "min": 4},
+        {"aldeanos": "comida", "min": 13}
+      ]
+    },
+    {
+      "titulo": "Cuartel y 6 leñadores",
+      "titulo_en": "Barracks and 6 on wood",
+      "texto": "Con el aldeano 18, construye un cuartel y luego ponlo a talar. El aldeano 19 también va a la madera.",
+      "texto_en": "With villager 18, build a Barracks, then send it to wood. Villager 19 also goes to wood.",
+      "icono": "cuartel",
+      "referencia": "6:50",
+      "condiciones": [
+        {"edificio": "cuartel", "min": 1},
+        {"aldeanos": "lenadores", "min": 6}
+      ]
+    },
+    {
+      "titulo": "Campamento minero, 3 en oro",
+      "titulo_en": "Mining camp, 3 on gold",
+      "texto": "Con los aldeanos 20 a 22, construye un campamento minero junto al oro y ponlos a minar.",
+      "texto_en": "With villagers 20 to 22, build a mining camp next to the gold and put them on it.",
+      "icono": "campamento_minero",
+      "referencia": "8:00",
+      "condiciones": [
+        {"edificio": "campamento_minero", "min": 1},
+        {"aldeanos": "mineros_oro", "min": 3}
+      ]
+    },
+    {
+      "titulo": "Telar",
+      "titulo_en": "Loom",
+      "texto": "Investiga el Telar en el centro urbano después del aldeano 22.",
+      "texto_en": "Research Loom at the Town Center after villager 22.",
+      "icono": "centro_urbano",
+      "referencia": "8:20",
+      "condiciones": [
+        {"tecnologia": "telar", "estado": "terminada"}
+      ]
+    },
+    {
+      "titulo": "Clic en Edad Feudal",
+      "titulo_en": "Click Feudal Age",
+      "texto": "Sube a la Edad Feudal con 23 de población (22 aldeanos y el explorador).",
+      "texto_en": "Advance to the Feudal Age at 23 population (22 villagers and the scout).",
+      "icono": "centro_urbano",
+      "referencia": "8:25",
+      "condiciones": [
+        {"tecnologia": "edad_feudal", "estado": "iniciada"}
+      ]
+    },
+    {
+      "titulo": "3 milicianos",
+      "titulo_en": "3 militia",
+      "texto": "Mientras sube, crea 3 milicianos en el cuartel. Guarda 100 de comida y 40 de oro para la mejora.",
+      "texto_en": "While aging up, make 3 militia at the Barracks. Save 100 food and 40 gold for the upgrade.",
+      "icono": "miliciano",
+      "referencia": "9:40",
+      "condiciones": [
+        {"unidades": "milicianos", "min": 3}
+      ]
+    },
+    {
+      "titulo": "Edad Feudal",
+      "titulo_en": "Feudal Age",
+      "texto": "Mientras sube: junta 350 de madera para 2 galerías de tiro y pasa a granjas a los aldeanos que se queden sin caza.",
+      "texto_en": "While aging up: gather 350 wood for 2 archery ranges and move villagers to farms as the hunt runs out.",
+      "icono": "centro_urbano",
+      "referencia": "10:35",
+      "condiciones": [
+        {"edad": "feudal"}
+      ]
+    },
+    {
+      "titulo": "Hombres de armas",
+      "titulo_en": "Men-at-Arms",
+      "texto": "Nada más llegar, investiga Hombre de armas en el cuartel y manda los 3 a por los aldeanos enemigos de la madera.",
+      "texto_en": "As soon as you arrive, research Man-at-Arms at the Barracks and send the 3 of them at the enemy villagers on wood.",
+      "icono": "hombre_armas",
+      "referencia": "11:15",
+      "condiciones": [
+        {"tecnologia": "hombre_de_armas", "estado": "terminada"}
+      ]
+    },
+    {
+      "titulo": "2 galerías de tiro",
+      "titulo_en": "2 archery ranges",
+      "texto": "Con 2 leñadores, construye 2 galerías de tiro (una cada uno). Los aldeanos nuevos van al oro.",
+      "texto_en": "With 2 lumberjacks, build 2 archery ranges (one each). New villagers go to gold.",
+      "icono": "galeria_tiro",
+      "referencia": "11:30",
+      "condiciones": [
+        {"edificio": "galeria_tiro", "min": 2}
+      ]
+    },
+    {
+      "titulo": "6 en oro y 4 granjas",
+      "titulo_en": "6 on gold and 4 farms",
+      "texto": "Los aldeanos 23 a 25 van al oro. Cuando se acabe la caza, pasa esos aldeanos a granjas.",
+      "texto_en": "Villagers 23 to 25 go to gold. When the hunt runs out, move those villagers to farms.",
+      "icono": "granja",
+      "referencia": "12:00",
+      "condiciones": [
+        {"aldeanos": "mineros_oro", "min": 6},
+        {"edificio": "granja", "min": 4}
+      ]
+    },
+    {
+      "titulo": "6 arqueros",
+      "titulo_en": "6 archers",
+      "texto": "Crea arqueros sin parar en las 2 galerías y júntalos con los hombres de armas: ellos delante, los arqueros detrás.",
+      "texto_en": "Make archers non-stop from both ranges and group them with the Men-at-Arms: infantry in front, archers behind.",
+      "icono": "arquero",
+      "referencia": "13:30",
+      "condiciones": [
+        {"unidades": "arqueros", "min": 6}
+      ]
+    }
+  ]
+}

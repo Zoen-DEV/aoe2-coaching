@@ -50,7 +50,8 @@ ICONOS = {
     "casa": "🏠", "oveja": "🐑", "campamento_maderero": "🪓", "jabali": "🐗", "molino": "🫐",
     "campamento_minero": "⛏️", "centro_urbano": "🏛️", "granja": "🌾", "mercado": "⚖️",
     "herreria": "🔨", "castillo": "🏰", "aldeano": "👤", "cuartel": "⚔️",
-    "establo": "🐴", "explorador": "🐎",
+    "establo": "🐴", "explorador": "🐎", "galeria_tiro": "🎯", "arquero": "🏹", "miliciano": "🗡️",
+    "hombre_armas": "🛡️", "aguila": "🦅",
 }
 
 

@@ -21,6 +21,11 @@ export const ICONOS: Record<string, string> = {
   cuartel: '<path d="M6 4 18 16M18 4 6 16"/><path d="M4 18l2-2M20 18l-2-2"/>',
   establo: '<path d="M7 20v-6c0-3 2-6 5-7l3-3 1 3c2 1.5 3 3.5 3 6v7"/><path d="M11 12h.01"/>',
   explorador: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+  galeria_tiro: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6"/>',
+  arquero: '<path d="M7 3c6 2 9 6 9 9s-3 7-9 9"/><path d="M7 3v18"/><path d="M4 12h15l-2.5-2.5M19 12l-2.5 2.5"/>',
+  miliciano: '<path d="M14.5 3.5 20 3.5 20 9 9 20 4 15z"/><path d="m7 13 4 4M4 20l2-2"/>',
+  hombre_armas: '<path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z"/><path d="M12 8v8M9 11h6"/>',
+  aguila: '<path d="M3 9c3 0 5 1 7 3l2-5 2 5c2-2 4-3 7-3-1 4-4 7-7 8l-2 4-2-4c-3-1-6-4-7-8Z"/>',
 };
 
 export function icono(clave: string, clase = ""): string {
