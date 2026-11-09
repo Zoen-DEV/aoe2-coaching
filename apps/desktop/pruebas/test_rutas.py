@@ -171,9 +171,16 @@ def test_panel_perfiles(tmp: Path):
     app.processEvents()
     comprobar(len(elegido) == 1, "no vuelve a preguntar")
     panel.ir("ajustes")
+    # El perfil «a» tiene los mapas instalados pero un aoe2c_guia.xs viejo.
+    guia = panel.guia_activa()
+    archivo(panel.instalador.carpeta_guias / guia["archivo_xs"], "// guia elegida\n")
+    archivo(a / "mods" / "local" / I.NOMBRE_MOD / "info.json", "{}")
+    archivo(a / I.XS / I.XS_COMUN, "// guia vieja\n")
     combo = next(c for c in panel.findChildren(QComboBox) if c.count() == 2 and c.itemData(0) == str(a))
     combo.setCurrentIndex(0)
     comprobar(panel.instalador.perfil == a and cambios[-1] == a, "en Ajustes se cambia de perfil con la lista")
+    comprobar((a / I.XS / I.XS_COMUN).read_text() == "// guia elegida\n",
+              "al cambiar de perfil, sus mapas pasan a cargar la guía activa")
     comprobar(not panel.cambiar_juego(tmp / "no_es_el_juego") and config["juego"] is None,
               "una carpeta sin AoE2DE_s.exe no se acepta")
     juego = tmp / "AoE2DE"

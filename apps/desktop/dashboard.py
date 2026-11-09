@@ -1115,6 +1115,13 @@ class Panel(QWidget):
         repeticiones.poner_perfil(Path(carpeta))
         self.config["perfil"] = str(carpeta)
         self.guardar_config()
+        # El aoe2c_guia.xs es de cada perfil: sin esto, los mapas del perfil nuevo
+        # seguirían cargando la guía que tuviera antes, no la elegida en el panel.
+        guia = self.guia_activa()
+        mod = self.instalador.mod_instalado
+        if guia and mod is not None and mod.is_dir():
+            if error := self.instalador.activar_guia(guia):
+                logging.getLogger("aoe2c").warning("no se pudo activar %s en el perfil nuevo: %s", guia["id"], error)
         self.al_cambiar_perfil(Path(carpeta))
         self.construir()
         self.avisar(t("perfil_cambiado"))
