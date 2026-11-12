@@ -27,6 +27,7 @@ import logo  # noqa: E402
 import repeticiones  # noqa: E402
 import rutas  # noqa: E402
 import textos  # noqa: E402
+import tierlist as TL  # noqa: E402
 from estilo import (ACENTO, APAGADO, ATENCION, BANDERAS_CLIC, BIEN, BORDE, EMOJI, FONDO, MAL, PISTA,  # noqa: E402
                     SECUNDARIO, TARJETA, TEXTO, color, fuente)
 from historial import Historial, Seguimiento, comparacion_final, historial_de_ejemplo  # noqa: E402
@@ -46,6 +47,8 @@ PAD = 18
 BOTON = 26  # botón de menú, arriba a la derecha de la tarjeta
 DURACION_PLIEGUE = 0.28  # segundos que tarda en plegarse o desplegarse
 SIN_DATOS = 4.0  # segundos sin datos nuevos para dar la partida por terminada
+CAMBIO_TIERLIST = 10.0  # segundos que se ve el resumen final antes de pasar a la tierlist
+COLORES_NIVEL = {"S": ATENCION, "A": BIEN, "B": ACENTO, "C": APAGADO}
 ICONOS = {
     "casa": "🏠", "oveja": "🐑", "campamento_maderero": "🪓", "jabali": "🐗", "molino": "🫐",
     "campamento_minero": "⛏️", "centro_urbano": "🏛️", "granja": "🌾", "mercado": "⚖️",
@@ -96,6 +99,8 @@ class Vista:
     comparacion: str = ""  # esta partida frente al historial (tarjeta final)
     titulo_final: str = ""
     icono_final: str = "castillo"
+    tierlist: TL.Tierlist | None = None  # tecnologías para esta civilización y este mapa
+    ver_tierlist: bool = False  # la tarjeta final ya pasó del resumen a la tierlist
 
 
 def ritmo(diferencia: int, margen: int) -> tuple[str, QColor]:
@@ -127,6 +132,7 @@ def construir_vista(guia: dict, e: Estado, siguientes: int | None = None, aviso_
         if saltados:
             v.resumen += "\n" + t("ov_sin_hacer", pasos=", ".join(saltados))
         v.final = de(guia, "mensaje_final")
+        v.tierlist = TL.construir(guia, e, textos.idioma() == "en")
         return v
 
     p = pasos[e.paso]
@@ -208,7 +214,10 @@ class Pintor:
         y += 22
 
         # Paso y ritmo.
-        if v.terminada:
+        tier = v.tierlist if v.terminada and v.ver_tierlist else None
+        if tier:
+            self.texto(x0, y, w, t("ov_tierlist"), fuente(14, QFont.Weight.Bold), TEXTO, h=24)
+        elif v.terminada:
             self.texto(x0, y, w, t("ov_completada"), fuente(14, QFont.Weight.Bold), TEXTO, h=24)
         else:
             f1, f2 = fuente(14, QFont.Weight.Bold), fuente(14, QFont.Weight.Normal)
@@ -216,10 +225,15 @@ class Pintor:
             self.texto(x0, y, w, t1, f1, TEXTO, h=24)
             self.texto(x0 + QFontMetricsF(f1).horizontalAdvance(t1) + 4, y, w, t("ov_de", total=v.total), f2, APAGADO,
                        h=24)
-        if v.ritmo:
+        if tier:
+            self.pastilla(x0 + w, y + 1, f"{tier.hechas}/{tier.total}", BIEN if tier.hechas == tier.total else SECUNDARIO)
+        elif v.ritmo:
             self.pastilla(x0 + w, y + 1, *v.ritmo)
         y += 32
-        self.barra(x0, y, w, 4, v.hechos / v.total, BIEN if v.terminada else ACENTO)
+        if tier:
+            self.barra(x0, y, w, 4, tier.hechas / tier.total, BIEN)
+        else:
+            self.barra(x0, y, w, 4, v.hechos / v.total, BIEN if v.terminada else ACENTO)
         y += 16
 
         # Aviso breve del paso que se acaba de completar.
@@ -234,7 +248,9 @@ class Pintor:
                 self.p.setOpacity(1.0)
             y += 42
 
-        if v.terminada:
+        if tier:
+            y = self._tierlist(tier, x0, y, w, entrada)
+        elif v.terminada:
             y = self._final(v, x0, y, w)
         else:
             y = self._actual(v, x0, y, w, entrada)
@@ -328,6 +344,52 @@ class Pintor:
         self.texto(x0 + 14, yy, tw, v.final, fuente(9.5, QFont.Weight.Medium), TEXTO, envolver=True)
         return y + r.height() + 14
 
+    def _tierlist(self, tier: TL.Tierlist, x0, y, w, entrada) -> float:
+        """Una fila por nivel: la letra y las tecnologías en fichas que bajan de línea si no
+        caben. Las ya investigadas, apagadas y tachadas; las que se investigan, en azul."""
+        if self.p:
+            self.p.setOpacity(0.25 + 0.75 * entrada)
+        y += (1 - entrada) * 10
+        contexto = " · ".join(x for x in (tier.civilizacion, tier.mapa) if x)
+        if contexto:
+            self.texto(x0 + 2, y, w, contexto.upper(), fuente(8, QFont.Weight.Bold, 1.3), APAGADO, h=16)
+            y += 24
+        f_ficha = fuente(8.5, QFont.Weight.DemiBold)
+        f_hecha = fuente(8.5, QFont.Weight.Medium)
+        f_hecha.setStrikeOut(True)
+        alto, sep, letra = 24, 5, 24
+        cx0 = x0 + letra + 10
+        for nivel, techs in tier.niveles:
+            c = COLORES_NIVEL[nivel]
+            self.caja(QRectF(x0, y, letra, alto), 7, color(c, 46), color(c, 120))
+            self.texto(x0, y, letra, nivel, fuente(10, QFont.Weight.Bold), c, Qt.AlignmentFlag.AlignHCenter, h=alto)
+            cx, cy = cx0, y
+            for tech in techs:
+                hecha = tech.estado == TL.HECHA
+                en_curso = tech.estado == TL.EN_CURSO
+                f = f_hecha if hecha else f_ficha
+                texto = ("✓ " if hecha else "") + tech.nombre
+                extra = 26 if en_curso else 18  # en curso lleva un punto azul delante
+                ancho = min(x0 + w - cx0, QFontMetricsF(f).horizontalAdvance(texto) + extra)
+                if cx + ancho > x0 + w and cx > cx0:
+                    cx, cy = cx0, cy + alto + sep
+                r = QRectF(cx, cy, ancho, alto)
+                if hecha:
+                    self.caja(r, 7, color(TEXTO, 6), color(TEXTO, 16))
+                    self.texto(r.x() + 9, r.y(), r.width() - 18, texto, f, color(APAGADO, 150), h=alto)
+                elif en_curso:
+                    self.caja(r, 7, color(ACENTO, 40), color(ACENTO, 150))
+                    self.caja(QRectF(r.x() + 9, r.y() + alto / 2 - 3, 6, 6), 3, ACENTO)
+                    self.texto(r.x() + 17, r.y(), r.width() - 26, texto, f, TEXTO, h=alto)
+                else:
+                    self.caja(r, 7, color(c, 22), color(c, 64))
+                    self.texto(r.x() + 9, r.y(), r.width() - 18, texto, f, TEXTO, h=alto)
+                cx += ancho + sep
+            y = cy + alto + 8
+        if self.p:
+            self.p.setOpacity(1.0)
+        return y + 6
+
     @staticmethod
     def _medir_envuelto(t: str, w: float) -> float:
         fm = QFontMetricsF(fuente(9.5))
@@ -346,8 +408,9 @@ QMenu::indicator { width: 12px; height: 12px; left: 8px; }
 QMenu::separator { height: 1px; background: rgba(255,255,255,24); margin: 5px 8px; }
 """
 
-def ventana_en_primer_plano_es_aoe() -> bool:
-    """True si la ventana activa es la del juego (o una del propio overlay, como su menú)."""
+def ventana_en_primer_plano_es_aoe() -> bool | None:
+    """True si la ventana activa es la del juego; None si es una del propio AoE2C (el menú
+    de la tarjeta, por ejemplo): no cambia lo que hubiera antes."""
     try:
         import ctypes
         from ctypes import wintypes
@@ -358,7 +421,7 @@ def ventana_en_primer_plano_es_aoe() -> bool:
         pid = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
         if pid.value == os.getpid():
-            return True
+            return None
         proceso = kernel32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
         if not proceso:
             return False
@@ -523,11 +586,14 @@ class Overlay(QWidget):
         self.solo_con_juego = solo_con_juego
         self.config = config if config is not None else cargar_config()  # compartido con el panel
         self.al_abrir_panel = None  # función que abre el panel de AoE2C (la pone main)
+        self.al_abrir_historial = None  # abre el panel en la página Historial (la pone main)
+        self.panel_activo = lambda: False  # True con el panel delante (la pone main)
         self.vista: Vista | None = None
         self.paso_anterior: int | None = None
         self.aviso_paso: tuple[str, float] | None = None  # (texto, hora de inicio)
         self.inicio_entrada = 0.0
         self.fin_desde: float | None = None
+        self.tierlist_desde: float | None = None  # cuándo la tarjeta final pasó a la tierlist
         self.opacidad = 0.0
         self.pliegue = 1.0 if self.config["plegado"] else 0.0  # 0 = desplegada, 1 = plegada
         self.anim_desde = self.pliegue
@@ -558,7 +624,7 @@ class Overlay(QWidget):
         self.idioma = textos.idioma()  # para rehacer los textos fijos si el panel cambia el idioma
         self.pestana_historial = PestanaHistorial(lambda _: self.abrir_historial(), derecha)
         self.historial_abierto = False
-        self.historial_forzado = False  # abierto desde el menú: se ve aunque el juego no esté delante
+        self.historial_manual = False  # abierto desde el menú de la tarjeta: se ve también en partida
         self.opacidad_historial = 0.0
         self.en_partida = False
         self.ultimo_raise = 0.0
@@ -587,7 +653,7 @@ class Overlay(QWidget):
             menu.addSeparator()
         menu.addAction(t("menu_mostrar_guia"), lambda: self.plegar(not self.config["plegado"]))
         if self.historial:
-            menu.addAction(t("menu_ver_historial"), lambda: self.abrir_historial(forzado=True))
+            menu.addAction(t("menu_ver_historial"), self.ver_historial)
             accion = QAction(t("menu_pestana"), menu, checkable=True, checked=self.config["pestana_historial"])
             accion.triggered.connect(self.cambiar_pestana_historial)
             menu.addAction(accion)
@@ -599,16 +665,23 @@ class Overlay(QWidget):
         menu.addSeparator()
         menu.addAction(t("menu_cerrar"), QApplication.instance().quit)
 
-    def abrir_historial(self, seleccion: str | None = None, fin_de_partida: bool = False, forzado: bool = False):
+    def ver_historial(self):
+        """«Ver historial» del menú: dentro del juego, la ventana flotante; fuera, el panel."""
+        if self.solo_con_juego and not self.juego_delante and self.al_abrir_historial:
+            self.al_abrir_historial()
+        else:
+            self.abrir_historial(manual=True)
+
+    def abrir_historial(self, seleccion: str | None = None, fin_de_partida: bool = False, manual: bool = False):
         if not self.ventana_historial:
             return
         self.ventana_historial.abrir(seleccion, fin_de_partida)
         self.historial_abierto = True
-        self.historial_forzado = forzado
+        self.historial_manual = manual
 
     def cerrar_historial(self):
         self.historial_abierto = False
-        self.historial_forzado = False
+        self.historial_manual = False
 
     def cambiar_pestana_historial(self, valor: bool):
         self.config["pestana_historial"] = bool(valor)
@@ -635,7 +708,7 @@ class Overlay(QWidget):
     def reiniciar(self):
         """Estado inicial, para cuando el jugador sale de la partida."""
         self.vista = self.guia = None
-        self.paso_anterior = self.aviso_paso = self.fin_desde = None
+        self.paso_anterior = self.aviso_paso = self.fin_desde = self.tierlist_desde = None
         self.pix_clave = self.alto_cache = self.ultima_geometria = None
         if self.config["plegado"]:
             self.config["plegado"] = False
@@ -671,7 +744,7 @@ class Overlay(QWidget):
             self.ventana_historial.hide()
             self.ventana_historial.deleteLater()
             self.ventana_historial = VentanaHistorial(self.historial, self.cerrar_historial)
-            self.historial_abierto = self.historial_forzado = False
+            self.historial_abierto = self.historial_manual = False
             self.opacidad_historial = 0.0
 
     # Estado del juego -> vista.
@@ -701,15 +774,22 @@ class Overlay(QWidget):
             if vista.terminada and self.fin_desde is None:
                 self.fin_desde = ahora
             if not vista.terminada:
-                self.fin_desde = None
+                self.fin_desde = self.tierlist_desde = None
             if vista.terminada and self.historial and self.seguimiento:
                 vista.comparacion = comparacion_final(self.historial, self.seguimiento.actual)
+            # A los 10 s, el resumen deja sitio a la tierlist de tecnologías (si la guía la trae).
+            if vista.tierlist and self.fin_desde is not None and ahora - self.fin_desde >= CAMBIO_TIERLIST:
+                if self.tierlist_desde is None:
+                    self.tierlist_desde = self.inicio_entrada = ahora
+                vista.ver_tierlist = True
         if self.solo_con_juego and ahora - self.ultima_comprobacion > 0.25:
             self.ultima_comprobacion = ahora
-            self.juego_delante = ventana_en_primer_plano_es_aoe()
+            delante = False if self.panel_activo() else ventana_en_primer_plano_es_aoe()
+            if delante is not None:
+                self.juego_delante = delante
         visible = en_partida and self.vista is not None and self.juego_delante
-        if self.fin_desde is not None and ahora - self.fin_desde > 90:
-            visible = False  # el resumen final se queda 90 s
+        if self.fin_desde is not None and ahora - self.fin_desde > 90 and not (self.vista and self.vista.tierlist):
+            visible = False  # el resumen final se queda 90 s; la tierlist, hasta que acabe la partida
         self.opacidad = self.acercar(self.opacidad, 1.0 if visible else 0.0, 0.3)
         self.pliegue = self.pliegue_actual(ahora)
         self.actualizar_bandeja(guia, estado, frescura)
@@ -743,8 +823,9 @@ class Overlay(QWidget):
             self.temporizador.setInterval(intervalo)
 
     def tick_historial(self, en_partida: bool):
-        """La ventana del historial se abre sola al acabar (o pausar) la partida y se
-        cierra al volver a ella. Fuera de partida, la pestaña del borde la abre."""
+        """La ventana del historial solo se ve con el juego delante (fuera del juego, el
+        historial está en el panel). Se abre sola al acabar (o pausar) la partida y se
+        cierra al volver a ella; fuera de partida, la pestaña del borde la abre."""
         if not self.ventana_historial:
             return
         if self.seguimiento and self.seguimiento.terminada:
@@ -752,9 +833,9 @@ class Overlay(QWidget):
             self.seguimiento.terminada = None
             if self.config.get("abrir_historial_al_terminar", True):
                 self.abrir_historial(id_, fin_de_partida=True)
-        if en_partida and self.historial_abierto and not self.historial_forzado:
+        if en_partida and self.historial_abierto and not self.historial_manual:
             self.historial_abierto = False  # se reanudó la partida
-        visible = self.historial_abierto and (self.historial_forzado or (self.juego_delante and not en_partida))
+        visible = self.historial_abierto and self.juego_delante
         self.opacidad_historial = self.acercar(self.opacidad_historial, 1.0 if visible else 0.0, 0.3)
         self.mostrar(self.ventana_historial, self.opacidad_historial)
         pestana = (self.config["pestana_historial"] and self.solo_con_juego and self.juego_delante
@@ -851,6 +932,14 @@ class Overlay(QWidget):
                 if v.terminada:
                     v.comparacion = t("hi_nueva_mejor", hora="16:40") + " · " + t("hi_media", hora="17:05", dif="−1:20")
                 altos.append(Pintor(None, ANCHO).dibujar(v, ("Paso · 0:00 (+10 s)", 1.0), 1.0))
+            # La tierlist más alta: sin civilización conocida no se quita ninguna tecnología.
+            e = estado_simulado(guia, len(guia["pasos"]), 30)
+            e.tier, e.civ, e.mapa = [0] * len(guia.get("tierlist", {}).get("techs", [])), 0, "[AoE2C] Black Forest"
+            v = construir_vista(guia, e)
+            if v.tierlist:
+                v.ver_tierlist = True
+                v.tierlist.civilizacion = "Civilización"
+                altos.append(Pintor(None, ANCHO).dibujar(v, None, 1.0))
             self._alto_max[clave] = max(altos)
         return self._alto_max[clave]
 
@@ -1051,7 +1140,14 @@ def estado_simulado(guia: dict, paso: int, tiempo: int, avance: float = 0.6) -> 
                 techs[c["indice"]] = 2 if i < paso else 1
                 if c["tipo"] == "edad" and i < paso:
                     edad = max(edad, c["objetivo"])
-    return Estado(tiempo, 1, paso, horas, datos, techs, edad, 14, 1 if paso == 4 else 6, 0)
+    tier = [0] * len(guia.get("tierlist", {}).get("techs", []))
+    if paso >= len(pasos):  # guía terminada: avance = cuántas van investigadas (una de cada tres) y una en curso
+        hechas = max(0, int(avance))
+        tier = [2 if i % 3 == 0 and i // 3 < hechas else 0 for i in range(len(tier))]
+        if len(tier) > 1:
+            tier[1] = 1
+    return Estado(tiempo, 1, paso, horas, datos, techs, edad, 14, 1 if paso == 4 else 6, 0, civ=2, tier=tier,
+                  mapa="[AoE2C] Arena")
 
 
 def preparar(config: dict) -> rutas.Entorno:
@@ -1085,12 +1181,15 @@ def main():
         guia = guia_elegida(args)
         fondo = Path(args[args.index("--fondo") + 1]) if "--fondo" in args else HERE / "fondo.png"
         ejemplo = historial_de_ejemplo(guia)
-        casos = [("inicio", 0, 18), ("paso5", 4, 352), ("feudal", 9, 640), ("final", len(guia["pasos"]), 975)]
+        fin = len(guia["pasos"])
+        casos = [("inicio", 0, 18), ("paso5", 4, 352), ("feudal", 9, 640), ("final", fin, 975), ("tierlist", fin, 1010)]
         for nombre, paso, seg in casos:
-            estado = estado_simulado(guia, paso, seg)
+            estado = estado_simulado(guia, paso, seg, avance=3 if nombre == "tierlist" else 0.6)
             w = Overlay(lambda: (guia, estado, 0), solo_con_juego=False)
             w.temporizador.stop()  # solo se dibuja en memoria: no se abre ninguna ventana
             w.vista, w.guia = construir_vista(guia, estado), guia
+            if nombre == "tierlist":
+                w.vista.ver_tierlist = True
             if nombre == "final":
                 w.vista.comparacion = comparacion_final(ejemplo, ejemplo.registros[-1])
             if nombre == "paso5":
@@ -1152,14 +1251,16 @@ def main():
         historial = historial_de_ejemplo(guia)
         seguimiento = Seguimiento(historial)
         inicio = time.monotonic()
-        fin_guia = 5 * len(guia["pasos"]) + 8
+        fin_guia = 5 * len(guia["pasos"]) + 8 + int(CAMBIO_TIERLIST) + 12  # resumen y luego la tierlist
 
         def demo():
             s = time.monotonic() - inicio
             paso = min(len(guia["pasos"]), int(s // 5))
             if s > fin_guia + 25:
                 app.quit()  # el demo se cierra solo
-            estado = estado_simulado(guia, paso, int(min(s, fin_guia) * 12), avance=(s % 5) / 5)
+            # Al terminar, las tecnologías de la tierlist se van investigando (una cada 4 s).
+            avance = (s - 5 * len(guia["pasos"])) / 4 if paso >= len(guia["pasos"]) else (s % 5) / 5
+            estado = estado_simulado(guia, paso, int(min(s, fin_guia) * 12), avance=avance)
             frescura = 0 if s < fin_guia else s - fin_guia
             seguimiento.observar(guia, estado, frescura, "[AoE2C] Arena", time.time())
             return guia, estado, frescura
@@ -1213,6 +1314,13 @@ def main():
                   preguntar_perfil=entorno.preguntar, fuente_catalogo=fuente_por_defecto(),
                   al_cambiar_guias=guias_cambiadas)
     w.al_abrir_panel = panel.mostrar
+    w.al_abrir_historial = panel.mostrar_historial
+
+    def panel_activo() -> bool:
+        activa = QApplication.activeWindow()  # el panel o uno de sus diálogos
+        return activa is not None and (activa is panel or activa.parent() is panel)
+
+    w.panel_activo = panel_activo
 
     if "--inicio" in args:
         # Abierto por el inicio con Windows: espera en la bandeja, sin animación ni panel.

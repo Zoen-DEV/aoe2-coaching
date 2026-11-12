@@ -280,7 +280,7 @@ def test_textos():
         usadas |= set(re.findall(r'\bt[x]?\("([a-z0-9_]+)"', codigo))
     # Claves que se arman con f-strings.
     from dashboard import PAGINAS, PROXIMAS
-    usadas |= {f"pagina_{p}" for p in PAGINAS} | {f"sub_{p}" for p in PAGINAS}
+    usadas |= {f"pagina_{p}" for p in PAGINAS}
     usadas |= {f"proxima_{i}" for i, _ in PROXIMAS} | {f"proxima_{i}_desc" for i, _ in PROXIMAS}
     usadas |= {f"nivel_{n}" for n in ("facil", "media", "dificil")} | {f"como_{n}" for n in (1, 2, 3)}
     usadas |= {f"mapa_{e}" for e in ("instalado", "desactualizado", "no_instalado", "sin_juego", "necesita_app")}
@@ -401,10 +401,29 @@ def test_panel(tmp: Path):
     comprobar(p.p_inicio.nombre_guia.text() == "Scouts 21" and not p.p_inicio.aviso_guia.isVisibleTo(p),
               "inicio muestra Scouts, ya instalada")
     comprobar(p.p_inicio.d_partidas.valor == "0", "sin partidas de Scouts todavía")
-    # Estadísticas: una partida concreta.
-    p.ver_partida(hist.registros[3])
-    comprobar(p.p_estadisticas.contenido.seleccion == hist.registros[3]["id"], "ver una partida abre su detalle")
-    comprobar(p.p_estadisticas.guia == "Fast Castle 27+2", "con la guía de esa partida")
+    # Historial: todas las partidas por defecto, filtro por guía y una partida concreta.
+    c = p.p_historial.contenido
+    for r in H.historial_de_ejemplo(SC, 3).registros:
+        hist.poner(dict(r, id=r["id"] + "-sc"))
+    p.ir("historial")
+    comprobar(c.filtro is None and len(c.lista.registros) == 15, "el historial muestra todas las partidas")
+    comprobar(c.barra_filtros.isVisibleTo(p) and [b.text().split("   ")[0] for b in c.grupo.buttons()]
+              == ["Todas", "Fast Castle 27+2", "Scouts 21"], "con un filtro por guía (y «Todas»)")
+    comprobar(c.vista_guias.isVisibleTo(p) and [f["guia"] for f in c.tabla_guias.filas] == ["Fast Castle 27+2", "Scouts 21"],
+              "sin filtro, el resumen es una fila por guía")
+    c.grupo.buttons()[2].click()
+    comprobar(c.filtro == "Scouts 21" and len(c.lista.registros) == 3 and c.vista_general.isVisibleTo(p),
+              "el filtro deja las partidas de esa guía y su resumen")
+    de_fc = next(r for r in hist.registros if r["guia"] == "Fast Castle 27+2")
+    p.ver_partida(de_fc)
+    comprobar(c.seleccion == de_fc["id"] and c.vista_partida.isVisibleTo(p), "ver una partida abre su detalle")
+    comprobar(c.filtro is None, "y quita el filtro de otra guía")
+    p.ver_historial("Fast Castle 27+2")
+    comprobar(c.filtro == "Fast Castle 27+2" and c.seleccion is None, "«Ver historial» de una guía la filtra")
+    p.ir("inicio")
+    p.ir("historial")
+    comprobar(c.filtro == "Fast Castle 27+2", "el filtro se conserva al cambiar de página")
+    p.ver_historial()
     # Mapas: instalar desde la tarjeta.
     p.ir("mapas")
     tarjetas = p.p_mapas.findChildren(D.TarjetaMapa)
@@ -487,6 +506,90 @@ def test_overlay_con_panel(tmp: Path):
               "el overlay guarda en el mismo archivo sin perder las preferencias del panel")
 
 
+def test_tierlist(tmp: Path):
+    print("Tierlist de tecnologías al terminar la guía")
+    import build as B
+    import tierlist as TL
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication(sys.argv)
+    import overlay as O
+
+    # build.py: cada guía la trae, el script la vuelca y una tecnología desconocida da error.
+    comprobar(all(g.get("tierlist") for g in GUIAS.values()), "todas las guías tienen tierlist")
+    texto = (MOD / "resources" / "_common" / "xs" / "guia_fast_castle.xs").read_text(encoding="ascii")
+    comprobar("xsWriteInt(3);" in texto and "xsGetPlayerCivilization(jugador)" in texto
+              and "guiaEstadoTier(jugador, 213)" in texto,
+              "el script escribe la versión 3, la civilización y el estado de cada tecnología")
+    base = json.loads((GUIAS_DIR / "build_orders" / "scouts_21.json").read_text(encoding="utf-8"))
+    p = tmp / "tier_malo.json"
+    p.write_text(json.dumps(dict(base, tierlist={"S": ["dragones"]})), encoding="utf-8")
+    try:
+        B.load_build_order(p)
+        ok = False
+    except B.BuildOrderError as e:
+        ok = "dragones" in str(e)
+    comprobar(ok, "una tecnología desconocida en la tierlist da error")
+    B.load_ajustes_tierlist()
+    comprobar(True, "tierlist.json usa tecnologías, mapas y civilizaciones que existen")
+
+    # Lector: la versión 3 trae la civilización y la tierlist; la 2 sigue valiendo.
+    n = len(FC["tierlist"]["techs"])
+    techs = FC["tierlist"]["techs"]
+    horas = [p["referencia"] for p in FC["pasos"]]
+    e = estado_de(FC, 1000, horas, edad=2)
+    e.civ, e.tier = 2, [0] * n  # francos
+    e.tier[techs.index("carretilla")] = 2
+    e.tier[techs.index("collera")] = 1
+    e.tier[techs.index("escuderos")] = 3  # la civilización no la tiene (según el juego)
+    archivo = tmp / "[AoE2C] Arena.xsdat"
+    L.escribir_prueba(archivo, FC, e)
+    guia, leido = L.parsear(archivo.read_bytes(), GUIAS)
+    comprobar(guia["id"] == "fast_castle" and leido.civ == 2 and leido.tier == e.tier, "formato 3: civilización y tierlist")
+    L.escribir_prueba(archivo, FC, e, version=2)
+    guia, viejo = L.parsear(archivo.read_bytes(), GUIAS)
+    comprobar(guia["id"] == "fast_castle" and viejo.tier is None, "formato 2 (guía de antes): se lee, sin tierlist")
+    comprobar(TL.construir(FC, viejo) is None, "sin estados no hay tierlist (queda el resumen de siempre)")
+    L.escribir_prueba(archivo, FC, e)
+    lec = L.Lector(guias=GUIAS)
+    lec._candidatos = lambda: iter([archivo])
+    lec.actualizar()
+    comprobar(lec.estado.mapa == "[AoE2C] Arena", "el lector anota el mapa de la partida")
+
+    # Ajustes: francos en Arena.
+    tl = TL.construir(FC, lec.estado)
+    nivel = {t.clave: n for n, ts in tl.niveles for t in ts}
+    estado = {t.clave: t.estado for _, ts in tl.niveles for t in ts}
+    comprobar(tl.civilizacion == "Francos" and tl.mapa == "Arena", "cabecera: Francos · Arena")
+    comprobar("linea_sangre" not in nivel, "los francos no tienen Pureza de sangre: no sale")
+    comprobar("escuderos" not in nivel, "lo que el juego dice que no tienen tampoco sale")
+    comprobar(nivel["carro_de_mano"] == "S" and nivel["vigilancia"] == "C", "Arena sube Carro de mano y baja Guardia urbana")
+    comprobar(nivel["forja"] == "A", "los francos suben Forja")
+    comprobar(nivel["barda_escamas"] == "B", "Arena baja la barda y los francos la vuelven a subir")
+    comprobar(estado["carretilla"] == TL.HECHA and estado["collera"] == TL.EN_CURSO, "hechas y en curso")
+    fila_s = [t.clave for t in dict(tl.niveles)["S"]]
+    comprobar(fila_s[-1] == "carretilla", "en cada nivel, las ya investigadas van al final")
+    comprobar(tl.hechas == 1 and tl.total == len(nivel), f"cuenta {tl.hechas}/{tl.total}")
+    en = TL.construir(FC, lec.estado, ingles=True)
+    comprobar(en.civilizacion == "Franks" and "Wheelbarrow" in [t.nombre for _, ts in en.niveles for t in ts],
+              "en inglés: Franks, Wheelbarrow")
+    comprobar(TL.id_mapa("[AoE2C] Black Forest") == "black_forest", "el nombre del .xsdat da el id del mapa")
+
+    # Overlay: a los 10 s del final pasa a la tierlist y ya no se esconde a los 90 s.
+    w = O.Overlay(lambda: (FC, lec.estado, 0.0), solo_con_juego=False, config=C.cargar(tmp / "nada_tl.json"))
+    w.temporizador.stop()
+    w.tick()
+    comprobar(w.vista.terminada and not w.vista.ver_tierlist, "al terminar, primero el resumen")
+    w.fin_desde -= O.CAMBIO_TIERLIST + 1
+    w.tick()
+    comprobar(w.vista.ver_tierlist, "a los 10 s, la tierlist")
+    alto = O.Pintor(None, O.ANCHO).dibujar(w.vista, None, 1.0)
+    comprobar(alto <= w.alto_maximo(FC) + 0.5, "la tierlist cabe en el alto reservado de la tarjeta")
+    w.fin_desde -= 100
+    for _ in range(30):
+        w.tick()
+    comprobar(w.opacidad == 1.0, "la tierlist sigue a la vista pasados los 90 s")
+
+
 def main():
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
@@ -501,6 +604,7 @@ def main():
         test_ingles(tmp)
         test_panel(tmp)
         test_overlay_con_panel(tmp)
+        test_tierlist(tmp)
     print("\nTodo bien.")
 
 

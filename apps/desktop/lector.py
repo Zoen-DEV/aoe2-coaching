@@ -3,13 +3,16 @@
 El script escribe, una vez por segundo, un archivo .xsdat con el nombre del mapa
 (por ejemplo "[AoE2C] Arena.xsdat"). Todo son enteros de 32 bits:
 
-    4722, versión (2), código de la guía, tiempo de juego, jugador, paso actual, número de pasos,
+    4722, versión (3), código de la guía, tiempo de juego, jugador, paso actual, número de pasos,
     hora de cada paso (-1 = pendiente, -2 = saltado), número de recuentos,
     cada recuento, número de tecnologías, estado de cada una (0/1/2),
-    edad, población, espacio libre de población, casas en obra, 9999
+    edad, población, espacio libre de población, casas en obra,
+    civilización, número de tecnologías de la tierlist, estado de cada una (0/1/2, 3 = la
+    civilización no la tiene), 9999
 
 El código dice qué guía se está jugando (todos los mapas cargan el mismo script,
-aoe2c_guia.xs, que es una copia de la guía elegida en el panel). La versión 1 (sin
+aoe2c_guia.xs, que es una copia de la guía elegida en el panel). La versión 2 no lleva
+la civilización ni la tierlist (guías de antes de la 1.2.0 de la app). La versión 1 (sin
 código) es la de antes; se reconoce la guía por el número de pasos y de datos.
 
 Si el juego añade al final en vez de sobrescribir, el archivo contiene varios
@@ -25,7 +28,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 GUIAS = HERE.parent.parent / "build" / "guias"  # los genera content/guias/build.py
-INICIO, FIN, VERSION = 4722, 9999, 2
+INICIO, FIN, VERSION = 4722, 9999, 3
 
 
 @dataclass
@@ -40,6 +43,9 @@ class Estado:
     poblacion: int
     libre: int
     casas_en_obra: int
+    civ: int = 0  # ID de la civilización (0 = desconocida: registro de versión 1 o 2)
+    tier: list[int] | None = None  # estado de cada tecnología de la tierlist (None = el registro no lo trae)
+    mapa: str = ""  # nombre del .xsdat ("[AoE2C] Arena"); lo pone el Lector
 
 
 def cargar_guias(carpeta: Path = GUIAS) -> dict[str, dict]:
@@ -79,11 +85,11 @@ def parsear(data: bytes, guias) -> tuple[dict, Estado] | None:
     while pos >= 0:
         if pos % 4 == 0 and pos + 8 <= len(data):
             version = struct.unpack_from("<i", data, pos + 4)[0]
-            if version == 2 and pos + 12 <= len(data):
+            if version in (2, 3) and pos + 12 <= len(data):
                 codigo = struct.unpack_from("<i", data, pos + 8)[0]
                 for guia in guias:
                     if guia.get("codigo") == codigo:
-                        estado = _parsear_en(data, pos + 12, guia)
+                        estado = _parsear_en(data, pos + 12, guia, version)
                         if estado:
                             return guia, estado
             elif version == 1:  # formato antiguo, sin código: la primera guía que encaje
@@ -95,7 +101,7 @@ def parsear(data: bytes, guias) -> tuple[dict, Estado] | None:
     return None
 
 
-def _parsear_en(data: bytes, pos: int, guia: dict) -> Estado | None:
+def _parsear_en(data: bytes, pos: int, guia: dict, version: int = 1) -> Estado | None:
     """Lee el cuerpo del registro (lo que va después de la cabecera)."""
     n_ints = (len(data) - pos) // 4
     vals = struct.unpack_from(f"<{n_ints}i", data, pos)
@@ -119,12 +125,22 @@ def _parsear_en(data: bytes, pos: int, guia: dict) -> Estado | None:
             return None
         techs = list(vals[i : i + nt])
         i += nt
-        edad, poblacion, libre, en_obra, fin = vals[i : i + 5]
+        edad, poblacion, libre, en_obra = vals[i : i + 4]
+        i += 4
+        civ, tier = 0, None
+        if version >= 3:
+            civ, ntier = vals[i : i + 2]
+            i += 2
+            if ntier != len(guia.get("tierlist", {}).get("techs", [])):
+                return None
+            tier = list(vals[i : i + ntier])
+            i += ntier
+        fin = vals[i]
     except (IndexError, ValueError):
         return None
     if fin != FIN or not 0 <= paso <= n:
         return None
-    return Estado(tiempo, jugador, paso, horas, datos, techs, edad, poblacion, libre, en_obra)
+    return Estado(tiempo, jugador, paso, horas, datos, techs, edad, poblacion, libre, en_obra, civ, tier)
 
 
 class Lector:
@@ -188,6 +204,7 @@ class Lector:
             return False  # archivo a medio escribir: se vuelve a intentar en la siguiente lectura
         self.mtime = m
         self.guia, self.estado = leido
+        self.estado.mapa = self.archivo.stem
         return True
 
     def segundos_sin_datos(self) -> float:
@@ -196,8 +213,12 @@ class Lector:
 
 def escribir_prueba(path: Path, guia: dict, estado: Estado, version: int = VERSION) -> None:
     """Escribe un .xsdat con el mismo formato que el juego (para probar el overlay)."""
-    cabecera = [INICIO, 2, guia["codigo"]] if version == 2 else [INICIO, 1]
+    cabecera = [INICIO, version, guia["codigo"]] if version >= 2 else [INICIO, 1]
     vals = [*cabecera, estado.tiempo, estado.jugador, estado.paso, len(estado.horas), *estado.horas,
             len(estado.datos), *estado.datos, len(estado.techs), *estado.techs,
-            estado.edad, estado.poblacion, estado.libre, estado.casas_en_obra, FIN]
+            estado.edad, estado.poblacion, estado.libre, estado.casas_en_obra]
+    if version >= 3:
+        tier = estado.tier if estado.tier is not None else [0] * len(guia.get("tierlist", {}).get("techs", []))
+        vals += [estado.civ, len(tier), *tier]
+    vals.append(FIN)
     path.write_bytes(struct.pack(f"<{len(vals)}i", *vals))

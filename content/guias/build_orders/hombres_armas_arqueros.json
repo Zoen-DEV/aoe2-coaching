@@ -1,6 +1,6 @@
 {
   "id": "hombres_armas",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "nombre": "Hombres de armas + arqueros",
   "descripcion": "Tres hombres de armas al llegar a Feudal para molestar pronto y transición a arqueros: 23 de población al pulsar Feudal y milicianos mientras sube la edad.",
   "descripcion_en": "Three Men-at-Arms as you reach Feudal for early harassment, then a transition into archers: 23 population when you click Feudal and militia while aging up.",
@@ -21,6 +21,12 @@
   "pasos_siguientes_visibles": 3,
   "mensaje_final": "Siguiente: herrería y Emplumado, más arqueros y usa los hombres de armas para proteger a tus arqueros.",
   "mensaje_final_en": "Next: Blacksmith and Fletching, more archers, and use the Men-at-Arms to protect your archers.",
+  "tierlist": {
+    "S": ["hombre_de_armas", "emplumado", "hacha_doble_filo"],
+    "A": ["forja", "mineria_aurifera", "armadura_acolchada", "cota_escamas"],
+    "B": ["collera", "carretilla", "incendio"],
+    "C": ["vigilancia", "barda_escamas", "mineria_piedra"]
+  },
   "pasos": [
     {
       "titulo": "2 casas",

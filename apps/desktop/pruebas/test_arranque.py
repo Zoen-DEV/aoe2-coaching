@@ -14,6 +14,7 @@ import tempfile
 from pathlib import Path
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
+os.environ["AOE2C_INSTANCIA"] = f"AoE2Coaching-prueba-{os.getpid()}"  # nunca la copia abierta de verdad
 OVERLAY = Path(__file__).resolve().parent.parent  # apps/desktop
 sys.path.insert(0, str(OVERLAY))
 

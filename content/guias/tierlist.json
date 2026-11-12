@@ -1,0 +1,50 @@
+{
+ "_comentario": "Ajustes comunes de la tierlist de tecnologías que sale al terminar una guía (la de cada guía está en su build order, clave tierlist). 'sube' y 'baja' mueven una tecnología un nivel (S, A, B, C) si está en la tierlist de la guía; no añaden ninguna. Las civilizaciones van por su nombre en inglés en minúsculas (la clave de tecnologias.json). 'nombres' acorta los nombres oficiales más largos. Al cambiar este archivo, sube la versión de las guías para que el panel ofrezca la actualización.",
+ "nombres": {
+  "emplumado": ["Emplumado", "Fletching"],
+  "armadura_acolchada": ["Armadura acolchada", "Padded Archer Armor"],
+  "armadura_cuero": ["Armadura de cuero", "Leather Archer Armor"],
+  "barda_escamas": ["Barda de láminas", "Scale Barding"],
+  "barda_malla": ["Barda de malla", "Chain Barding"],
+  "espadachin": ["Espada larga", "Long Swordsman"],
+  "mineria_piedra": ["Canteras", "Stone Mining"],
+  "pozo_aurifero": ["Pozo aurífero", "Gold Shaft Mining"]
+ },
+ "mapas": {
+  "arabia": {"sube": ["vigilancia"], "baja": ["albanileria", "mineria_piedra"]},
+  "arena": {"sube": ["carro_de_mano", "mineria_piedra", "albanileria"], "baja": ["vigilancia", "barda_escamas"]},
+  "black_forest": {"sube": ["sierra_de_arco", "carro_de_mano", "mineria_piedra"], "baja": ["vigilancia", "barda_escamas"]},
+  "fortress": {"sube": ["mineria_piedra", "albanileria", "matacanes"], "baja": ["vigilancia"]},
+  "runestones": {"sube": ["vigilancia"], "baja": ["albanileria"]}
+ },
+ "civilizaciones": {
+  "britons": {"sube": ["emplumado", "flecha_punzante", "armadura_acolchada", "ballestero"], "baja": ["barda_escamas"]},
+  "franks": {"sube": ["barda_escamas", "forja", "cria_caballos"]},
+  "goths": {"sube": ["forja", "cota_escamas", "hombre_de_armas", "incendio"], "baja": ["emplumado"]},
+  "teutons": {"sube": ["cota_escamas", "forja", "matacanes"]},
+  "japanese": {"sube": ["hombre_de_armas", "forja", "emplumado"]},
+  "chinese": {"sube": ["emplumado", "ballestero"]},
+  "byzantines": {"sube": ["hostigador_elite", "piquero"]},
+  "persians": {"sube": ["barda_escamas", "cria_caballos"]},
+  "vikings": {"sube": ["hombre_de_armas", "forja", "cota_escamas"]},
+  "mongols": {"sube": ["cria_caballos", "caballeria_ligera"]},
+  "celts": {"sube": ["forja", "incendio"]},
+  "spanish": {"sube": ["forja", "barda_escamas"]},
+  "aztecs": {"sube": ["forja", "cota_escamas", "guerrero_aguila"]},
+  "mayans": {"sube": ["emplumado", "armadura_acolchada", "guerrero_aguila"]},
+  "huns": {"sube": ["linea_sangre", "barda_escamas", "forja"]},
+  "koreans": {"sube": ["emplumado", "mineria_piedra"]},
+  "italians": {"sube": ["emplumado", "ballestero"]},
+  "magyars": {"sube": ["barda_escamas", "cria_caballos"]},
+  "ethiopians": {"sube": ["emplumado", "flecha_punzante", "ballestero"]},
+  "malians": {"sube": ["forja", "cota_escamas"]},
+  "berbers": {"sube": ["linea_sangre", "cria_caballos"]},
+  "vietnamese": {"sube": ["emplumado", "armadura_acolchada"]},
+  "tatars": {"sube": ["cria_caballos", "emplumado"]},
+  "cumans": {"sube": ["linea_sangre", "barda_escamas"]},
+  "lithuanians": {"sube": ["barda_escamas", "linea_sangre", "forja"]},
+  "burgundians": {"sube": ["arado_pesado", "sierra_de_arco", "pozo_aurifero", "carro_de_mano"]},
+  "poles": {"sube": ["mineria_piedra", "barda_escamas"]},
+  "bohemians": {"sube": ["mineria_aurifera", "piquero"]}
+ }
+}

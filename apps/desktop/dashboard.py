@@ -6,9 +6,9 @@ juego). La ✕ la esconde: el programa sigue en la bandeja del sistema, y se cie
 todo con «Cerrar AoE2C» (aquí o en el menú del icono de la bandeja).
 
 Páginas:
-- Inicio: la guía activa, el estado del juego, tus números con esa guía y la última partida.
-- Estadísticas: el historial de partidas por guía (el mismo contenido que la ventana
-  que se abre al acabar una partida).
+- Inicio: la guía activa, tus números con esa guía y la última partida.
+- Historial: todas las partidas, con filtro por guía (el mismo contenido que la ventana
+  que se abre dentro del juego al acabar una partida).
 - Guías: instalar guías del catálogo, elegir la que cargan los mapas [AoE2C] y ver sus pasos.
 - Mapas: armar en el juego los mapas del catálogo, quitarlos o guardar una copia.
 - MODs: instalar, actualizar, activar y quitar los mods de AoE2 Coaching.
@@ -16,6 +16,9 @@ Páginas:
 
 El catálogo (catalogo.py) se descarga en segundo plano al abrir el panel; mientras
 tanto, y sin conexión, se usa la última copia guardada.
+
+Poco texto a la vista: lo que explica algo útil pero no hace falta leer siempre va en
+un punto de información (InfoPunto, un «!» que muestra el texto al pasar el ratón).
 """
 
 import logging
@@ -48,7 +51,7 @@ from estilo import P_TEXTO as TEXTO
 from estilo import cargar_fuentes, color, fuente, titulo
 from historial import (Historial, nombre_hito, pasos_hechos, principal, reloj, resumen_hito, valor_principal,
                        vista_de_guia)
-from historial_ui import ContenidoHistorial, desfase, fecha_corta, mapa_corto
+from historial_ui import ContenidoHistorial, InfoPunto, desfase, fecha_corta, junto_a, mapa_corto
 from textos import de, t
 from version import VERSION
 
@@ -59,7 +62,7 @@ ICONO_GUIA = {"fast_castle": "FC", "scouts": "SC", "arqueros": "AR", "drush_fc":
               "aguilas": "AG"}
 ICONO_MOD = {"icono-ovejas": "OV"}
 PROXIMAS: list[tuple[str, str]] = []  # (id, monograma) de guías anunciadas; textos proxima_<id> y proxima_<id>_desc
-PAGINAS = ["inicio", "estadisticas", "guias", "mapas", "mods", "ajustes"]
+PAGINAS = ["inicio", "historial", "guias", "mapas", "mods", "ajustes"]
 ROMANOS = ["I", "II", "III", "IV", "V"]
 
 
@@ -256,7 +259,7 @@ def dibujar_icono(p: QPainter, nombre: str, r: QRectF, c: QColor):
         p.drawPolyline([QPointF(x + 4.5, y + h * 0.4), QPointF(x + 4.5, y + h - 2), QPointF(x + w - 4.5, y + h - 2),
                         QPointF(x + w - 4.5, y + h * 0.4)])
         p.drawRect(QRectF(x + w / 2 - 2.5, y + h - 8, 5, 6))
-    elif nombre == "estadisticas":
+    elif nombre == "historial":
         for k, alto in enumerate((0.45, 0.8, 0.6)):
             bx = x + 3 + k * (w - 6) / 3
             p.drawRoundedRect(QRectF(bx, y + h - 2 - (h - 4) * alto, (w - 6) / 3 - 3, (h - 4) * alto), 1.5, 1.5)
@@ -370,9 +373,11 @@ class Dato(QWidget):
     """Número grande con su nombre y una línea de detalle. Va dentro de un Libro: sin caja
     propia, separado del siguiente por una línea vertical."""
 
-    def __init__(self, nombre: str):
+    def __init__(self, nombre: str, info: str = ""):
         super().__init__()
         self.nombre = nombre
+        if info:
+            junto_a(InfoPunto(info, self), 22, nombre.upper(), fuente(7.5, QFont.Weight.Bold, 1.6), 16)
         self.valor = "—"
         self.detalle = ""
         self.color_detalle = APAGADO
@@ -677,15 +682,10 @@ class Panel(QWidget):
         dc.setContentsMargins(36, 28, 36, 24)
         dc.setSpacing(0)
         cab = QHBoxLayout()
-        textos_cab = QVBoxLayout()
-        textos_cab.setSpacing(4)
         self.titulo = QLabel("")
         self.titulo.setFont(titulo(21, 0.6))
         self.titulo.setStyleSheet(f"color: {TEXTO.name()};")
-        self.subtitulo = etiqueta("", 10, QFont.Weight.Normal, SECUNDARIO)
-        textos_cab.addWidget(self.titulo)
-        textos_cab.addWidget(self.subtitulo)
-        cab.addLayout(textos_cab, 1)
+        cab.addWidget(self.titulo, 1)
         self.mensaje = pastilla("", BIEN)
         self.mensaje.hide()
         cab.addWidget(self.mensaje, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -694,17 +694,17 @@ class Panel(QWidget):
         self.boton_jugar.setMinimumWidth(150)
         cab.addWidget(self.boton_jugar, 0, Qt.AlignmentFlag.AlignVCenter)
         dc.addLayout(cab)
-        dc.addSpacing(18)
+        dc.addSpacing(14)
         dc.addWidget(Filete())
         dc.addSpacing(20)
         self.paginas = QStackedWidget()
         self.p_inicio = PaginaInicio(self)
-        self.p_estadisticas = PaginaEstadisticas(self)
+        self.p_historial = PaginaHistorial(self)
         self.p_guias = PaginaGuias(self)
         self.p_mapas = PaginaMapas(self)
         self.p_mods = PaginaMods(self)
         self.p_ajustes = PaginaAjustes(self)
-        for pag in (self.p_inicio, self.p_estadisticas, self.p_guias, self.p_mapas, self.p_mods, self.p_ajustes):
+        for pag in (self.p_inicio, self.p_historial, self.p_guias, self.p_mapas, self.p_mods, self.p_ajustes):
             self.paginas.addWidget(pag)
         dc.addWidget(self.paginas, 1)
         self.capa.addWidget(derecha, 1)
@@ -726,14 +726,10 @@ class Panel(QWidget):
         if not icono.isNull():
             logo.setPixmap(icono.pixmap(38, 38))
         marca.addWidget(logo)
-        nombres = QVBoxLayout()
-        nombres.setSpacing(1)
         nombre_app = QLabel("AoE2 Coaching")
         nombre_app.setFont(titulo(11.5, 0.4))
         nombre_app.setStyleSheet(f"color: {ORO_CLARO.name()};")
-        nombres.addWidget(nombre_app)
-        nombres.addWidget(etiqueta(t("lema"), 8.5, QFont.Weight.Medium, APAGADO))
-        marca.addLayout(nombres, 1)
+        marca.addWidget(nombre_app, 1)
         lc.addLayout(marca)
         lc.addSpacing(30)
         self.grupo = QButtonGroup(self)
@@ -764,30 +760,34 @@ class Panel(QWidget):
         salir = boton("⏻   " + t("cerrar_programa"), self.al_salir, "salir", t("cerrar_programa_consejo"))
         lc.addWidget(salir)
         lc.addSpacing(6)
-        lc.addWidget(etiqueta(f"v{VERSION} · " + t("x_esconde"), 7.5, QFont.Weight.Medium, APAGADO, envolver=True))
+        lc.addWidget(etiqueta(f"v{VERSION}", 7.5, QFont.Weight.Medium, APAGADO))
         return lat
 
     # --- Navegación ---
     def ir(self, nombre: str):
         self.pagina = nombre
         self.botones_lateral[nombre].setChecked(True)
-        pag = {"inicio": self.p_inicio, "estadisticas": self.p_estadisticas, "guias": self.p_guias,
+        pag = {"inicio": self.p_inicio, "historial": self.p_historial, "guias": self.p_guias,
                "mapas": self.p_mapas, "mods": self.p_mods, "ajustes": self.p_ajustes}[nombre]
         self.paginas.setCurrentWidget(pag)
         self.titulo.setText(t(f"pagina_{nombre}"))
-        self.subtitulo.setText(t(f"sub_{nombre}"))
         pag.refrescar()
         self.actualizar_estado(forzar=True)
 
     def ver_partida(self, registro: dict):
-        self.ir("estadisticas")
-        self.p_estadisticas.elegir_guia(registro["guia"])
-        self.p_estadisticas.contenido.elegir(registro["id"])
+        self.ir("historial")
+        self.p_historial.contenido.elegir(registro["id"])
 
-    def ver_estadisticas(self, nombre_guia: str | None):
-        self.ir("estadisticas")
-        if nombre_guia:
-            self.p_estadisticas.elegir_guia(nombre_guia)
+    def ver_historial(self, nombre_guia: str | None = None):
+        """La página Historial, con todas las partidas o solo las de una guía."""
+        self.ir("historial")
+        self.p_historial.contenido.seleccion = None
+        self.p_historial.contenido.filtrar(nombre_guia)
+
+    def mostrar_historial(self):
+        """Abre el panel en el historial (menú de la bandeja)."""
+        self.mostrar()
+        self.ver_historial()
 
     def avisar(self, texto: str, c: QColor = BIEN):
         """Mensaje breve junto al título (por ejemplo, «Guía activada»)."""
@@ -1075,10 +1075,8 @@ class Panel(QWidget):
         firma = self.firma_historial()
         if firma != self._firma:
             self._firma = firma
-            if self.pagina in ("inicio", "estadisticas"):
+            if self.pagina in ("inicio", "historial"):
                 self.paginas.currentWidget().refrescar()
-        elif self.pagina == "inicio":
-            self.p_inicio.refrescar_estado()
 
     # --- Idioma ---
     def cambiar_idioma(self, idioma: str):
@@ -1220,91 +1218,69 @@ class Pagina(QWidget):
 class PaginaInicio(Pagina):
     def __init__(self, panel: Panel):
         super().__init__(panel)
-        arriba = QHBoxLayout()
-        arriba.setSpacing(16)
 
         # Guía activa: la tarjeta destacada (escuadras doradas en las esquinas).
         self.tarjeta_guia = Tarjeta(ACENTO, margen=26)
         tg = self.tarjeta_guia.capa
-        tg.setSpacing(10)
+        tg.setSpacing(14)
         cab = QHBoxLayout()
         cab.setSpacing(20)
         self.emblema = Emblema("FC", 76)
-        cab.addWidget(self.emblema, 0, Qt.AlignmentFlag.AlignTop)
+        cab.addWidget(self.emblema, 0, Qt.AlignmentFlag.AlignVCenter)
         tx = QVBoxLayout()
-        tx.setSpacing(5)
+        tx.setSpacing(6)
+        tx.addStretch(1)
         tx.addWidget(rotulo(t("guia_activa"), ACENTO))
         self.nombre_guia = QLabel("")
         self.nombre_guia.setFont(titulo(19, 0.4))
         tx.addWidget(self.nombre_guia)
-        self.desc_guia = etiqueta("", 10, QFont.Weight.Normal, SECUNDARIO, envolver=True)
-        tx.addWidget(self.desc_guia)
-        tx.addSpacing(2)
         self.meta_guia = meta()
         self.meta_guia.setStyleSheet(f"color: {APAGADO.name()};")
         tx.addWidget(self.meta_guia)
+        tx.addStretch(1)
         cab.addLayout(tx, 1)
+        cab.addWidget(boton(t("cambiar_guia"), lambda: panel.ir("guias")), 0, Qt.AlignmentFlag.AlignVCenter)
         tg.addLayout(cab)
-        self.aviso_guia = etiqueta("", 9, QFont.Weight.DemiBold, ATENCION, envolver=True)
-        self.aviso_guia.setStyleSheet(f"color: {ATENCION.name()}; background: {rgba(ATENCION, 16)}; "
-                                      f"border-left: 2px solid {ATENCION.name()}; padding: 6px 10px;")
+        # Los mapas aún no cargan la guía elegida: se arregla desde aquí.
+        self.aviso_guia = QFrame()
+        self.aviso_guia.setObjectName("avisoGuia")
+        self.aviso_guia.setStyleSheet(f"#avisoGuia {{ background: {rgba(ATENCION, 16)}; "
+                                      f"border-left: 2px solid {ATENCION.name()}; }}")
+        ag = QHBoxLayout(self.aviso_guia)
+        ag.setContentsMargins(12, 6, 6, 6)
+        ag.addWidget(etiqueta(t("guia_pendiente"), 9.5, QFont.Weight.DemiBold, ATENCION), 1)
+        ag.addWidget(boton(t("instalar_ahora"), self._instalar_guia, "primario"))
         tg.addWidget(self.aviso_guia)
-        tg.addStretch(1)
-        tg.addLayout(fila(boton(t("cambiar_guia"), lambda: panel.ir("guias"), "primario"),
-                          boton(t("ver_estadisticas"), lambda: panel.ver_estadisticas(
-                              (panel.guia_activa() or {}).get("nombre")))))
-        arriba.addWidget(self.tarjeta_guia, 3)
-
-        # Estado del juego.
-        self.tarjeta_estado = Tarjeta(margen=24)
-        te = self.tarjeta_estado.capa
-        te.setSpacing(10)
-        te.addWidget(rotulo(t("estado")))
-        filae = QHBoxLayout()
-        filae.setSpacing(10)
-        self.punto = PuntoEstado()
-        filae.addWidget(self.punto, 0, Qt.AlignmentFlag.AlignVCenter)
-        self.titulo_estado = etiqueta("", 13, QFont.Weight.DemiBold, envolver=True)
-        filae.addWidget(self.titulo_estado, 1)
-        te.addLayout(filae)
-        self.texto_estado = etiqueta("", 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True)
-        te.addWidget(self.texto_estado)
-        te.addStretch(1)
-        arriba.addWidget(self.tarjeta_estado, 2)
-        self.capa.addLayout(arriba)
+        self.capa.addWidget(self.tarjeta_guia)
 
         # Números con la guía activa: una sola caja con cuatro columnas.
-        self.capa.addSpacing(8)
-        self.titulo_numeros = QLabel("")
-        self.titulo_numeros.setFont(titulo(11.5, 0.5))
-        self.titulo_numeros.setStyleSheet(f"color: {TEXTO.name()};")
-        self.capa.addWidget(self.titulo_numeros)
         self.d_partidas = Dato(t("dato_partidas"))
-        self.d_mejor = Dato(t("dato_mejor"))
-        self.d_media = Dato(t("dato_media"))
+        self.d_mejor = Dato("")
+        self.d_media = Dato(t("dato_media"), t("dato_media_nota"))
         self.d_completadas = Dato(t("dato_completadas"))
         self.capa.addWidget(Libro([self.d_partidas, self.d_mejor, self.d_media, self.d_completadas]))
-        self.capa.addSpacing(8)
 
-        abajo = QHBoxLayout()
-        abajo.setSpacing(16)
         # Última partida.
         self.tarjeta_ultima = Tarjeta(margen=22)
-        tu = self.tarjeta_ultima.capa
+        fu = QHBoxLayout()
+        fu.setSpacing(16)
+        tu = QVBoxLayout()
+        tu.setSpacing(6)
         tu.addWidget(rotulo(t("ultima_partida")))
-        tu.addSpacing(2)
-        self.ultima_titulo = etiqueta("", 13, QFont.Weight.DemiBold, envolver=True)
+        self.ultima_titulo = etiqueta("", 13, QFont.Weight.DemiBold)
         tu.addWidget(self.ultima_titulo)
-        self.ultima_detalle = etiqueta("", 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True)
+        self.ultima_detalle = etiqueta("", 9.5, QFont.Weight.Normal, SECUNDARIO)
         tu.addWidget(self.ultima_detalle)
-        tu.addStretch(1)
+        fu.addLayout(tu, 1)
         self.boton_ultima = boton(t("ver_detalle"), self._ver_ultima, "enlace")
-        tu.addWidget(self.boton_ultima, 0, Qt.AlignmentFlag.AlignLeft)
-        abajo.addWidget(self.tarjeta_ultima, 1)
-        # Cómo jugar: pasos numerados con números romanos.
-        como = Tarjeta(margen=22)
-        como.capa.setSpacing(10)
-        como.capa.addWidget(rotulo(t("como_jugar")))
+        fu.addWidget(self.boton_ultima, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.tarjeta_ultima.capa.addLayout(fu)
+        self.capa.addWidget(self.tarjeta_ultima)
+
+        # Cómo jugar: solo mientras no hay ninguna partida guardada.
+        self.como = Tarjeta(margen=22)
+        self.como.capa.setSpacing(10)
+        self.como.capa.addWidget(rotulo(t("como_jugar")))
         for n in range(1, 4):
             f = QHBoxLayout()
             f.setSpacing(12)
@@ -1315,10 +1291,8 @@ class PaginaInicio(Pagina):
             num.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
             f.addWidget(num, 0, Qt.AlignmentFlag.AlignTop)
             f.addWidget(etiqueta(t(f"como_{n}"), 9.5, QFont.Weight.Normal, SECUNDARIO, envolver=True), 1)
-            como.capa.addLayout(f)
-        como.capa.addStretch(1)
-        abajo.addWidget(como, 1)
-        self.capa.addLayout(abajo)
+            self.como.capa.addLayout(f)
+        self.capa.addWidget(self.como)
         self.capa.addStretch(1)
         self.ultima: dict | None = None
 
@@ -1327,75 +1301,49 @@ class PaginaInicio(Pagina):
         guia = panel.guia_activa()
         if guia:
             self.emblema.emoji = monograma(guia.get("id"), guia["nombre"])
-            self.emblema.update()
             self.nombre_guia.setText(guia["nombre"])
-            self.desc_guia.setText(panel.descripcion(guia))
             self.meta_guia.setText(datos_guia(guia))
-            self.meta_guia.show()
-            instalada = panel.instalador.guia_instalada(panel.guias)
-            if instalada != guia.get("id"):
-                self.aviso_guia.setText(t("guia_pendiente"))
-                self.aviso_guia.show()
-            else:
-                self.aviso_guia.hide()
+            self.aviso_guia.setVisible(panel.instalador.guia_instalada(panel.guias) != guia.get("id"))
         else:  # aún no hay ninguna guía instalada
             self.emblema.emoji = "?"
-            self.emblema.update()
             self.nombre_guia.setText(t("sin_guia"))
-            self.desc_guia.setText(t("sin_guia_texto"))
-            self.meta_guia.hide()
             self.aviso_guia.hide()
-        self.refrescar_estado()
+        self.emblema.update()
+        self.meta_guia.setVisible(bool(guia))
         self._numeros(guia)
         self._ultima()
 
-    def refrescar_estado(self):
-        panel = self.panel
-        jugando, texto = panel.en_partida()
-        if jugando:
-            self.punto.poner(BIEN)
-            self.titulo_estado.setText(t("estado_titulo_partida"))
-            self.texto_estado.setText(texto)
-        elif panel.juego:
-            self.punto.poner(ACENTO)
-            self.titulo_estado.setText(t("estado_titulo_abierto"))
-            self.texto_estado.setText(t("estado_texto_abierto"))
-        else:
-            self.punto.poner(APAGADO)
-            self.titulo_estado.setText(t("estado_titulo_cerrado"))
-            self.texto_estado.setText(t("estado_texto_cerrado"))
+    def _instalar_guia(self):
+        guia = self.panel.guia_activa()
+        if guia:
+            self.panel.usar_guia(guia["id"])
 
     def _numeros(self, guia: dict | None):
         nombre = guia["nombre"] if guia else None
         regs = self.panel.historial.de_guia(nombre) if nombre else []
-        self.titulo_numeros.setText(t("tus_numeros", guia=nombre or "—"))
         vista = vista_de_guia(guia) if guia else {"principal": "castillos", "nombre_meta": ""}
         clave = vista["principal"]
         etiqueta_hito = de(vista, "nombre_meta") if clave == "meta" else t(f"hito_{clave}")
         res = resumen_hito(regs, clave)
         semana = sum(1 for r in regs if r["fecha"] >= time.strftime("%Y-%m-%d", time.localtime(time.time() - 7 * 86400)))
-        self.d_partidas.poner(str(len(regs)), t("esta_semana", n=semana) if regs else t("sin_partidas_aun"))
+        self.d_partidas.poner(str(len(regs)), t("esta_semana", n=semana) if semana else "")
         self.d_mejor.nombre = t("dato_mejor_de", hito=etiqueta_hito)
         self.d_mejor.poner(reloj(res["mejor"]) if res["mejor"] is not None else "—",
                            t("referencia_a", hora=reloj(guia["pasos"][-1]["referencia"])) if guia else "")
-        if res["media"] is not None:
-            detalle, c = (t("vs_anteriores", dif=desfase(res["media"] - res["media_anterior"])[0]),
-                          desfase(res["media"] - res["media_anterior"])[1]) if res["media_anterior"] is not None \
-                else (t("ultimas_n", n=min(10, res["cuenta"])), APAGADO)
-            self.d_media.poner(reloj(res["media"]), detalle, c)
+        if res["media"] is not None and res["media_anterior"] is not None:
+            self.d_media.poner(reloj(res["media"]), *desfase(res["media"] - res["media_anterior"]))
         else:
-            self.d_media.poner("—", t("sin_datos"))
+            self.d_media.poner(reloj(res["media"]))
         completas = sum(1 for r in regs if r.get("completada"))
         self.d_completadas.poner(f"{round(100 * completas / len(regs))}%" if regs else "—",
-                                 t("completadas_de", n=completas, total=len(regs)) if regs else t("sin_datos"))
+                                 t("completadas_de", n=completas, total=len(regs)) if regs else "")
 
     def _ultima(self):
         regs = self.panel.historial.registros
         self.ultima = regs[-1] if regs else None
+        self.tarjeta_ultima.setVisible(bool(regs))
+        self.como.setVisible(not regs)
         if not self.ultima:
-            self.ultima_titulo.setText(t("sin_partidas"))
-            self.ultima_detalle.setText(t("sin_partidas_texto"))
-            self.boton_ultima.hide()
             return
         r = self.ultima
         clave = principal(r)
@@ -1410,47 +1358,23 @@ class PaginaInicio(Pagina):
         else:
             partes.append(t("hasta_paso", n=pasos_hechos(r), total=len(r["pasos"])))
         self.ultima_detalle.setText(" · ".join(partes))
-        self.boton_ultima.show()
 
     def _ver_ultima(self):
         if self.ultima:
             self.panel.ver_partida(self.ultima)
 
 
-class PaginaEstadisticas(Pagina):
+class PaginaHistorial(Pagina):
+    """Todas las partidas, con filtro por guía (el mismo contenido que la ventana que
+    se abre dentro del juego al acabar una partida)."""
+
     def __init__(self, panel: Panel):
         super().__init__(panel, desplazar=False)
-        self.chips = QHBoxLayout()
-        self.chips.setSpacing(8)
-        self.capa.addLayout(self.chips)
         self.contenido = ContenidoHistorial(panel.historial)
         self.capa.addWidget(self.contenido, 1)
-        self.grupo = QButtonGroup(self)
-        self.guia: str | None = None
-
-    def elegir_guia(self, nombre: str | None):
-        self.guia = nombre
-        self.refrescar()
 
     def refrescar(self):
-        panel = self.panel
-        con_partidas = dict(panel.historial.guias())
-        nombres = list(con_partidas) + [g["nombre"] for g in panel.guias.values() if g["nombre"] not in con_partidas]
-        if self.guia not in nombres:
-            self.guia = nombres[0] if nombres else None
-        limpiar(self.chips)
-        for b in self.grupo.buttons():
-            self.grupo.removeButton(b)
-        for nombre in nombres:
-            n = con_partidas.get(nombre, 0)
-            b = boton(f"{nombre}  ·  {n}", None, "chip")
-            b.setCheckable(True)
-            b.setChecked(nombre == self.guia)
-            b.clicked.connect(lambda _=False, x=nombre: self.elegir_guia(x))
-            self.grupo.addButton(b)
-            self.chips.addWidget(b)
-        self.chips.addStretch(1)
-        self.contenido.mostrar_guia(self.guia)
+        self.contenido.refrescar()
 
 
 def boton_descarga(panel: Panel, e: K.Elemento, texto: str) -> QPushButton:
@@ -1466,21 +1390,26 @@ def boton_descarga(panel: Panel, e: K.Elemento, texto: str) -> QPushButton:
     return b
 
 
-def barra_catalogo(panel: Panel) -> QHBoxLayout:
-    """Estado del catálogo (al día, buscando, sin conexión) y el botón «Buscar novedades»."""
-    estado, error = panel.estado_catalogo
-    textos_estado = {"al_dia": (t("catalogo_al_dia"), BIEN), "buscando": (t("catalogo_buscando"), ACENTO),
-                     "copia": (t("catalogo_copia"), APAGADO),
-                     "sin_conexion": (t("catalogo_sin_conexion", error=error), ATENCION),
-                     "nunca": (t("catalogo_nunca", error=error or "—"), ATENCION)}
-    texto, c = textos_estado[estado]
+def barra_catalogo(panel: Panel, info: str = "", extra: QWidget | None = None) -> QHBoxLayout:
+    """Fila de arriba de Guías, Mapas y MODs: el estado del catálogo solo si hay algo
+    que decir (buscando o sin conexión), un punto de información y «Buscar novedades»."""
+    estado, _ = panel.estado_catalogo
+    textos_estado = {"buscando": (t("catalogo_buscando"), ACENTO), "sin_conexion": (t("catalogo_sin_conexion"), ATENCION),
+                     "nunca": (t("catalogo_nunca"), ATENCION)}
     f = QHBoxLayout()
     f.setSpacing(10)
-    f.addWidget(etiqueta(texto, 8.5, QFont.Weight.DemiBold, c, envolver=True), 1)
+    if estado in textos_estado:
+        texto, c = textos_estado[estado]
+        f.addWidget(etiqueta(texto, 9, QFont.Weight.DemiBold, c))
+    f.addStretch(1)
+    if info:
+        f.addWidget(InfoPunto(info), 0, Qt.AlignmentFlag.AlignVCenter)
+    if extra is not None:
+        f.addWidget(extra)
     if panel.fuente_catalogo is not None:
         b = boton(t("buscar_novedades"), panel.actualizar_catalogo)
         b.setEnabled(estado != "buscando")
-        f.addWidget(b, 0, Qt.AlignmentFlag.AlignVCenter)
+        f.addWidget(b)
     return f
 
 
@@ -1536,7 +1465,8 @@ class TarjetaGuia(Tarjeta):
         else:
             usar = boton(t("usar_guia"), lambda: panel.usar_guia(guia["id"]), "primario")
         acciones.insert(0, usar)
-        acciones.append(boton(t("ver_estadisticas"), lambda: panel.ver_estadisticas(guia["nombre"])))
+        if panel.historial.de_guia(guia["nombre"]):
+            acciones.append(boton(t("ver_historial"), lambda: panel.ver_historial(guia["nombre"])))
         self.capa.addSpacing(4)
         self.capa.addLayout(fila(*acciones))
         extra = []
@@ -1598,7 +1528,6 @@ class PaginaGuias(Pagina):
         cat = panel.instalador.catalogo
         activa = (panel.guia_activa() or {}).get("id")
         instalada = panel.instalador.guia_instalada(panel.guias)
-        self.capa.addWidget(etiqueta(t("guias_intro"), 10, QFont.Weight.Normal, SECUNDARIO, envolver=True))
         self.capa.addLayout(barra_catalogo(panel))
         # Instaladas.
         if panel.guias:
@@ -1651,7 +1580,6 @@ class TarjetaMapa(QFrame):
         if guias:
             cuerpo.addWidget(etiqueta(t("guias_recomendadas", guias=guias), 8.5, QFont.Weight.Medium, APAGADO,
                                       envolver=True))
-        cuerpo.addWidget(etiqueta(Path(m["archivo"]).stem, 8.5, QFont.Weight.DemiBold, APAGADO))
         cuerpo.addStretch(1)
         estado = pastilla(("● " if em.estado == "instalado" else "") + t(f"mapa_{em.estado}"), self.ESTADOS[em.estado])
         acciones = []
@@ -1708,23 +1636,17 @@ class PaginaMapas(Pagina):
         panel = self.panel
         estados = panel.instalador.estado_mapas()
         pendientes = [e for e in estados if e.estado in ("no_instalado", "desactualizado")]
-        intro = QHBoxLayout()
-        intro.addWidget(etiqueta(t("mapas_intro"), 10, QFont.Weight.Normal, SECUNDARIO, envolver=True), 1)
         todos = boton(t("instalar_todos", n=len(pendientes)), self.instalar_todos, "primario")
         todos.setVisible(bool(pendientes))
         todos.setEnabled(bool(panel.guias))
         if not panel.guias:
             todos.setToolTip(t("mapa_sin_guia"))
-        intro.addWidget(todos, 0, Qt.AlignmentFlag.AlignTop)
-        self.capa.addLayout(intro)
-        self.capa.addLayout(barra_catalogo(panel))
+        self.capa.addLayout(barra_catalogo(panel, t("mapas_nota"), todos))
         if not estados:
             self.capa.addWidget(etiqueta(t("mapas_sin_catalogo"), 10, QFont.Weight.DemiBold, ATENCION, envolver=True))
         elif not panel.guias:
             self.capa.addWidget(etiqueta(t("mapa_sin_guia"), 9.5, QFont.Weight.DemiBold, ATENCION, envolver=True))
         self.capa.addLayout(rejilla_de([TarjetaMapa(panel, em) for em in estados], 3))
-        if estados:
-            self.capa.addWidget(etiqueta(t("mapas_nota"), 9, QFont.Weight.Medium, APAGADO, envolver=True))
         self.capa.addStretch(1)
 
     def instalar_todos(self):
@@ -1775,16 +1697,13 @@ class PaginaMods(Pagina):
     def refrescar(self):
         limpiar(self.capa)
         panel = self.panel
-        self.capa.addWidget(etiqueta(t("mods_intro"), 10, QFont.Weight.Normal, SECUNDARIO, envolver=True))
-        self.capa.addLayout(barra_catalogo(panel))
+        self.capa.addLayout(barra_catalogo(panel, t("mods_nota")))
         estados = panel.instalador.estado_mods()
         if not estados:
             self.capa.addWidget(etiqueta(t("mods_sin_catalogo"), 10, QFont.Weight.DemiBold, ATENCION, envolver=True))
         elif panel.instalador.perfil is None:
             self.capa.addWidget(etiqueta(t("mods_sin_perfil"), 10, QFont.Weight.DemiBold, ATENCION, envolver=True))
         self.capa.addLayout(rejilla_de([TarjetaMod(panel, em) for em in estados], 2))
-        if estados:
-            self.capa.addWidget(etiqueta(t("mods_nota"), 9, QFont.Weight.Medium, APAGADO, envolver=True))
         self.capa.addStretch(1)
 
 
@@ -1800,11 +1719,11 @@ class PaginaAjustes(Pagina):
             idioma.addItem(nombre, codigo)
         idioma.setCurrentIndex(max(0, idioma.findData(cfg.get("idioma", "es"))))
         idioma.currentIndexChanged.connect(lambda _i: panel.cambiar_idioma(idioma.currentData()))
-        self._opcion(general, t("op_idioma"), t("op_idioma_desc"), idioma)
-        self._opcion(general, t("op_abrir_panel"), t("op_abrir_panel_desc"),
-                     Interruptor(cfg.get("abrir_panel_al_iniciar", True), lambda v: self._poner("abrir_panel_al_iniciar", v)))
-        self._opcion(general, t("op_inicio_windows"), t("op_inicio_windows_desc"),
-                     Interruptor(I.inicio_con_windows(), self._inicio_windows))
+        self._opcion(general, t("op_idioma"), idioma)
+        self._opcion(general, t("op_abrir_panel"),
+                     Interruptor(cfg.get("abrir_panel_al_iniciar", True), lambda v: self._poner("abrir_panel_al_iniciar", v)),
+                     info=t("op_abrir_panel_desc"))
+        self._opcion(general, t("op_inicio_windows"), Interruptor(I.inicio_con_windows(), self._inicio_windows))
 
         # La guía en la partida.
         guia = self._seccion(t("ajustes_overlay"))
@@ -1813,7 +1732,7 @@ class PaginaAjustes(Pagina):
         lado.addItem(t("lado_izquierda"), "izquierda")
         lado.setCurrentIndex(max(0, lado.findData(cfg.get("posicion", "derecha"))))
         lado.currentIndexChanged.connect(lambda _i: self._poner("posicion", lado.currentData()))
-        self._opcion(guia, t("op_posicion"), t("op_posicion_desc"), lado)
+        self._opcion(guia, t("op_posicion"), lado)
         opacidad = QSlider(Qt.Orientation.Horizontal)
         opacidad.setRange(60, 100)
         opacidad.setValue(round(100 * float(cfg.get("opacidad", 1.0))))
@@ -1830,21 +1749,23 @@ class PaginaAjustes(Pagina):
         co.setContentsMargins(0, 0, 0, 0)
         co.addWidget(opacidad)
         co.addWidget(valor)
-        self._opcion(guia, t("op_opacidad"), t("op_opacidad_desc"), caja_op)
+        self._opcion(guia, t("op_opacidad"), caja_op)
         siguientes = QComboBox()
         siguientes.addItem(t("segun_guia"), None)
         for n in range(0, 6):
             siguientes.addItem(str(n), n)
         siguientes.setCurrentIndex(max(0, siguientes.findData(cfg.get("pasos_siguientes"))))
         siguientes.currentIndexChanged.connect(lambda _i: self._poner("pasos_siguientes", siguientes.currentData()))
-        self._opcion(guia, t("op_siguientes"), t("op_siguientes_desc"), siguientes)
-        self._opcion(guia, t("op_casas"), t("op_casas_desc"),
-                     Interruptor(cfg.get("aviso_casas", True), lambda v: self._poner("aviso_casas", v)))
-        self._opcion(guia, t("op_historial_fin"), t("op_historial_fin_desc"),
+        self._opcion(guia, t("op_siguientes"), siguientes, info=t("op_siguientes_desc"))
+        self._opcion(guia, t("op_casas"), Interruptor(cfg.get("aviso_casas", True), lambda v: self._poner("aviso_casas", v)),
+                     info=t("op_casas_desc"))
+        self._opcion(guia, t("op_historial_fin"),
                      Interruptor(cfg.get("abrir_historial_al_terminar", True),
-                                 lambda v: self._poner("abrir_historial_al_terminar", v)))
-        self._opcion(guia, t("op_pestana"), t("op_pestana_desc"),
-                     Interruptor(cfg.get("pestana_historial", True), lambda v: self._poner("pestana_historial", v)))
+                                 lambda v: self._poner("abrir_historial_al_terminar", v)),
+                     info=t("op_historial_fin_desc"))
+        self._opcion(guia, t("op_pestana"),
+                     Interruptor(cfg.get("pestana_historial", True), lambda v: self._poner("pestana_historial", v)),
+                     info=t("op_pestana_desc"))
 
         # Carpetas (las encuentra rutas.py; aquí se pueden cambiar).
         carpetas = self._seccion(t("ajustes_carpetas"))
@@ -1854,7 +1775,7 @@ class PaginaAjustes(Pagina):
         cj.setContentsMargins(0, 0, 0, 0)
         cj.addWidget(self._abrir(inst.juego))
         cj.addWidget(boton(t("elegir"), self._elegir_juego))
-        self._opcion(carpetas, t("carpeta_juego"), str(inst.juego) if inst.juego else t("no_encontrada"), juego)
+        self._opcion(carpetas, t("carpeta_juego"), juego, str(inst.juego) if inst.juego else t("no_encontrada"))
         if len(panel.perfiles) > 1:
             perfil = QComboBox()
             perfil.setFixedWidth(320)
@@ -1870,18 +1791,17 @@ class PaginaAjustes(Pagina):
             control = caja
         else:
             control = self._abrir(inst.perfil)
-        self._opcion(carpetas, t("carpeta_perfil"), str(inst.perfil) if inst.perfil else t("no_encontrada"), control)
-        self._opcion(carpetas, t("carpeta_mod"), str(inst.mod_instalado) if inst.mod_instalado else t("no_encontrada"),
-                     self._abrir(inst.mod_instalado))
+        self._opcion(carpetas, t("carpeta_perfil"), control, str(inst.perfil) if inst.perfil else t("no_encontrada"))
+        self._opcion(carpetas, t("carpeta_mod"), self._abrir(inst.mod_instalado),
+                     str(inst.mod_instalado) if inst.mod_instalado else t("no_encontrada"))
 
         # Ayuda y soporte: Discord, datos para un reporte y el log.
         ayuda = self._seccion(t("ajustes_soporte"))
         discord = boton(t("abrir_discord"), lambda: I.abrir_enlace(soporte.DISCORD))
         discord.setEnabled(bool(soporte.DISCORD))
-        self._opcion(ayuda, t("op_discord"), t("op_discord_desc") if soporte.DISCORD else t("op_discord_pronto"),
-                     discord)
-        self._opcion(ayuda, t("op_soporte"), t("op_soporte_desc"), boton(t("copiar"), self.copiar_soporte))
-        self._opcion(ayuda, t("op_log"), t("op_log_desc"), self._abrir(rutas.LOGS))
+        self._opcion(ayuda, t("op_discord"), discord)
+        self._opcion(ayuda, t("op_soporte"), boton(t("copiar"), self.copiar_soporte), info=t("op_soporte_desc"))
+        self._opcion(ayuda, t("op_log"), self._abrir(rutas.LOGS))
         estado = panel.estado_actualizacion[0]
         if estado in ("disponible", "descargando"):
             control = boton(t("act_actualizar"), panel.actualizar_app, "primario")
@@ -1889,9 +1809,7 @@ class PaginaAjustes(Pagina):
         else:
             control = boton(t("act_buscar"), panel.buscar_actualizacion)
             control.setEnabled(estado not in ("desde_codigo", "buscando"))
-        self._opcion(ayuda, t("op_version"), panel.texto_actualizacion(), control)
-
-        self.capa.addWidget(etiqueta(t("acerca", version=VERSION), 8.5, QFont.Weight.Medium, APAGADO, envolver=True))
+        self._opcion(ayuda, t("op_version"), control, panel.texto_actualizacion(), t("acerca_nota"))
         self.capa.addStretch(1)
 
     def copiar_soporte(self):
@@ -1908,19 +1826,22 @@ class PaginaAjustes(Pagina):
         self.capa.addWidget(tarjeta)
         return tarjeta.capa
 
-    def _opcion(self, capa: QVBoxLayout, nombre: str, descripcion: str, control: QWidget):
+    def _opcion(self, capa: QVBoxLayout, nombre: str, control: QWidget, detalle: str = "", info: str = ""):
+        """Una fila de ajustes: el nombre, su control y, si hace falta, un dato debajo (una
+        carpeta, la versión) o un punto de información con la explicación."""
         if capa.count():
             linea = QFrame()
             linea.setFixedHeight(1)
             linea.setStyleSheet(f"background: {rgba(BORDE, 30)};")
             capa.addWidget(linea)
         f = QHBoxLayout()
-        f.setContentsMargins(0, 12, 0, 12)
+        f.setContentsMargins(0, 11, 0, 11)
         f.setSpacing(20)
         tx = QVBoxLayout()
         tx.setSpacing(2)
-        tx.addWidget(etiqueta(nombre, 10, QFont.Weight.DemiBold))
-        tx.addWidget(etiqueta(descripcion, 8.5, QFont.Weight.Normal, APAGADO, envolver=True))
+        tx.addLayout(fila(etiqueta(nombre, 10, QFont.Weight.DemiBold), *([InfoPunto(info)] if info else []), espacio=7))
+        if detalle:
+            tx.addWidget(etiqueta(detalle, 8.5, QFont.Weight.Normal, APAGADO, envolver=True))
         f.addLayout(tx, 1)
         f.addWidget(control, 0, Qt.AlignmentFlag.AlignVCenter)
         capa.addLayout(f)

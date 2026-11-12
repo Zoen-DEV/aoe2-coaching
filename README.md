@@ -1,6 +1,6 @@
 # AoE2 Coaching (AoE2C)
 
-Guías de apertura paso a paso encima de Age of Empires II: Definitive Edition, historial de partidas y un panel para elegir guía, ver estadísticas e instalar mapas y mods.
+Guías de apertura paso a paso encima de Age of Empires II: Definitive Edition, historial de partidas y un panel para elegir guía, ver el historial e instalar mapas y mods.
 
 - **Estado:** en preparación para la primera versión pública. Plan: [docs/03-plan-compartir-aoe2c.md](docs/03-plan-compartir-aoe2c.md).
 - **Diseño de la guía y del panel:** [docs/02-guia-apertura-castillos.md](docs/02-guia-apertura-castillos.md)
@@ -21,6 +21,7 @@ apps/
 content/
   catalogo.py     arma el catálogo (paquetes + catalogo.json) en build/catalogo
   guias/          build.py + build orders (.json) -> script .xs y manifiesto del overlay
+                  tierlist.json (ajustes de la tierlist) y tecnologias.json (datos del juego, de tecnologias.py)
   mapas/          mapas.json: recetas de los mapas [AoE2C]
   mods/
     icono-ovejas/ build.py + info.json -> sprites .sld con el icono; catalogo.json: su ficha
@@ -51,6 +52,12 @@ Armar las guías, los mapas y el mod de AoE2C (sin `--install` no toca el juego)
 
 ```bash
 py content/guias/build.py
+```
+
+Volver a sacar del juego las tecnologías y civilizaciones de la tierlist (con una civilización nueva o al añadir una tecnología a su catálogo; el resultado, `content/guias/tecnologias.json`, se sube a git):
+
+```bash
+py content/guias/tecnologias.py
 ```
 
 Armar el catálogo con lo construido (las guías y el mod de las ovejas). Desde el código, el panel lo usa en vez del publicado en GitHub; `AOE2C_CATALOGO` elige otro (ruta o URL):

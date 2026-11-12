@@ -1,6 +1,6 @@
 {
   "id": "drush_fc",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "nombre": "Drush FC",
   "descripcion": "Tres milicianos en la Alta Edad Media para molestar al rival y después Fast Castle: 27 de población al pulsar Feudal (con los milicianos) y 2 aldeanos más antes de pulsar Castillos.",
   "descripcion_en": "Three militia in the Dark Age to harass your opponent, then Fast Castle: 27 population when you click Feudal (militia included) and 2 more villagers before clicking Castle.",
@@ -21,6 +21,12 @@
   "pasos_siguientes_visibles": 3,
   "mensaje_final": "Siguiente: 2 centros urbanos más o caballeros, aldeanos sin parar y granjas.",
   "mensaje_final_en": "Next: 2 more Town Centers or knights, non-stop villagers and farms.",
+  "tierlist": {
+    "S": ["carretilla", "collera", "hacha_doble_filo", "arado_pesado"],
+    "A": ["sierra_de_arco", "mineria_aurifera", "carro_de_mano", "linea_sangre", "ballestero"],
+    "B": ["forja", "barda_escamas", "emplumado", "cria_caballos", "hombre_de_armas", "vigilancia"],
+    "C": ["escuderos", "albanileria", "balistica", "mineria_piedra", "pozo_aurifero"]
+  },
   "pasos": [
     {
       "titulo": "2 casas",

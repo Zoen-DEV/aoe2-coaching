@@ -1,24 +1,25 @@
-"""Ventana del historial de aperturas.
+"""Historial de partidas: el contenido (lo usan la página Historial del panel y la
+ventana flotante) y la ventana flotante, que solo se ve dentro del juego.
 
-Mismo estilo que la tarjeta de la guía. Recibe clics y la rueda del ratón sin
-quitarle el foco al juego.
+- Arriba, un filtro por guía. Por defecto se ven todas las partidas.
+- A la izquierda, «Resumen» y la lista de partidas.
+- A la derecha, sin partida elegida, el resumen: con una guía, la media de cada hito
+  frente a las partidas anteriores, la evolución y los pasos donde más tiempo se pierde;
+  con varias guías, una fila por guía.
+- Con una partida elegida: sus hitos frente a la media de su guía, su lugar en la
+  evolución, el paso a paso y la carpeta de su repetición (ver repeticiones.py).
 
-- A la izquierda, una barra lateral con «Resumen general» y la lista de partidas.
-- A la derecha, sin partida elegida, el resumen general: la media de cada hito
-  (clic en Feudal, Feudal, clic en Castillos, Castillos) frente a las partidas
-  anteriores, la evolución de Feudal y Castillos y los tramos donde más tiempo pierdes.
-- Con una partida elegida: sus hitos frente a tu media, su lugar en la evolución,
-  el detalle paso a paso y su repetición (ver repeticiones.py).
+Los textos que explican algo van en puntos de información (InfoPunto), no a la vista.
 """
 
 from datetime import datetime
 
 import repeticiones
 
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QButtonGroup, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QToolTip,
+                               QVBoxLayout, QWidget)
 
 # Mismos colores que el panel (estilo.py, «Panel e historial»), no los del overlay.
 from estilo import ATENCION, BANDERAS_CLIC, BIEN, ORO_CLARO, PISTA, SERIE_CASTILLOS, SERIE_FEUDAL
@@ -51,7 +52,8 @@ def fecha_corta(iso: str) -> str:
 
 
 def mapa_corto(mapa: str) -> str:
-    return mapa.split(" Guia")[0]
+    """«[AoE2C] Arena» -> «Arena»: en el historial todos los mapas son de AoE2C."""
+    return mapa.split(" Guia")[0].removeprefix("[AoE2C] ")
 
 
 def desfase(seg: int | float | None) -> tuple[str, object]:
@@ -93,6 +95,48 @@ def pintor(w: QWidget) -> QPainter:
     return p
 
 
+class InfoPunto(QWidget):
+    """Punto de información: un «!» en un círculo que muestra su texto al pasar el ratón.
+    Para lo que conviene saber pero no hace falta tener siempre a la vista."""
+
+    def __init__(self, texto: str = "", padre: QWidget | None = None):
+        super().__init__(padre)
+        self.texto = texto
+        self.encima = False
+        self.setFixedSize(16, 16)
+        self.setCursor(Qt.CursorShape.WhatsThisCursor)
+
+    def poner(self, texto: str):
+        self.texto = texto
+        self.setVisible(bool(texto))
+
+    def enterEvent(self, _):
+        self.encima = True
+        self.update()
+        QToolTip.showText(self.mapToGlobal(QPoint(-6, self.height() + 6)), f"<qt>{self.texto}</qt>", self)
+
+    def leaveEvent(self, _):
+        self.encima = False
+        self.update()
+        QToolTip.hideText()
+
+    def paintEvent(self, _):
+        p = pintor(self)
+        c = ORO_CLARO if self.encima else APAGADO
+        p.setPen(QPen(color(c, 255 if self.encima else 170), 1))
+        p.setBrush(color(ACENTO, 30) if self.encima else Qt.BrushStyle.NoBrush)
+        p.drawEllipse(QRectF(1, 1, 14, 14))
+        p.setFont(fuente(7.5, QFont.Weight.Bold))
+        p.setPen(c)
+        p.drawText(QRectF(0, 0, 16, 15.5), int(CEN.value), "!")
+        p.end()
+
+
+def junto_a(info: InfoPunto, x: float, texto_titulo: str, f: QFont, y: int = 12):
+    """Coloca el punto de información a la derecha de un título pintado en (x, y)."""
+    info.move(int(x + QFontMetricsF(f).horizontalAdvance(texto_titulo) + 8), y)
+
+
 # --- Fichas de los hitos -----------------------------------------------------
 
 
@@ -123,7 +167,7 @@ class Ficha(QWidget):
         ancho_pie = w
         if self.valor is not None and self.comparado is not None:
             t, c = desfase(self.valor - self.comparado)
-            t = f"{t} {self.sufijo}"
+            t = f"{t} {self.sufijo}".strip()
             f = fuente(8.5, QFont.Weight.DemiBold)
             ancho = QFontMetricsF(f).horizontalAdvance(t) + 16
             chip = QRectF(x + w - ancho, 32, ancho, 20)
@@ -136,7 +180,7 @@ class Ficha(QWidget):
         f_pie = fuente(8.5, QFont.Weight.Medium)
         pie = self.pie
         if QFontMetricsF(f_pie).horizontalAdvance(pie) > ancho_pie:
-            pie = pie.split(" · ")[-1]  # si no cabe entero, la última parte (la mejor marca)
+            pie = pie.split(" · ")[-1]  # si no cabe entero, la última parte
         texto(p, QRectF(x, 62, ancho_pie, 18), pie, f_pie, SECUNDARIO)
         p.end()
 
@@ -165,7 +209,9 @@ class Grafico(QWidget):
         self.seleccion = None
         self.encima: int | None = None
         self.setMouseTracking(True)
-        self.setMinimumHeight(210)
+        self.setMinimumHeight(200)
+        self.info = InfoPunto(tx("hi_evolucion_nota"), self)
+        junto_a(self.info, 16, tx("hi_evolucion"), fuente(10.5, QFont.Weight.Bold))
 
     def poner(self, registros: list[dict], seleccion: str | None):
         self.registros, self.seleccion = registros, seleccion
@@ -173,7 +219,7 @@ class Grafico(QWidget):
         self.update()
 
     def _zona(self) -> QRectF:
-        return QRectF(48, 56, self.width() - 48 - 54, self.height() - 56 - 30)
+        return QRectF(48, 46, self.width() - 48 - 54, self.height() - 46 - 30)
 
     def _x(self, i: int, z: QRectF) -> float:
         n = len(self.registros)
@@ -195,8 +241,6 @@ class Grafico(QWidget):
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         caja(p, r, RADIO, TARJETA, BORDE)
         texto(p, QRectF(16, 10, 200, 20), tx("hi_evolucion"), fuente(10.5, QFont.Weight.Bold), TEXTO)
-        texto(p, QRectF(16, 26, r.width() - 32, 16), tx("hi_evolucion_nota"),
-              fuente(8, QFont.Weight.Medium), APAGADO)
         # Leyenda (con nombre, así el color no es lo único que identifica la serie).
         lx = r.right() - 16
         for _, nombre, c in reversed(self.SERIES):
@@ -319,10 +363,14 @@ class PuntosDebiles(QWidget):
         super().__init__()
         self.tramos: list[dict] = []
         self.partidas = 0
-        self.setMinimumHeight(210)
+        self.setMinimumHeight(196)
+        self.info = InfoPunto("", self)
+        junto_a(self.info, 16, tx("hi_donde_pierdes"), fuente(10.5, QFont.Weight.Bold))
 
     def poner(self, tramos_: list[dict], partidas: int):
         self.tramos, self.partidas = tramos_, partidas
+        n = min(partidas, VENTANA_MEDIA)
+        self.info.poner(tx("hi_media_una") if n == 1 else tx("hi_media_n", n=n))
         self.update()
 
     def paintEvent(self, _):
@@ -330,12 +378,8 @@ class PuntosDebiles(QWidget):
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         caja(p, r, RADIO, TARJETA, BORDE)
         texto(p, QRectF(16, 10, r.width() - 32, 20), tx("hi_donde_pierdes"), fuente(10.5, QFont.Weight.Bold), TEXTO)
-        n = min(self.partidas, VENTANA_MEDIA)
-        texto(p, QRectF(16, 26, r.width() - 32, 16),
-              tx("hi_media_una") if n == 1 else tx("hi_media_n", n=n),
-              fuente(8, QFont.Weight.Medium), APAGADO)
         lentos = [t for t in self.tramos if t["media"] >= 1][: self.FILAS]
-        y = 52
+        y = 42
         if not lentos:
             texto(p, QRectF(16, y, r.width() - 32, 40), tx("hi_sin_tramos"),
                   fuente(9.5, QFont.Weight.Medium), BIEN)
@@ -354,11 +398,11 @@ class PuntosDebiles(QWidget):
         p.end()
 
 
-# --- Barra lateral: resumen general y lista de partidas ----------------------
+# --- Barra lateral: resumen y lista de partidas -------------------------------
 
 
 class FilaResumen(QWidget):
-    """Entrada fija arriba de la barra lateral: vuelve a la vista general."""
+    """Entrada fija arriba de la barra lateral: vuelve al resumen."""
 
     def __init__(self, al_pulsar):
         super().__init__()
@@ -366,7 +410,7 @@ class FilaResumen(QWidget):
         self.elegida = True
         self.partidas = 0
         self.encima = False
-        self.setFixedHeight(50)
+        self.setFixedHeight(40)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def poner(self, elegida: bool, partidas: int):
@@ -380,11 +424,10 @@ class FilaResumen(QWidget):
             seleccion(p, r)
         elif self.encima:
             caja(p, r, 3, color(TEXTO, 10))
-        texto(p, QRectF(12, 8, r.width() - 20, 18), tx("hi_resumen"), fuente(9.5, QFont.Weight.Bold), TEXTO)
-        n = self.partidas
-        texto(p, QRectF(12, 26, r.width() - 20, 16),
-              tx("hi_comparativa_una") if n == 1 else tx("hi_comparativa_n", n=n), fuente(8.5, QFont.Weight.Medium),
-              SECUNDARIO if self.elegida else APAGADO)
+        zona = QRectF(12, 0, self.width() - 24, self.height())
+        texto(p, zona, tx("hi_resumen"), fuente(9.5, QFont.Weight.Bold), TEXTO)
+        texto(p, zona, str(self.partidas), fuente(9, QFont.Weight.DemiBold), SECUNDARIO if self.elegida else APAGADO,
+              DER)
         p.end()
 
     def enterEvent(self, _):
@@ -401,7 +444,8 @@ class FilaResumen(QWidget):
 
 
 class ListaPartidas(QWidget):
-    """Partidas de la más reciente a la más antigua: fecha, mapa, Castillos y diferencia con la media."""
+    """Partidas de la más reciente a la más antigua: fecha y tiempo del hito principal
+    arriba; debajo, el mapa (y la guía, si se ven todas) y la diferencia con la media."""
 
     FILA = 52
 
@@ -410,16 +454,17 @@ class ListaPartidas(QWidget):
         self.al_elegir = al_elegir
         self.registros: list[dict] = []
         self.seleccion = None
-        self.media = None
-        self.mejor = None
+        self.marcas: dict[str, tuple] = {}
+        self.con_guia = False
         self.encima: int | None = None
         self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-    def poner(self, registros: list[dict], seleccion: str | None, media, mejor):
-        """media y mejor: del hito principal de la guía (Castillos, o la meta en Scouts)."""
+    def poner(self, registros: list[dict], seleccion: str | None, marcas: dict[str, tuple], con_guia: bool):
+        """marcas: por guía, (media, mejor) de su hito principal. con_guia: escribe la
+        guía en cada fila (cuando se ven partidas de varias)."""
         self.registros, self.seleccion = registros, seleccion
-        self.media, self.mejor = media, mejor
+        self.marcas, self.con_guia = marcas, con_guia
         self.setFixedHeight(self.FILA * len(registros) + 4)
         self.update()
 
@@ -435,21 +480,23 @@ class ListaPartidas(QWidget):
             elif k == self.encima:
                 caja(p, fila, 3, color(TEXTO, 10))
             ancho = w - 24
-            castillos = valor_principal(reg)
+            valor = valor_principal(reg)
+            media_guia, mejor = self.marcas.get(reg["guia"], (None, None))
             texto(p, QRectF(12, y + 8, ancho - 60, 18), fecha_corta(reg["fecha"]), fuente(9.5, QFont.Weight.Bold),
                   TEXTO)
-            texto(p, QRectF(12, y + 8, ancho, 18), reloj(castillos), fuente(10, QFont.Weight.Bold),
-                  TEXTO if castillos is not None else APAGADO, DER)
-            texto(p, QRectF(12, y + 27, ancho - 70, 16),
-                  tx("hi_n_pasos", mapa=mapa_corto(reg["mapa"]), hechos=pasos_hechos(reg), total=len(reg["pasos"])),
-                  fuente(8.5, QFont.Weight.Medium), SECUNDARIO if elegida else APAGADO)
-            if castillos is None:
-                t, c = tx("hi_sin_hito", hito=nombre_hito(reg, principal(reg))), APAGADO
-            elif castillos == self.mejor:
-                t, c = tx("hi_mejor_estrella"), BIEN
+            texto(p, QRectF(12, y + 8, ancho, 18), reloj(valor), fuente(10, QFont.Weight.Bold),
+                  TEXTO if valor is not None else APAGADO, DER)
+            if valor is None:
+                t, c = f"{pasos_hechos(reg)}/{len(reg['pasos'])}", APAGADO
+            elif valor == mejor:
+                t, c = "★", BIEN
             else:
-                t, c = desfase(castillos - self.media) if self.media is not None else ("", APAGADO)
-            texto(p, QRectF(12, y + 27, ancho, 16), t, fuente(8.5, QFont.Weight.DemiBold), c, DER)
+                t, c = desfase(valor - media_guia) if media_guia is not None else ("", APAGADO)
+            f_dif = fuente(8.5, QFont.Weight.DemiBold)
+            texto(p, QRectF(12, y + 27, ancho, 16), t, f_dif, c, DER)
+            sub = f"{reg['guia']} · {mapa_corto(reg['mapa'])}" if self.con_guia else mapa_corto(reg["mapa"])
+            texto(p, QRectF(12, y + 27, ancho - QFontMetricsF(f_dif).horizontalAdvance(t) - 10, 16), sub,
+                  fuente(8.5, QFont.Weight.Medium), SECUNDARIO if elegida else APAGADO)
             y += self.FILA
         p.end()
 
@@ -471,6 +518,84 @@ class ListaPartidas(QWidget):
         k = self._fila(e.position().y())
         if k is not None and e.button() == Qt.MouseButton.LeftButton:
             self.al_elegir(self.registros[k]["id"])
+
+
+# --- Resumen de todas las guías ----------------------------------------------
+
+
+class TablaGuias(QWidget):
+    """Una fila por guía: partidas, mejor marca y media de su hito principal, y la
+    diferencia de la media con las partidas anteriores. Un clic filtra por esa guía."""
+
+    CABECERA, FILA = 34, 56
+    COLUMNAS = (("hi_col_partidas", 300), ("hi_col_mejor", 210), ("hi_col_media", 120))  # clave, borde derecho
+
+    def __init__(self, al_elegir):
+        super().__init__()
+        self.al_elegir = al_elegir
+        self.filas: list[dict] = []
+        self.encima: int | None = None
+        self.setMouseTracking(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def poner(self, historial: Historial):
+        self.filas = []
+        for nombre, n in historial.guias():
+            regs = historial.de_guia(nombre)
+            self.filas.append({"guia": nombre, "partidas": n, "hito": nombre_hito(regs[-1], principal(regs[-1])),
+                               **resumen_hito(regs, principal(regs[-1]))})
+        self.setFixedHeight(self.CABECERA + self.FILA * len(self.filas) + 8)
+        self.update()
+
+    def paintEvent(self, _):
+        p = pintor(self)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        caja(p, r, RADIO, TARJETA, BORDE)
+        w = r.width()
+        f_cab = fuente(7.5, QFont.Weight.Bold, 1.1)
+        texto(p, QRectF(18, 6, 200, self.CABECERA - 6), tx("hi_col_guia"), f_cab, APAGADO)
+        for clave, borde in self.COLUMNAS:
+            texto(p, QRectF(w - borde - 90, 6, 90, self.CABECERA - 6), tx(clave), f_cab, APAGADO, DER)
+        y = self.CABECERA
+        for k, f in enumerate(self.filas):
+            p.setPen(QPen(color(BORDE, 30), 1))
+            p.drawLine(QPointF(18, y + 0.5), QPointF(w - 18, y + 0.5))
+            if k == self.encima:
+                caja(p, QRectF(4, y + 3, w - 8, self.FILA - 5), 3, color(ACENTO, 16))
+            texto(p, QRectF(18, y + 9, w - 440, 20), f["guia"], titulo(10.5, 0.3), TEXTO)
+            texto(p, QRectF(18, y + 30, w - 440, 16), f["hito"], fuente(8.5, QFont.Weight.Medium), APAGADO)
+            fila = QRectF(0, y, 0, self.FILA)
+            for valor, borde, c in ((str(f["partidas"]), 300, SECUNDARIO), (reloj(f["mejor"]), 210, TEXTO),
+                                    (reloj(f["media"]), 120, TEXTO)):
+                fila.setLeft(w - borde - 90)
+                fila.setWidth(90)
+                texto(p, fila, valor, fuente(10.5, QFont.Weight.DemiBold), c if valor != "—" else APAGADO, DER)
+            if f["media"] is not None and f["media_anterior"] is not None:
+                t, c = desfase(f["media"] - f["media_anterior"])
+                chip = QRectF(w - 18 - 76, y + (self.FILA - 20) / 2, 76, 20)
+                caja(p, chip, 2, color(c, 24), color(c, 80))
+                texto(p, chip, t, fuente(8.5, QFont.Weight.DemiBold), c, CEN)
+            y += self.FILA
+        p.end()
+
+    def _fila(self, y: float) -> int | None:
+        k = int((y - self.CABECERA) // self.FILA)
+        return k if y >= self.CABECERA and 0 <= k < len(self.filas) else None
+
+    def mouseMoveEvent(self, e):
+        k = self._fila(e.position().y())
+        if k != self.encima:
+            self.encima = k
+            self.update()
+
+    def leaveEvent(self, _):
+        self.encima = None
+        self.update()
+
+    def mousePressEvent(self, e):
+        k = self._fila(e.position().y())
+        if k is not None and e.button() == Qt.MouseButton.LeftButton:
+            self.al_elegir(self.filas[k]["guia"])
 
 
 # --- Detalle paso a paso -----------------------------------------------------
@@ -518,7 +643,7 @@ class TablaPasos(QWidget):
         p.end()
 
 
-# --- Ventana -----------------------------------------------------------------
+# --- Contenido ---------------------------------------------------------------
 
 
 def _rgba(c: QColor, a: int) -> str:
@@ -527,15 +652,19 @@ def _rgba(c: QColor, a: int) -> str:
 
 ESTILO = f"""
 QLabel {{ color: {TEXTO.name()}; background: transparent; }}
+QToolTip {{ color: {TEXTO.name()}; background: #25211b; border: 1px solid {_rgba(BORDE, 90)};
+           padding: 6px 9px; font-family: 'Segoe UI'; font-size: 9pt; }}
 QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
 QScrollBar:vertical {{ background: transparent; width: 8px; margin: 2px; }}
 QScrollBar::handle:vertical {{ background: {_rgba(TEXTO, 36)}; border-radius: 3px; min-height: 30px; }}
 QScrollBar::handle:vertical:hover {{ background: {_rgba(TEXTO, 70)}; }}
 QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ height: 0; background: none; }}
 QPushButton {{ color: {SECUNDARIO.name()}; background: transparent; border: 1px solid {_rgba(BORDE, 60)};
-              border-radius: 3px; padding: 4px 12px; font-family: 'Segoe UI'; font-size: 9pt; font-weight: 600; }}
+              border-radius: 3px; padding: 5px 12px; font-family: 'Segoe UI'; font-size: 9pt; font-weight: 600; }}
 QPushButton:hover {{ color: {ORO_CLARO.name()}; background: {_rgba(ACENTO, 22)}; border-color: {_rgba(ACENTO, 140)}; }}
 QPushButton:disabled {{ color: {_rgba(APAGADO, 140)}; background: transparent; border-color: {_rgba(BORDE, 24)}; }}
+QPushButton#filtro {{ padding: 5px 13px; }}
+QPushButton#filtro:checked {{ color: {ORO_CLARO.name()}; background: {_rgba(ACENTO, 28)}; border-color: {ACENTO.name()}; }}
 QPushButton#cerrar {{ padding: 0; min-width: 26px; max-width: 26px; min-height: 26px; max-height: 26px;
                      font-size: 10pt; }}
 QPushButton#borrar[confirmar="true"] {{ color: #ffc4c4; border-color: rgba(255,96,96,140);
@@ -557,6 +686,17 @@ def desplazable(contenido: QWidget) -> QScrollArea:
     s.setFrameShape(QFrame.Shape.NoFrame)
     s.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     return s
+
+
+def con_info(lab: QLabel, info: InfoPunto) -> QHBoxLayout:
+    """Un rótulo con su punto de información al lado."""
+    f = QHBoxLayout()
+    f.setContentsMargins(0, 0, 0, 0)
+    f.setSpacing(7)
+    f.addWidget(lab)
+    f.addWidget(info)
+    f.addStretch(1)
+    return f
 
 
 class Panel(QWidget):
@@ -595,38 +735,40 @@ class FilaFichas(QWidget):
 
 
 class ContenidoHistorial(QWidget):
-    """Barra lateral con las partidas y el panel con los datos. Lo usan la ventana del
-    historial (al acabar una partida) y la página de estadísticas del panel de AoE2C.
+    """El filtro por guía, la barra lateral con las partidas y el panel con los datos. Lo
+    usan la página Historial del panel y la ventana flotante del juego.
 
-    `guia_fija` limita el contenido a una guía; si es None, se ve la de la partida
-    elegida o la última jugada."""
+    `filtro` es el nombre de una guía o None (todas las partidas, lo normal)."""
 
     LATERAL = 268
 
-    def __init__(self, historial: Historial, al_titular=None):
+    def __init__(self, historial: Historial):
         super().__init__()
         cargar_fuentes()
         self.historial = historial
-        self.al_titular = al_titular or (lambda _t: None)  # recibe el subtítulo ("Guía · N partidas")
-        self.seleccion: str | None = None  # None = resumen general
+        self.seleccion: str | None = None  # None = resumen
+        self.filtro: str | None = None  # None = todas las guías
         self.fin_de_partida = False
-        self.guia_fija: str | None = None
         self.repeticion = None  # Path de la repetición de la partida elegida
-        # Para "Ver repetición" (las pruebas los sustituyen).
-        import instalador
-        self.juego_abierto = instalador.juego_abierto
-        self.abrir_juego = instalador.abrir_juego
         self.mostrar_en_carpeta = repeticiones.mostrar_en_carpeta
         self.setStyleSheet(ESTILO)
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(0, 0, 0, 0)
+        raiz.setSpacing(12)
 
         # Sin partidas.
-        self.vacio = etiqueta(tx("hi_vacio"), 11, QFont.Weight.Medium,
-                              SECUNDARIO)
+        self.vacio = etiqueta(tx("hi_vacio"), 11, QFont.Weight.Medium, APAGADO)
         self.vacio.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.vacio.setWordWrap(True)
         raiz.addWidget(self.vacio, 1)
+
+        # Filtro por guía (solo si hay partidas de más de una).
+        self.barra_filtros = QWidget()
+        self.filtros = QHBoxLayout(self.barra_filtros)
+        self.filtros.setContentsMargins(0, 0, 0, 0)
+        self.filtros.setSpacing(8)
+        self.grupo = QButtonGroup(self)
+        self._firma_filtros = None
+        raiz.addWidget(self.barra_filtros)
 
         # Contenido: barra lateral a la izquierda, panel a la derecha.
         self.contenido = QWidget()
@@ -645,16 +787,26 @@ class ContenidoHistorial(QWidget):
         separador.setFixedHeight(1)
         separador.setStyleSheet(f"background: {_rgba(BORDE, 30)};")
         ll.addWidget(separador)
-        ll.addWidget(etiqueta("  " + tx("hi_partidas"), 7.5, QFont.Weight.Bold, APAGADO, 1.2))
         self.lista = ListaPartidas(self.elegir)
         ll.addWidget(desplazable(self.lista), 1)
         cuerpo.addWidget(lateral)
 
-        # Vista general: medias, evolución y puntos débiles de todas las partidas.
+        # Resumen de todas las guías (sin filtro y con partidas de varias).
+        self.vista_guias = QWidget()
+        vt = QVBoxLayout(self.vista_guias)
+        vt.setContentsMargins(0, 0, 0, 0)
+        self.tabla_guias = TablaGuias(self.filtrar)
+        vt.addWidget(self.tabla_guias)
+        vt.addStretch(1)
+        cuerpo.addWidget(self.vista_guias, 1)
+
+        # Resumen de una guía: medias, evolución y dónde se pierde tiempo.
         self.vista_general = QWidget()
         vg = QVBoxLayout(self.vista_general)
         vg.setContentsMargins(0, 0, 0, 0)
         vg.setSpacing(12)
+        self.rotulo_medias = etiqueta("", 7.5, QFont.Weight.Bold, APAGADO, 1.4)
+        vg.addLayout(con_info(self.rotulo_medias, InfoPunto(tx("hi_medias_nota"))))
         self.fichas_general = FilaFichas()
         vg.addWidget(self.fichas_general)
         self.grafico_general = Grafico(self.elegir)
@@ -663,49 +815,41 @@ class ContenidoHistorial(QWidget):
         vg.addWidget(self.debiles)
         cuerpo.addWidget(self.vista_general, 1)
 
-        # Vista de una partida: hitos frente a tu media, su lugar en la evolución y el paso a paso.
+        # Una partida: hitos frente a la media de su guía, su lugar en la evolución y el paso a paso.
         self.vista_partida = QWidget()
         vp = QVBoxLayout(self.vista_partida)
         vp.setContentsMargins(0, 0, 0, 0)
         vp.setSpacing(12)
         fila = QHBoxLayout()
-        self.titulo_detalle = etiqueta("", 13, QFont.Weight.Bold)
-        fila.addWidget(self.titulo_detalle, 1)
-        self.ver_repeticion = QPushButton("▶  " + tx("hi_ver_repeticion"))
-        self.ver_repeticion.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.ver_repeticion.clicked.connect(self.pulsar_ver_repeticion)
-        fila.addWidget(self.ver_repeticion)
+        fila.setSpacing(8)
+        self.titulo_detalle = QLabel("")
+        self.titulo_detalle.setFont(titulo(13, 0.3))
+        fila.addWidget(self.titulo_detalle)
+        self.guia_detalle = etiqueta("", 9.5, QFont.Weight.Medium, APAGADO)
+        fila.addWidget(self.guia_detalle, 1, Qt.AlignmentFlag.AlignBottom)
         self.en_carpeta = QPushButton(tx("hi_en_carpeta"))
-        self.en_carpeta.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.en_carpeta.setToolTip(tx("hi_en_carpeta_consejo"))
-        self.en_carpeta.clicked.connect(self.pulsar_en_carpeta)
-        fila.addWidget(self.en_carpeta)
         self.borrar = QPushButton(tx("hi_borrar"))
         self.borrar.setObjectName("borrar")
-        self.borrar.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.borrar.setToolTip(tx("hi_borrar_consejo"))
-        self.borrar.clicked.connect(self.pulsar_borrar)
-        fila.addWidget(self.borrar)
+        for b, al_pulsar in ((self.en_carpeta, self.pulsar_en_carpeta), (self.borrar, self.pulsar_borrar)):
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.clicked.connect(al_pulsar)
+            fila.addWidget(b)
         vp.addLayout(fila)
-        self.nota_repeticion = etiqueta("", 9, QFont.Weight.Medium, SECUNDARIO)
-        self.nota_repeticion.setWordWrap(True)
-        self.nota_repeticion.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.nota_repeticion.hide()
-        vp.addWidget(self.nota_repeticion)
+        # La partida que acaba de terminar, en una línea.
         self.aviso = etiqueta("", 10, QFont.Weight.DemiBold, BIEN)
         self.aviso.setWordWrap(True)
-        self.aviso.setStyleSheet("color: #38cc80; background: rgba(56,204,128,30); border: 1px solid "
-                                 "rgba(56,204,128,80); border-radius: 3px; padding: 8px 12px;")
+        self.aviso.setStyleSheet(f"color: {BIEN.name()}; background: {_rgba(BIEN, 26)}; "
+                                 f"border-left: 2px solid {BIEN.name()}; padding: 8px 12px;")
         vp.addWidget(self.aviso)
         self.fichas = FilaFichas()
         vp.addWidget(self.fichas)
         self.grafico = Grafico(self.elegir)
-        self.grafico.setFixedHeight(200)
+        self.grafico.setFixedHeight(190)
         vp.addWidget(self.grafico)
         detalle = Panel()
         ld = QVBoxLayout(detalle)
         ld.setContentsMargins(12, 10, 6, 8)
-        ld.addWidget(etiqueta(tx("hi_paso_a_paso"), 10.5, QFont.Weight.Bold))
+        ld.addLayout(con_info(etiqueta(tx("hi_paso_a_paso"), 10.5, QFont.Weight.Bold), InfoPunto(tx("hi_pasos_nota"))))
         self.pasos = TablaPasos()
         ld.addWidget(desplazable(self.pasos), 1)
         vp.addWidget(detalle, 1)
@@ -716,17 +860,19 @@ class ContenidoHistorial(QWidget):
     # Datos.
     def abrir(self, seleccion: str | None = None, fin_de_partida: bool = False):
         self.historial.cargar()
-        self.seleccion = seleccion
         self.fin_de_partida = fin_de_partida
-        self.refrescar()
+        self.elegir(seleccion)
 
-    def mostrar_guia(self, nombre: str | None):
-        """Limita el contenido a una guía (None = la de la última partida)."""
-        self.guia_fija = nombre
+    def filtrar(self, guia: str | None):
+        """Solo las partidas de una guía (None = todas)."""
+        self.filtro = guia
         self.refrescar()
 
     def elegir(self, id_: str | None):
         self.seleccion = id_
+        reg = self.historial.buscar(id_)
+        if reg and self.filtro and reg["guia"] != self.filtro:
+            self.filtro = None  # la partida pedida no es de la guía filtrada
         self.refrescar()
 
     def pulsar_borrar(self):
@@ -742,22 +888,6 @@ class ContenidoHistorial(QWidget):
             self.borrar.setProperty("confirmar", True)
             self.borrar.style().polish(self.borrar)
 
-    def pulsar_ver_repeticion(self):
-        """El juego no abre repeticiones desde fuera: se abre (si hace falta) y se dice
-        cuál elegir en su lista. El nombre queda copiado."""
-        if self.repeticion is None:
-            return
-        QGuiApplication.clipboard().setText(self.repeticion.stem)
-        abierto = self.juego_abierto()
-        if not abierto:
-            try:
-                self.abrir_juego()
-            except OSError:
-                pass
-        self.nota_repeticion.setText(tx("hi_como_ver" if abierto else "hi_como_ver_abriendo",
-                                        nombre=self.repeticion.stem))
-        self.nota_repeticion.show()
-
     def pulsar_en_carpeta(self):
         if self.repeticion is not None:
             self.mostrar_en_carpeta(self.repeticion)
@@ -768,90 +898,114 @@ class ContenidoHistorial(QWidget):
         if sel.get("repeticion") != antes:
             self.historial.guardar()
         hay = self.repeticion is not None
-        for b in (self.ver_repeticion, self.en_carpeta):
-            b.setEnabled(hay)
-        self.ver_repeticion.setToolTip(tx("hi_ver_repeticion_consejo", nombre=self.repeticion.name) if hay
-                                       else tx("hi_sin_repeticion"))
-        self.nota_repeticion.hide()
+        self.en_carpeta.setEnabled(hay)
+        self.en_carpeta.setToolTip("" if hay else tx("hi_sin_repeticion"))
 
     def _reiniciar_borrar(self):
         self.borrar.setText(tx("hi_borrar"))
         self.borrar.setProperty("confirmar", False)
         self.borrar.style().polish(self.borrar)
 
+    def _pintar_filtros(self, guias: list[tuple[str, int]]):
+        firma = (tuple(guias), self.filtro)
+        self.barra_filtros.setVisible(len(guias) > 1)
+        if firma == self._firma_filtros:
+            return
+        self._firma_filtros = firma
+        for b in self.grupo.buttons():
+            self.grupo.removeButton(b)
+            b.setParent(None)
+            b.deleteLater()
+        while self.filtros.count():
+            self.filtros.takeAt(0)
+        total = sum(n for _, n in guias)
+        for nombre, n in [(None, total)] + guias:
+            b = QPushButton(f"{nombre or tx('hi_todas')}   {n}")
+            b.setObjectName("filtro")
+            b.setCheckable(True)
+            b.setChecked(nombre == self.filtro)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.clicked.connect(lambda _=False, x=nombre: self.filtrar(x))
+            self.grupo.addButton(b)
+            self.filtros.addWidget(b)
+        self.filtros.addStretch(1)
+
     def refrescar(self):
         self._reiniciar_borrar()
+        guias = self.historial.guias()
+        if self.filtro not in dict(guias):
+            self.filtro = None
         sel = self.historial.buscar(self.seleccion)
-        if sel and self.guia_fija and sel["guia"] != self.guia_fija:
+        if sel and self.filtro and sel["guia"] != self.filtro:
             sel = None
-        guia = self.guia_fija or (sel["guia"] if sel else self.historial.ultima_guia())
-        regs = self.historial.de_guia(guia)
-        hay = bool(regs)
+        self.seleccion = sel["id"] if sel else None
+        visibles = self.historial.de_guia(self.filtro)
+        hay = bool(visibles)
         self.vacio.setVisible(not hay)
         self.contenido.setVisible(hay)
+        self._pintar_filtros(guias)
         if not hay:
-            self.seleccion = None
-            self.al_titular(tx("hi_sin_partidas"))
             return
-        self.seleccion = sel["id"] if sel else None
-        self.al_titular(tx("hi_partidas_una", guia=guia) if len(regs) == 1
-                        else tx("hi_partidas_n", guia=guia, n=len(regs)))
-
-        ultimo = regs[-1]
-        claves = vista(ultimo)["hitos"]
-        res = resumen_hito(regs, principal(ultimo))
-        self.resumen.poner(sel is None, len(regs))
-        self.lista.poner(list(reversed(regs)), self.seleccion, res["media"], res["mejor"])
-        self.vista_general.setVisible(sel is None)
+        # La guía del panel de la derecha: la de la partida elegida, la filtrada o la única que hay.
+        guia = sel["guia"] if sel else (self.filtro or (guias[0][0] if len(guias) == 1 else None))
+        marcas = {}
+        for nombre, _ in guias:
+            de_la_guia = self.historial.de_guia(nombre)
+            res = resumen_hito(de_la_guia, principal(de_la_guia[-1]))
+            marcas[nombre] = (res["media"], res["mejor"])
+        self.resumen.poner(sel is None, len(visibles))
+        self.lista.poner(list(reversed(visibles)), self.seleccion, marcas, self.filtro is None and len(guias) > 1)
+        self.vista_guias.setVisible(guia is None)
+        self.vista_general.setVisible(sel is None and guia is not None)
         self.vista_partida.setVisible(sel is not None)
+        if guia is None:
+            self.tabla_guias.poner(self.historial)
+            return
+        regs = self.historial.de_guia(guia)
+        claves = vista(regs[-1])["hitos"]
+        nombres = [nombre_hito(regs[-1], k) for k in claves]
         if sel is None:
-            self.fichas_general.preparar(claves, [tx("hi_hito_media", hito=nombre_hito(ultimo, k)) for k in claves])
+            self.fichas_general.preparar(claves, nombres)
             self._pintar_general(regs)
         else:
-            self.fichas.preparar(claves, [nombre_hito(ultimo, k) for k in claves])
-            self._pintar_partida(regs, sel)
+            self.fichas.preparar(claves, nombres)
+            self._pintar_partida(regs, sel, len(guias) > 1)
 
     def _pintar_general(self, regs: list[dict]):
         n = min(len(regs), VENTANA_MEDIA)
+        self.rotulo_medias.setText(tx("hi_medias", n=n) if n > 1 else tx("hi_medias_una"))
         for clave, ficha in self.fichas_general.items():
             res = resumen_hito(regs, clave)
-            pie = [tx("hi_ultimas", n=n) if n > 1 else tx("hi_ultima"),
-                   tx("hi_mejor_min", hora=reloj(res["mejor"])) if res["mejor"] is not None else ""]
-            ficha.poner(res["media"], res["media_anterior"], tx("hi_vs_antes"), " · ".join(x for x in pie if x))
+            ficha.poner(res["media"], res["media_anterior"], "",
+                        tx("hi_mejor", hora=reloj(res["mejor"])) if res["mejor"] is not None else "")
         self.grafico_general.poner(regs[-PARTIDAS_GRAFICO:], None)
         self.debiles.poner(puntos_debiles(regs), len(regs))
 
-    def _pintar_partida(self, regs: list[dict], sel: dict):
-        # Aviso de la partida que acaba de terminar.
+    def _pintar_partida(self, regs: list[dict], sel: dict, con_guia: bool):
+        # La partida que acaba de terminar: su tiempo y cómo queda frente a las anteriores.
         if self.fin_de_partida and sel is regs[-1]:
-            partes = [tx("hi_terminada")]
             valor = valor_principal(sel)
             if valor is not None:
-                partes.append(tx("hi_hito_a_las", hito=nombre_hito(sel, principal(sel)), hora=reloj(valor)))
-                comp = comparacion_final(self.historial, sel)
-                if comp:
-                    partes.append(comp.rstrip("."))
+                partes = [tx("hi_hito_a_las", hito=nombre_hito(sel, principal(sel)), hora=reloj(valor)),
+                          comparacion_final(self.historial, sel).rstrip(".")]
             else:
-                partes.append(tx("hi_hasta_paso", n=pasos_hechos(sel), total=len(sel["pasos"])))
-            debil = max((f for f in tramos(sel) if f["tramo"] is not None), key=lambda f: f["tramo"], default=None)
-            if debil and debil["tramo"] >= 10:
-                partes.append(tx("hi_donde_perdiste", n=debil["n"], paso=debil["titulo"],
-                                 dif=desfase(debil["tramo"])[0]))
-            self.aviso.setText(" · ".join(partes))
+                partes = [tx("hi_hasta_paso", n=pasos_hechos(sel), total=len(sel["pasos"]))]
+            self.aviso.setText(" · ".join(x for x in partes if x))
             self.aviso.show()
         else:
             self.aviso.hide()
 
         self.titulo_detalle.setText(f"{fecha_corta(sel['fecha'])} · {mapa_corto(sel['mapa'])}")
+        self.guia_detalle.setText(sel["guia"] if con_guia else "")
         self._poner_repeticion(sel)
         for clave, ficha in self.fichas.items():
             res = resumen_hito(regs, clave, excluir=sel["id"])
-            pie = []
-            if res["mejor"] is not None:
-                pie.append(tx("hi_mejor", hora=reloj(res["mejor"])))
+            pie = []  # si no cabe entero, la ficha deja la última parte (la media)
             if sel["referencias"].get(clave) is not None:
                 pie.append(tx("hi_ref", hora=reloj(sel["referencias"][clave])))
-            ficha.poner(sel["hitos"].get(clave), res["media"], tx("hi_vs_media"), " · ".join(pie))
+            if res["media"] is not None:
+                pie.append(tx("hi_media_de", hora=reloj(res["media"])))
+            ficha.poner(sel["hitos"].get(clave), res["media"], "", " · ".join(pie))
         # El gráfico muestra la ventana de partidas que incluye la elegida.
         i = next(k for k, r in enumerate(regs) if r["id"] == sel["id"])
         inicio = min(max(0, len(regs) - PARTIDAS_GRAFICO), i)
@@ -859,9 +1013,12 @@ class ContenidoHistorial(QWidget):
         self.pasos.poner(sel)
 
 
+# --- Ventana flotante ----------------------------------------------------------
+
+
 class VentanaHistorial(QWidget):
-    """Ventana flotante del historial: se abre sola al acabar una partida, encima del
-    juego y sin quitarle el foco."""
+    """El historial encima del juego, sin quitarle el foco: se abre solo al acabar una
+    partida. Fuera del juego no se ve: ahí el historial está en el panel."""
 
     ANCHO, ALTO = 1140, 800
 
@@ -875,26 +1032,21 @@ class VentanaHistorial(QWidget):
         self.setWindowTitle(tx("hi_titulo"))
 
         raiz = QVBoxLayout(self)
-        raiz.setContentsMargins(MARGEN + 22, MARGEN + 18, MARGEN + 22, MARGEN + 20)
-        raiz.setSpacing(12)
+        raiz.setContentsMargins(MARGEN + 24, MARGEN + 18, MARGEN + 24, MARGEN + 22)
+        raiz.setSpacing(14)
 
-        # Cabecera.
         cab = QHBoxLayout()
-        textos = QVBoxLayout()
-        textos.setSpacing(0)
-        textos.addWidget(etiqueta(tx("hi_cabecera"), 8.5, QFont.Weight.Bold, APAGADO, 1.4))
-        self.subtitulo = etiqueta("", 15, QFont.Weight.Bold)
-        textos.addWidget(self.subtitulo)
-        cab.addLayout(textos, 1)
+        nombre = QLabel(tx("hi_titulo"))
+        nombre.setFont(titulo(15, 0.5))
+        cab.addWidget(nombre, 1)
         cerrar = QPushButton("✕")
         cerrar.setObjectName("cerrar")
-        cerrar.setToolTip(tx("hi_cerrar"))
         cerrar.setCursor(Qt.CursorShape.PointingHandCursor)
         cerrar.clicked.connect(al_cerrar)
-        cab.addWidget(cerrar, 0, Qt.AlignmentFlag.AlignTop)
+        cab.addWidget(cerrar)
         raiz.addLayout(cab)
 
-        self.cuerpo = ContenidoHistorial(historial, self.subtitulo.setText)
+        self.cuerpo = ContenidoHistorial(historial)
         raiz.addWidget(self.cuerpo, 1)
 
     # La lista, las vistas, elegir(), pulsar_borrar()... son del contenido.

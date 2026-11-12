@@ -1,6 +1,6 @@
 {
   "id": "aguilas",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "nombre": "Águilas 22",
   "descripcion": "La alternativa a Scouts para aztecas, mayas e incas: 22 de población al pulsar Feudal, oro antes de subir, un segundo cuartel al llegar y águilas sin parar.",
   "descripcion_en": "The Scouts alternative for Aztecs, Mayans and Incas: 22 population when you click Feudal, gold before aging up, a second Barracks on arrival and non-stop eagles.",
@@ -21,6 +21,12 @@
   "pasos_siguientes_visibles": 3,
   "mensaje_final": "Siguiente: herrería con armadura de infantería, aldeanos sin parar, granjas y prepara la subida a Castillos.",
   "mensaje_final_en": "Next: Blacksmith with infantry armor, non-stop villagers, farms and get ready to click up to Castle Age.",
+  "tierlist": {
+    "S": ["forja", "mineria_aurifera", "hacha_doble_filo"],
+    "A": ["cota_escamas", "guerrero_aguila", "collera", "carretilla"],
+    "B": ["emplumado", "incendio", "vigilancia"],
+    "C": ["armadura_acolchada", "mineria_piedra"]
+  },
   "pasos": [
     {
       "titulo": "2 casas",

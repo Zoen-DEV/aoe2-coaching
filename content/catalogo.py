@@ -43,7 +43,7 @@ MODS = HERE / "mods"
 MODS_ARMADOS = BUILD / "mods"
 SALIDA = BUILD / "catalogo"
 # Versión mínima de la app según el formato del manifiesto de la guía ("version" del manifiesto).
-APP_MINIMA_GUIA = {2: "1.0.0"}
+APP_MINIMA_GUIA = {2: "1.0.0", 3: "1.2.0"}  # 3: el .xsdat lleva la civilización y la tierlist
 APP_MINIMA = "1.0.0"
 FECHA_ZIP = (1980, 1, 1, 0, 0, 0)
 

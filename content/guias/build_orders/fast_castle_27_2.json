@@ -1,6 +1,6 @@
 {
   "id": "fast_castle",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "nombre": "Fast Castle 27+2",
   "descripcion": "Directo a Castillos sin ejército en Feudal: 27 de población al pulsar Feudal y 2 aldeanos más antes de pulsar Castillos.",
   "descripcion_en": "Straight to Castle Age with no Feudal army: 27 population when you click Feudal and 2 more villagers before clicking Castle.",
@@ -34,6 +34,12 @@
   "pasos_siguientes_visibles": 3,
   "mensaje_final": "Siguiente: 2 centros urbanos más, aldeanos sin parar y granjas.",
   "mensaje_final_en": "Next: 2 more Town Centers, non-stop villagers and farms.",
+  "tierlist": {
+    "S": ["carretilla", "collera", "hacha_doble_filo", "arado_pesado"],
+    "A": ["sierra_de_arco", "mineria_aurifera", "carro_de_mano", "linea_sangre", "ballestero"],
+    "B": ["forja", "barda_escamas", "emplumado", "cria_caballos", "pozo_aurifero", "vigilancia"],
+    "C": ["escuderos", "albanileria", "balistica", "mineria_piedra", "matacanes"]
+  },
   "pasos": [
     {
       "titulo": "2 casas",

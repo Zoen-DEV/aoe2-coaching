@@ -1,6 +1,6 @@
 {
   "id": "arqueros",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "nombre": "Arqueros 22",
   "descripcion": "La apertura clásica de Arabia: 22 de población al pulsar Feudal, 2 galerías de tiro nada más llegar y arqueros sin parar para presionar.",
   "descripcion_en": "The classic Arabia opening: 22 population when you click Feudal, 2 archery ranges as soon as you arrive and non-stop archers to keep up the pressure.",
@@ -21,6 +21,12 @@
   "pasos_siguientes_visibles": 3,
   "mensaje_final": "Siguiente: herrería y Emplumado, aldeanos sin parar, más granjas y prepara la subida a Castillos.",
   "mensaje_final_en": "Next: Blacksmith and Fletching, non-stop villagers, more farms and get ready to click up to Castle Age.",
+  "tierlist": {
+    "S": ["emplumado", "hacha_doble_filo", "mineria_aurifera"],
+    "A": ["armadura_acolchada", "collera", "carretilla"],
+    "B": ["vigilancia", "forja", "mineria_piedra"],
+    "C": ["barda_escamas", "linea_sangre", "incendio"]
+  },
   "pasos": [
     {
       "titulo": "2 casas",

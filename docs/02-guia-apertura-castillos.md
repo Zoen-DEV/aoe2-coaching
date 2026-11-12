@@ -22,12 +22,14 @@ Páginas (barra lateral):
 
 | Página | Qué tiene |
 |---|---|
-| **Inicio** | La guía activa (con aviso si los mapas aún no la cargan), el estado del juego (cerrado, abierto, partida en curso con el paso), tus números con la guía activa (partidas, mejor marca, media de las últimas 10 frente a las 10 anteriores, % de guías completadas), la última partida y los pasos para jugar. |
-| **Estadísticas** | Una pastilla por guía y, debajo, el mismo contenido que la ventana del historial (resumen general, evolución, dónde pierdes tiempo, detalle de cada partida y Borrar). |
+| **Inicio** | La guía activa (con un aviso y el botón **Instalar ahora** si los mapas aún no la cargan), tus números con la guía activa (partidas, mejor marca, media de las últimas 10 frente a las 10 anteriores, % de guías completadas) y la última partida. Mientras no hay ninguna partida guardada, en su lugar salen los pasos para jugar. El estado del juego está en la barra lateral. |
+| **Historial** | Todas las partidas, con un filtro por guía (ver "El historial de aperturas"). Es el mismo contenido que la ventana que se abre dentro del juego. |
 | **Guías** | Las guías instaladas (descripción, nivel, pasos, meta, versión, mapas recomendados, "Ver pasos", **Usar esta guía**, **Actualizar** si el catálogo tiene una versión nueva y **Quitar**). Debajo, las del catálogo sin instalar (**Instalar**) y las que vendrán. |
 | **Mapas** | Una tarjeta por mapa del catálogo con su imagen, tipo, descripción, guías recomendadas y estado (Instalado, Hay una versión nueva, No instalado, Falta el mapa oficial). Botones **Instalar / Actualizar / Quitar** y **⤓** para guardar una copia del `.rms` y su imagen en otra carpeta. AoE2C arma cada mapa con el oficial del juego. |
 | **MODs** | Los mods de AoE2 Coaching (por ahora, el icono sobre el ganado): estado, si está activo en el juego, **Instalar / Actualizar / Activar / Quitar**. |
 | **Ajustes** | Idioma (español / inglés), abrir el panel al iniciar, iniciar con Windows; y de la guía en partida: posición, opacidad, pasos de "A continuación", aviso de casas, abrir el historial al terminar y la pestaña del historial. Luego, botones para abrir las carpetas del juego, del perfil y del mod. Al final, **Ayuda y soporte**: el Discord de AoE2 Coaching (desactivado hasta tener la invitación), **Copiar datos para soporte** (versión de la app y de Windows, juego y perfil encontrados, contenido instalado y últimos avisos y errores del log, sin el usuario de Windows ni el SteamID) y la carpeta de los logs. |
+
+**Poco texto a la vista.** El panel y el historial no explican lo evidente. Lo que conviene saber pero no hace falta leer siempre (cómo se calcula una media, qué es el tramo, cuándo sale un mapa nuevo en el juego) va en un **punto de información**: un «!» en un círculo que muestra el texto al pasar el ratón (`InfoPunto` en `historial_ui.py`). Al añadir algo al panel: sin subtítulos ni párrafos de introducción; un dato, un botón o un punto de información.
 
 Los cambios de Ajustes se aplican al momento (el panel y el overlay comparten las preferencias en `%APPDATA%\AoE2Coaching\config.json`). El idioma cambia todo AoE2C: el panel, los menús, los pasos de las guías, la tarjeta de la partida y el historial. La primera vez se usa el idioma de Windows (español si Windows está en español; si no, inglés). Las partidas guardadas antes de que las guías tuvieran inglés muestran sus pasos en español. El panel nativo del juego (`panel_juego`, opcional) sigue en español: sus textos van dentro del script XS.
 
@@ -43,7 +45,8 @@ Es una tarjeta oscura y opaca a la derecha, justo encima del marcador de puntos;
 - **El paso actual:** icono, título, objetivo con cuenta atrás ("faltan 0:42" o "12 s tarde"), la instrucción completa y una barra por condición (Casas 2/3, Molino 0/1…).
 - **"A continuación":** los 3 pasos siguientes con su hora de referencia. Los pasos hechos no se muestran.
 - **Al completar un paso,** aparece unos segundos un aviso verde con la hora y el desfase, y la tarjeta del paso nuevo entra con una animación.
-- **Aviso de casas** en rojo, y al llegar a Castillos un resumen que desaparece a los 90 s.
+- **Aviso de casas** en rojo, y al terminar la guía un resumen con los tiempos.
+- **Tierlist de tecnologías:** a los 10 s del final, el resumen deja sitio a "Tecnologías clave": las tecnologías que conviene investigar con esa guía, en niveles S, A, B y C, ajustadas a la civilización y al mapa de la partida (debajo del título, por ejemplo "FRANCOS · ARENA"). Las que la civilización no tiene no salen; las ya investigadas se ven apagadas y tachadas al final de su fila, y la que se está investigando, en azul. Una pastilla cuenta las hechas (3/18). Se actualiza sola y se queda hasta el final de la partida (se puede plegar con ›). El resumen sin tierlist (guías de antes) desaparece a los 90 s, como siempre.
 
 La tarjeta deja pasar los clics al juego y no le quita el foco. Solo se ve cuando se cumplen dos cosas:
 
@@ -69,23 +72,27 @@ Para ver el diseño sin jugar: `py overlay.py --demo` (simula una partida que av
 
 El overlay guarda cada partida en `%APPDATA%\AoE2Coaching\historial.json`, sin tocar el script XS. Por partida anota la hora de cada paso de la guía y cuatro hitos: **clic en Feudal, llegada a Feudal, clic en Castillos y llegada a Castillos**.
 
-- **Al terminar la partida** (cuando el juego deja de enviar datos durante 4 s) se abre sola la ventana del historial, con la partida recién jugada elegida y un aviso: hora de Castillos, si es tu mejor marca, la diferencia con tu media y el tramo donde más perdiste. Al volver a la partida se cierra sola.
-- **Fuera de partida** (menú principal, sala, pantalla de puntuación), con el juego delante, aparece una pestaña **HISTORIAL** pegada al borde de la pantalla, a media altura, en el mismo lado que la guía. Al pulsarla se abre el historial. Se puede quitar desde el menú (⋯ o bandeja) → "Pestaña del historial fuera de partida".
-- **Desde el menú** (⋯ o bandeja) → "Ver historial de aperturas", en cualquier momento.
+- **Al terminar la partida** (cuando el juego deja de enviar datos durante 4 s) se abre sola la ventana del historial encima del juego, con la partida recién jugada elegida y una línea: hora de Castillos, si es tu mejor marca y la diferencia con tu media. Al volver a la partida se cierra sola.
+- **Dentro del juego y fuera de partida** (menú principal, sala, pantalla de puntuación) aparece una pestaña **HISTORIAL** pegada al borde de la pantalla, a media altura, en el mismo lado que la guía. Al pulsarla se abre el historial. Se puede quitar desde el menú (⋯ o bandeja) → "Pestaña del historial".
+- **Desde el menú** (⋯ o bandeja) → "Ver historial": dentro del juego abre la ventana flotante; fuera, el panel en la página Historial.
+- **Fuera del juego** la ventana flotante y la pestaña no se ven (tampoco con el panel de AoE2C delante): el historial está en la página **Historial** del panel.
 - **En la tarjeta final** de la guía ("¡Llegaste a Castillos!") se añade una línea: nueva mejor marca o tu mejor, y tu media.
 
-La ventana recibe clics y la rueda del ratón sin quitarle el foco al juego, y se cierra con la ✕. A la izquierda tiene una **barra lateral** y a la derecha el panel con los datos:
+La ventana flotante recibe clics y la rueda del ratón sin quitarle el foco al juego, y se cierra con la ✕. El contenido es el mismo en la ventana y en el panel: arriba, el **filtro por guía**; a la izquierda, una **barra lateral**; a la derecha, los datos.
 
-- **Barra lateral:** arriba, **Resumen general**; debajo, las partidas de la más reciente a la más antigua, con su hora de Castillos y la diferencia con tu media (o ★ si es tu mejor marca). Al pulsar una se ve su detalle; al pulsar Resumen general, se vuelve a la comparativa.
-- **Resumen general** (sin partida elegida, como al abrir desde la pestaña o el menú):
+- **Filtro por guía:** "Todas" (lo normal al abrir) y una pastilla por guía con partidas, con su número. Solo sale si hay partidas de más de una guía.
+
+- **Barra lateral:** arriba, **Resumen**; debajo, las partidas de la más reciente a la más antigua, con el tiempo de su hito principal y la diferencia con la media de su guía (o ★ si es su mejor marca). Con "Todas", cada fila dice también la guía. Al pulsar una se ve su detalle; al pulsar Resumen, se vuelve a la comparativa.
+- **Resumen con varias guías** ("Todas"): una fila por guía con sus partidas, su mejor marca, su media y la diferencia con las partidas anteriores. Al pulsar una fila se filtra por esa guía.
+- **Resumen de una guía** (con el filtro, o si solo hay partidas de una):
   - **Cuatro fichas** con tu media de cada hito en las últimas 10 partidas, la diferencia con las 10 anteriores y tu mejor marca.
   - **Evolución:** la llegada a Feudal y a Castillos en las últimas 20 partidas, con la referencia en discontinua. Al pasar el ratón por una partida se ven sus valores; al pulsarla, se elige.
   - **Dónde pierdes tiempo:** los 5 tramos donde más tiempo pierdes de media en las últimas 10 partidas. El tramo de un paso es cuánto creció el retraso desde el paso anterior, así un retraso arrastrado no se cuenta dos veces.
 - **Una partida** (al acabarla se abre así, con el aviso):
-  - **Cuatro fichas** con sus hitos, su diferencia con tu media (verde si vas más rápido), tu mejor marca y la referencia.
+  - **Cuatro fichas** con sus hitos, su diferencia con tu media (verde si vas más rápido), la referencia y tu media.
   - **Evolución** con la partida marcada, para ver dónde queda frente a las demás.
   - **Paso a paso:** hora, diferencia con la referencia y tramo; el tramo más lento sale resaltado. El botón **Borrar** (con un segundo clic para confirmar) quita la partida, por ejemplo una de prueba.
-  - **Ver repetición** y **Mostrar en carpeta**: cada partida va con su `.aoe2record` de `savegame` (la repetición que empezó con ella y se siguió escribiendo hasta su último dato; así no se confunde con una partida reiniciada a los pocos segundos). El juego no abre repeticiones desde fuera, así que "Ver repetición" abre AoE2 si está cerrado, copia el nombre de la repetición y dice cuál elegir en su lista. Si no se encuentra (se borró o es de otro perfil), los dos botones quedan desactivados. El nombre se guarda en la partida (`repeticion` en `historial.json`). Ver [repeticiones.py](../apps/desktop/repeticiones.py).
+  - **Carpeta**: cada partida va con su `.aoe2record` de `savegame` (la repetición que empezó con ella y se siguió escribiendo hasta su último dato; así no se confunde con una partida reiniciada a los pocos segundos). El botón abre el Explorador con ese archivo seleccionado; si no se encuentra (se borró o es de otro perfil), queda desactivado. El nombre se guarda en la partida (`repeticion` en `historial.json`). **No hay botón "Ver repetición"**: AoE2 DE no carga repeticiones desde fuera (probado el 2026-11-12 con el juego real: lanzado con Steam y la ruta como argumento, y con la opción `GAM` de su tabla de arranque, recibe el argumento pero se queda en el menú principal). Ver [repeticiones.py](../apps/desktop/repeticiones.py).
 
 **Cómo se mide:**
 - El clic y la llegada a cada edad se anotan al ver cambiar el estado de la tecnología en el archivo del juego, con 1 s de precisión. Si el overlay se abrió tarde y no vio el cambio, el clic se toma de la hora del paso equivalente de la guía; la llegada a Feudal, que no tiene paso propio, queda vacía en lugar de inventarse.
@@ -234,9 +241,13 @@ Comparten la Alta Edad Media con Scouts (6 pastores, 4 leñadores, jabalíes, 4 
 | `apps/desktop/rutas.py` | Encuentra el juego (bibliotecas de Steam) y la carpeta del perfil (pregunta si hay varias con uso), y dónde van los datos y los logs. |
 | `apps/desktop/overlay.py` | El overlay: ventana, diseño, bandeja del sistema, `--demo` y `--captura`. |
 | `apps/desktop/lector.py` | Busca y lee el `.xsdat` que escribe el juego. |
+| `apps/desktop/tierlist.py` | Arma la tierlist del final: aplica los ajustes de mapa y civilización y marca cada tecnología como pendiente, en curso o hecha. |
+| `content/guias/tierlist.json` | Ajustes comunes de la tierlist: por mapa y por civilización (`sube`/`baja` un nivel) y nombres cortos. |
+| `content/guias/tecnologias.json` | Datos del juego para la tierlist (generado por `tecnologias.py`, se sube a git): ID, edad y nombre de cada tecnología, y nombre de cada civilización y qué tecnologías no tiene. |
+| `content/guias/tecnologias.py` | Genera `tecnologias.json` con el juego instalado (`CivTechTrees`, `civilizations.json` y los textos oficiales). Hay que volver a ejecutarlo con cada civilización nueva o al añadir una tecnología a su `CATALOGO`. |
 | `apps/desktop/historial.py` | Registra cada partida (pasos e hitos) y calcula mejores marcas, medias y puntos débiles. |
-| `apps/desktop/historial_ui.py` | La ventana del historial. |
-| `apps/desktop/repeticiones.py` | Vincula cada partida del historial con su `.aoe2record` ("Ver repetición", "Mostrar en carpeta"). |
+| `apps/desktop/historial_ui.py` | El contenido del historial (página Historial del panel y ventana flotante del juego) y los puntos de información (`InfoPunto`). |
+| `apps/desktop/repeticiones.py` | Vincula cada partida del historial con su `.aoe2record` (botón "Carpeta"). |
 | `apps/desktop/soporte.py` | "Copiar datos para soporte" (sin datos personales) y la invitación al Discord. |
 | `apps/desktop/pruebas/test_soporte.py` | Pruebas de las repeticiones y del soporte. |
 | `apps/desktop/estilo.py` | Colores y fuentes comunes del overlay y del historial. |
@@ -283,7 +294,8 @@ Opciones: `--ascii` escribe los textos sin tildes. `--pruebas` añade el mapa "A
    - Que el progreso se actualiza (Casas 0/2 → 1/2 → 2/2) y que el paso avanza solo, con sonido.
    - Que los pasos hechos muestran su hora y el desfase.
    - El aviso de casas: deja la población a 1 o 2 del límite sin construir casa.
-   - Que al llegar a Castillos aparece "¡Guía completada!".
+   - Que al llegar a Castillos aparece "¡Guía completada!" y a los 10 s la tierlist con la civilización y el mapa correctos.
+   - En la tierlist: que no salen tecnologías que la civilización no tiene (con britanos, Pureza de sangre) y que al investigar una se tacha.
 5. Si algo falla, la repetición dice qué mapa se jugó y qué scripts se cargaron:
 
    ```bash
@@ -318,6 +330,8 @@ El paso se cumple cuando se cumplen todas sus condiciones:
 Iconos: `casa`, `molino`, `campamento_maderero`, `campamento_minero`, `granja`, `mercado`, `herreria`, `cuartel`, `centro_urbano`, `castillo`, `aldeano`, `oveja`, `jabali`, `establo`, `explorador`. Edificios: también `establo`.
 
 **Textos:** se pueden escribir con tildes, ñ, `·`, `«»` y `¡¿`, es decir, cualquier carácter latino. Los demás símbolos (✓, ▶, —, •) salen como "?" en el panel y `build.py` los rechaza. Tampoco se admiten `%`, comillas, barras invertidas ni `<` (el juego lo toma como etiqueta de color).
+
+**Tierlist** (opcional, `tierlist`): `{"S": [...], "A": [...], "B": [...], "C": [...]}` con claves de `tecnologias.json` (`carretilla`, `collera`, `forja`, `barda_escamas`, `ballestero`, `linea_sangre`…), cada una una sola vez. Es la de la guía en general; `tierlist.json` la ajusta por mapa y civilización. Al cambiar `tierlist.json`, sube la `version` de las guías.
 
 Para añadir edificios, tareas o tecnologías, se amplían las tablas del principio de `build.py`. Los IDs salen de `resources\_common\dat\CivTechTrees\*.json` y `random_map.def`.
 
@@ -364,7 +378,9 @@ Para añadir edificios, tareas o tecnologías, se amplían las tablas del princi
 ## Pendiente
 
 - **Probar el historial en una partida:** que se abra al salir, que la pestaña del menú no tape ningún botón del juego y que los tiempos de Feudal y Castillos cuadren con la pantalla de puntuación.
-- **Civilización en el historial:** el `.xsdat` no la incluye; se podría añadir al script XS o sacarla de la repetición.
+- **Civilización en el historial:** el `.xsdat` ya la incluye (versión 3, para la tierlist); falta guardarla en el historial.
+- **Probar la tierlist en una partida:** que `xsGetPlayerCivilization` da la civilización correcta, que `xsGetTechState` devuelve "desactivada" (-1) con las tecnologías que la civilización no tiene y "terminada" con las que da gratis (carretilla de los vikingos, herrería de los magiares). Los niveles son una primera estimación, igual que los tiempos de referencia.
+- **Tierlist: tecnología única de Castillos** de cada civilización (en `civilizations.json`, `unique_tech_id_1`): no está, porque cada una necesita su propio nivel.
 
 - **Probar en una partida** que al salir de la partida se reinicia y que la animación de plegado va fluida.
 - **Pendiente de la v2:** que los edificios en construcción no cuentan como terminados y el aviso de casas.

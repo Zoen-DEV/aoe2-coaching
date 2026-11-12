@@ -227,6 +227,22 @@ def test_overlay(tmp: Path):
     w.cerrar_historial()
     ticks()
     comprobar(not w.pestana_historial.isVisible(), "la pestaña se puede desactivar desde el menú")
+    # Fuera del juego la ventana flotante no se ve: el historial está en el panel.
+    w.abrir_historial()
+    w.juego_delante = False
+    ticks()
+    comprobar(w.historial_abierto and not w.ventana_historial.isVisible(), "fuera del juego, la ventana flotante no se ve")
+    pedidos = []
+    w.al_abrir_historial = lambda: pedidos.append(1)
+    w.cerrar_historial()
+    w.ver_historial()
+    comprobar(pedidos == [1] and not w.historial_abierto, "«Ver historial» fuera del juego abre el del panel")
+    w.juego_delante = True
+    w.ver_historial()
+    ticks()
+    comprobar(pedidos == [1] and w.ventana_historial.isVisible(), "y dentro del juego, la ventana flotante")
+    w.cerrar_historial()
+    ticks()
     # Elegir y borrar desde la ventana.
     v = w.ventana_historial
     v.abrir()

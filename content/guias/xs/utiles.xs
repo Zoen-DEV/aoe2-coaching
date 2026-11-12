@@ -109,6 +109,23 @@ int guiaEstadoTech(int jugador = 0, int tech = -1)
     return (0);
 }
 
+// Estado para la tierlist del overlay: como guiaEstadoTech, y 3 si la civilizacion
+// no tiene la tecnologia (desactivada en su arbol).
+int guiaEstadoTier(int jugador = 0, int tech = -1)
+{
+    int estado = xsGetTechState(tech, jugador);
+    if (estado == cTechStateDisabled)
+    {
+        return (3);
+    }
+    if (estado == cTechStateInvalid)
+    {
+        return (3);
+    }
+    int v = guiaEstadoTech(jugador, tech);
+    return (v);
+}
+
 string guiaTextoEstado(int estado = 0)
 {
     if (estado == 2)

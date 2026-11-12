@@ -1,6 +1,6 @@
 {
   "id": "scouts",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "nombre": "Scouts 21",
   "descripcion": "Exploradores en la Edad Feudal: 21 de población al pulsar Feudal, establo nada más llegar y exploradores sin parar para molestar a los aldeanos enemigos.",
   "descripcion_en": "Feudal Age Scouts: 21 population when you click Feudal, a stable as soon as you arrive and non-stop scouts to harass enemy villagers.",
@@ -21,6 +21,12 @@
   "pasos_siguientes_visibles": 3,
   "mensaje_final": "Siguiente: aldeanos sin parar, granjas, y pasa a arqueros o sube a Castillos con caballeros.",
   "mensaje_final_en": "Next: non-stop villagers, farms, then go archers or click up to Castle Age with knights.",
+  "tierlist": {
+    "S": ["barda_escamas", "forja", "hacha_doble_filo", "collera"],
+    "A": ["carretilla", "linea_sangre", "mineria_aurifera"],
+    "B": ["vigilancia", "emplumado", "armadura_acolchada"],
+    "C": ["mineria_piedra", "cota_escamas", "incendio"]
+  },
   "pasos": [
     {
       "titulo": "2 casas",

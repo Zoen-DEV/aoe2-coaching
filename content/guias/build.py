@@ -42,6 +42,8 @@ INSTALL_NAME = "guia-apertura-castillos"
 
 BUILD_ORDERS = HERE / "build_orders"
 CATALOGO_MAPAS = RAIZ / "content" / "mapas" / "mapas.json"
+TECNOLOGIAS_JUEGO = HERE / "tecnologias.json"  # datos del juego (tecnologias.py)
+AJUSTES_TIERLIST = HERE / "tierlist.json"  # ajustes por mapa y civilización
 XS_COMUN = "aoe2c_guia.xs"  # el script que cargan todos los mapas: copia de la guía elegida
 GUIA_POR_DEFECTO = "fast_castle"
 CONFIG_OVERLAY = RAIZ / "apps" / "desktop" / "config.json"  # guarda la guía elegida en el panel
@@ -158,6 +160,8 @@ CLAVES_BUILD_ORDER = {
     "aviso_casas", "overlay", "panel_juego",
     "pasos_hechos_visibles", "pasos_siguientes_visibles", "mensaje_final", "mensaje_final_en", "pasos",
 }
+CLAVES_BUILD_ORDER_OPCIONALES = {"tierlist"}
+NIVELES_TIERLIST = ("S", "A", "B", "C")
 OVERLAY_GUIAS = SALIDA / "guias"  # manifiestos que lee el overlay externo
 CLAVES_MAPA = {"id", "version", "base", "archivo", "nombre", "tipo", "descripcion", "guias"}
 CLAVES_MAPA_OPCIONALES = {"imagen"}
@@ -246,7 +250,7 @@ def load_build_order(path: Path) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
     name = path.name
     missing = CLAVES_BUILD_ORDER - set(data)
-    extra = set(data) - CLAVES_BUILD_ORDER
+    extra = set(data) - CLAVES_BUILD_ORDER - CLAVES_BUILD_ORDER_OPCIONALES
     if missing:
         raise BuildOrderError(f"{name}: faltan las claves {sorted(missing)}")
     if extra:
@@ -315,7 +319,91 @@ def load_build_order(path: Path) -> dict:
             raise BuildOrderError(f"{where}: necesita al menos una condición")
         for cond in step["condiciones"]:
             check_condition(cond, where)
+    if "tierlist" in data:
+        check_tierlist(data["tierlist"], name)
     return data
+
+
+# --- Tierlist de tecnologías (al terminar la guía) ---------------------------
+
+
+def load_tecnologias() -> dict:
+    """Tecnologías y civilizaciones sacadas del juego (tecnologias.py)."""
+    return json.loads(TECNOLOGIAS_JUEGO.read_text(encoding="utf-8"))
+
+
+def check_tierlist(tiers, name: str) -> None:
+    validas = load_tecnologias()["tecnologias"]
+    if not isinstance(tiers, dict) or not tiers or set(tiers) - set(NIVELES_TIERLIST):
+        raise BuildOrderError(f"{name}: tierlist lleva los niveles {', '.join(NIVELES_TIERLIST)} (listas de tecnologías)")
+    vistas = set()
+    for nivel, claves in tiers.items():
+        if not isinstance(claves, list) or not claves:
+            raise BuildOrderError(f"{name}: tierlist > {nivel} debe ser una lista con alguna tecnología")
+        for clave in claves:
+            if clave not in validas:
+                raise BuildOrderError(f"{name}: tierlist > {nivel}: tecnología desconocida {clave!r}. "
+                                      f"Valores válidos: {', '.join(validas)}")
+            if clave in vistas:
+                raise BuildOrderError(f"{name}: tierlist: {clave!r} está dos veces")
+            vistas.add(clave)
+
+
+def load_ajustes_tierlist() -> dict:
+    """tierlist.json, comprobado contra las tecnologías, los mapas y las civilizaciones."""
+    ajustes = json.loads(AJUSTES_TIERLIST.read_text(encoding="utf-8"))
+    datos = load_tecnologias()
+    techs = datos["tecnologias"]
+    civs = {c["clave"] for c in datos["civilizaciones"].values()}
+    ids_mapas = {m["id"] for m in load_maps()}
+    for clave, par in ajustes.get("nombres", {}).items():
+        if clave not in techs or not (isinstance(par, list) and len(par) == 2 and all(isinstance(x, str) and x for x in par)):
+            raise BuildOrderError(f"tierlist.json > nombres > {clave}: tecnología conocida y [español, inglés]")
+    for grupo, validos in (("mapas", ids_mapas), ("civilizaciones", civs)):
+        for clave, ajuste in ajustes.get(grupo, {}).items():
+            where = f"tierlist.json > {grupo} > {clave}"
+            if clave not in validos:
+                raise BuildOrderError(f"{where}: no existe (valores válidos: {', '.join(sorted(validos))})")
+            if not isinstance(ajuste, dict) or set(ajuste) - {"sube", "baja"}:
+                raise BuildOrderError(f"{where}: lleva 'sube' y/o 'baja'")
+            for lista in ajuste.values():
+                for t in lista:
+                    if t not in techs:
+                        raise BuildOrderError(f"{where}: tecnología desconocida {t!r}")
+    return ajustes
+
+
+def tier_techs(bo: dict) -> list[str]:
+    """Tecnologías de la tierlist, en el orden del .xsdat."""
+    return [t for nivel in NIVELES_TIERLIST for t in bo.get("tierlist", {}).get(nivel, [])]
+
+
+def tierlist_manifest(bo: dict) -> dict | None:
+    """Lo que necesita el overlay para armar la tierlist: niveles, nombres y ajustes por
+    mapa y civilización (solo de las tecnologías de esta guía)."""
+    lista = tier_techs(bo)
+    if not lista:
+        return None
+    datos = load_tecnologias()
+    ajustes = load_ajustes_tierlist()
+    techs = datos["tecnologias"]
+    nombres = {t: ajustes.get("nombres", {}).get(t) or [techs[t]["nombre"], techs[t]["nombre_en"]] for t in lista}
+
+    def solo_guia(ajuste: dict) -> dict:
+        out = {k: [t for t in v if t in lista] for k, v in ajuste.items()}
+        return {k: v for k, v in out.items() if v}
+
+    civs = {}
+    for civ_id, c in datos["civilizaciones"].items():
+        civ = {"nombre": c["nombre"], "nombre_en": c["nombre_en"]}
+        civ.update(solo_guia(ajustes.get("civilizaciones", {}).get(c["clave"], {})))
+        sin = [t for t in c["sin"] if t in lista]
+        if sin:
+            civ["sin"] = sin
+        civs[civ_id] = civ
+    mapas = {m: a for m, a in ((m, solo_guia(a)) for m, a in ajustes.get("mapas", {}).items()) if a}
+    return {"techs": lista, "niveles": {n: bo["tierlist"][n] for n in NIVELES_TIERLIST if n in bo["tierlist"]},
+            "nombres": nombres, "mapas": mapas, "civilizaciones": civs}
 
 
 # --- Generación de XS ----------------------------------------------------------
@@ -484,6 +572,15 @@ def generate_steps_xs(bo: dict) -> str:
         out += [f"    e = guiaEstadoTech(jugador, {TECNOLOGIAS[name][0]});  // {name}", "    xsWriteInt(e);"]
     out += ["}", ""]
 
+    # Civilización y estado de las tecnologías de la tierlist (mismo orden que el manifiesto).
+    tier = tier_techs(bo)
+    tecnologias = load_tecnologias()["tecnologias"] if tier else {}
+    out += ["void guiaEscribirTierlist(int jugador = 0)", "{", "    int civ = xsGetPlayerCivilization(jugador);",
+            "    xsWriteInt(civ);", f"    xsWriteInt({len(tier)});", "    int e = 0;"]
+    for name in tier:
+        out += [f"    e = guiaEstadoTier(jugador, {tecnologias[name]['id']});  // {name}", "    xsWriteInt(e);"]
+    out += ["}", ""]
+
     # Condición de cada paso: se cumplen todas o ninguna.
     out += ["bool guiaCumplido(int jugador = 0, int paso = 0)", "{"]
     for i, step in enumerate(steps):
@@ -534,8 +631,8 @@ def build_manifest(bo: dict) -> dict:
         pasos.append({"titulo": s["titulo"], "titulo_en": s["titulo_en"], "texto": s["texto"],
                       "texto_en": s["texto_en"], "icono": s["icono"],
                       "referencia": s["segundos"], "condiciones": conds})
-    return {
-        "version": 2,
+    manifest = {
+        "version": 3,
         "id": bo["id"],
         "version_guia": bo["version"],  # versión del contenido (la del catálogo)
         "codigo": codigo_guia(bo),  # va en el .xsdat: así el overlay sabe qué guía se está jugando
@@ -564,6 +661,10 @@ def build_manifest(bo: dict) -> dict:
         "techs": list(tidx),  # nombre de cada tecnología, en el orden del .xsdat (para el historial)
         "pasos": pasos,
     }
+    tierlist = tierlist_manifest(bo)
+    if tierlist:
+        manifest["tierlist"] = tierlist
+    return manifest
 
 
 def codigo_guia(bo: dict) -> int:

@@ -8,8 +8,12 @@ reiniciadas a los pocos segundos, que también dejan repetición.
 
 El nombre encontrado se guarda en el registro ("repeticion") para no buscar cada vez.
 
-AoE2 DE no abre una repetición desde fuera (no hay programa asociado a .aoe2record):
-"Ver repetición" abre el juego y dice cuál elegir en su lista de repeticiones.
+AoE2 DE no carga una repetición desde fuera. Probado el 2026-11-12 con el juego real
+(v101.103.57257.0): lanzado con Steam y la ruta del .aoe2record como argumento, y con
+la opción GAM de su tabla de arranque ("GAM=ruta", "GAM=nombre" y "GAM ruta"), recibe
+el argumento pero se queda en el menú principal sin abrir el archivo. Por eso el
+historial no tiene un botón "Ver repetición": solo "Carpeta", que abre el Explorador
+con la repetición seleccionada.
 """
 
 import os

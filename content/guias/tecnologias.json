@@ -1,0 +1,964 @@
+{
+ "_comentario": "Generado por tecnologias.py con los datos del juego (no editar a mano).",
+ "tecnologias": {
+  "telar": {
+   "id": 22,
+   "edad": 0,
+   "edificio": 109,
+   "nombre": "Telar",
+   "nombre_en": "Loom"
+  },
+  "carretilla": {
+   "id": 213,
+   "edad": 1,
+   "edificio": 109,
+   "nombre": "Carretilla",
+   "nombre_en": "Wheelbarrow"
+  },
+  "carro_de_mano": {
+   "id": 249,
+   "edad": 2,
+   "edificio": 109,
+   "nombre": "Carro de mano",
+   "nombre_en": "Hand Cart"
+  },
+  "vigilancia": {
+   "id": 8,
+   "edad": 1,
+   "edificio": 109,
+   "nombre": "Guardia urbana",
+   "nombre_en": "Town Watch"
+  },
+  "hacha_doble_filo": {
+   "id": 202,
+   "edad": 1,
+   "edificio": 562,
+   "nombre": "Hacha de doble filo",
+   "nombre_en": "Double-Bit Axe"
+  },
+  "sierra_de_arco": {
+   "id": 203,
+   "edad": 2,
+   "edificio": 562,
+   "nombre": "Sierra de arco",
+   "nombre_en": "Bow Saw"
+  },
+  "collera": {
+   "id": 14,
+   "edad": 1,
+   "edificio": 68,
+   "nombre": "Collera",
+   "nombre_en": "Horse Collar"
+  },
+  "arado_pesado": {
+   "id": 13,
+   "edad": 2,
+   "edificio": 68,
+   "nombre": "Arado pesado",
+   "nombre_en": "Heavy Plow"
+  },
+  "mineria_aurifera": {
+   "id": 55,
+   "edad": 1,
+   "edificio": 584,
+   "nombre": "Minería aurífera",
+   "nombre_en": "Gold Mining"
+  },
+  "pozo_aurifero": {
+   "id": 182,
+   "edad": 2,
+   "edificio": 584,
+   "nombre": "Pozo minero aurífero",
+   "nombre_en": "Gold Shaft Mining"
+  },
+  "mineria_piedra": {
+   "id": 278,
+   "edad": 1,
+   "edificio": 584,
+   "nombre": "Explotación de canteras",
+   "nombre_en": "Stone Mining"
+  },
+  "caravana": {
+   "id": 48,
+   "edad": 2,
+   "edificio": 84,
+   "nombre": "Caravana",
+   "nombre_en": "Caravan"
+  },
+  "acunacion": {
+   "id": 23,
+   "edad": 2,
+   "edificio": 84,
+   "nombre": "Acuñación",
+   "nombre_en": "Coinage"
+  },
+  "emplumado": {
+   "id": 199,
+   "edad": 1,
+   "edificio": 103,
+   "nombre": "Emplumado de flechas",
+   "nombre_en": "Fletching"
+  },
+  "flecha_punzante": {
+   "id": 200,
+   "edad": 2,
+   "edificio": 103,
+   "nombre": "Flecha de punzón",
+   "nombre_en": "Bodkin Arrow"
+  },
+  "armadura_acolchada": {
+   "id": 211,
+   "edad": 1,
+   "edificio": 103,
+   "nombre": "Arm. acolch. para arqueros",
+   "nombre_en": "Padded Archer Armor"
+  },
+  "armadura_cuero": {
+   "id": 212,
+   "edad": 2,
+   "edificio": 103,
+   "nombre": "Arm. de cuero para arqueros",
+   "nombre_en": "Leather Archer Armor"
+  },
+  "forja": {
+   "id": 67,
+   "edad": 1,
+   "edificio": 103,
+   "nombre": "Forja",
+   "nombre_en": "Forging"
+  },
+  "fundicion": {
+   "id": 68,
+   "edad": 2,
+   "edificio": 103,
+   "nombre": "Fundición de hierro",
+   "nombre_en": "Iron Casting"
+  },
+  "cota_escamas": {
+   "id": 74,
+   "edad": 1,
+   "edificio": 103,
+   "nombre": "Armadura de láminas",
+   "nombre_en": "Scale Mail Armor"
+  },
+  "cota_malla": {
+   "id": 76,
+   "edad": 2,
+   "edificio": 103,
+   "nombre": "Cota de malla",
+   "nombre_en": "Chain Mail Armor"
+  },
+  "barda_escamas": {
+   "id": 81,
+   "edad": 1,
+   "edificio": 103,
+   "nombre": "Arm. láminas de cab. pesada",
+   "nombre_en": "Scale Barding Armor"
+  },
+  "barda_malla": {
+   "id": 82,
+   "edad": 2,
+   "edificio": 103,
+   "nombre": "Arm. cota de malla de cab.",
+   "nombre_en": "Chain Barding Armor"
+  },
+  "hombre_de_armas": {
+   "id": 222,
+   "edad": 1,
+   "edificio": 12,
+   "nombre": "Hombre de armas",
+   "nombre_en": "Man-at-Arms"
+  },
+  "espadachin": {
+   "id": 207,
+   "edad": 2,
+   "edificio": 12,
+   "nombre": "Soldado con espada larga",
+   "nombre_en": "Long Swordsman"
+  },
+  "piquero": {
+   "id": 197,
+   "edad": 2,
+   "edificio": 12,
+   "nombre": "Piquero",
+   "nombre_en": "Pikeman"
+  },
+  "escuderos": {
+   "id": 215,
+   "edad": 2,
+   "edificio": 12,
+   "nombre": "Escuderos",
+   "nombre_en": "Squires"
+  },
+  "incendio": {
+   "id": 602,
+   "edad": 1,
+   "edificio": 12,
+   "nombre": "Incendiarismo",
+   "nombre_en": "Arson"
+  },
+  "gambesones": {
+   "id": 875,
+   "edad": 2,
+   "edificio": 12,
+   "nombre": "Gambesones",
+   "nombre_en": "Gambesons"
+  },
+  "guerrero_aguila": {
+   "id": 384,
+   "edad": 2,
+   "edificio": 12,
+   "nombre": "Guerrero águila",
+   "nombre_en": "Eagle Warrior"
+  },
+  "ballestero": {
+   "id": 100,
+   "edad": 2,
+   "edificio": 87,
+   "nombre": "Ballestero",
+   "nombre_en": "Crossbowman"
+  },
+  "hostigador_elite": {
+   "id": 98,
+   "edad": 2,
+   "edificio": 87,
+   "nombre": "Hostigador de élite",
+   "nombre_en": "Elite Skirmisher"
+  },
+  "anillo_pulgar": {
+   "id": 437,
+   "edad": 2,
+   "edificio": 87,
+   "nombre": "Dactilera",
+   "nombre_en": "Thumb Ring"
+  },
+  "linea_sangre": {
+   "id": 435,
+   "edad": 1,
+   "edificio": 101,
+   "nombre": "Pureza de sangre",
+   "nombre_en": "Bloodlines"
+  },
+  "cria_caballos": {
+   "id": 39,
+   "edad": 2,
+   "edificio": 101,
+   "nombre": "Ganadería",
+   "nombre_en": "Husbandry"
+  },
+  "caballeria_ligera": {
+   "id": 254,
+   "edad": 2,
+   "edificio": 101,
+   "nombre": "Caballería ligera",
+   "nombre_en": "Light Cavalry"
+  },
+  "albanileria": {
+   "id": 50,
+   "edad": 2,
+   "edificio": 209,
+   "nombre": "Albañilería",
+   "nombre_en": "Masonry"
+  },
+  "balistica": {
+   "id": 93,
+   "edad": 2,
+   "edificio": 209,
+   "nombre": "Balística",
+   "nombre_en": "Ballistics"
+  },
+  "matacanes": {
+   "id": 322,
+   "edad": 2,
+   "edificio": 209,
+   "nombre": "Matacanes",
+   "nombre_en": "Murder Holes"
+  },
+  "grua": {
+   "id": 54,
+   "edad": 2,
+   "edificio": 209,
+   "nombre": "Grúa",
+   "nombre_en": "Treadmill Crane"
+  }
+ },
+ "civilizaciones": {
+  "1": {
+   "clave": "britons",
+   "nombre": "Britanos",
+   "nombre_en": "Britons",
+   "sin": [
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "linea_sangre"
+   ]
+  },
+  "2": {
+   "clave": "franks",
+   "nombre": "Francos",
+   "nombre_en": "Franks",
+   "sin": [
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "linea_sangre"
+   ]
+  },
+  "3": {
+   "clave": "goths",
+   "nombre": "Godos",
+   "nombre_en": "Goths",
+   "sin": [
+    "pozo_aurifero",
+    "incendio",
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar"
+   ]
+  },
+  "4": {
+   "clave": "teutons",
+   "nombre": "Teutones",
+   "nombre_en": "Teutons",
+   "sin": [
+    "pozo_aurifero",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "cria_caballos",
+    "caballeria_ligera",
+    "grua"
+   ]
+  },
+  "5": {
+   "clave": "japanese",
+   "nombre": "Japoneses",
+   "nombre_en": "Japanese",
+   "sin": [
+    "guerrero_aguila"
+   ]
+  },
+  "6": {
+   "clave": "chinese",
+   "nombre": "Chinos",
+   "nombre_en": "Chinese",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "grua"
+   ]
+  },
+  "7": {
+   "clave": "byzantines",
+   "nombre": "Bizantinos",
+   "nombre_en": "Byzantines",
+   "sin": [
+    "guerrero_aguila",
+    "linea_sangre",
+    "albanileria"
+   ]
+  },
+  "8": {
+   "clave": "persians",
+   "nombre": "Persas",
+   "nombre_en": "Persians",
+   "sin": [
+    "guerrero_aguila",
+    "grua"
+   ]
+  },
+  "9": {
+   "clave": "saracens",
+   "nombre": "Sarracenos",
+   "nombre_en": "Saracens",
+   "sin": [
+    "guerrero_aguila",
+    "grua"
+   ]
+  },
+  "10": {
+   "clave": "turks",
+   "nombre": "Turcos",
+   "nombre_en": "Turks",
+   "sin": [
+    "piquero",
+    "gambesones",
+    "guerrero_aguila",
+    "hostigador_elite"
+   ]
+  },
+  "11": {
+   "clave": "vikings",
+   "nombre": "Vikingos",
+   "nombre_en": "Vikings",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "linea_sangre",
+    "cria_caballos"
+   ]
+  },
+  "12": {
+   "clave": "mongols",
+   "nombre": "Mongoles",
+   "nombre_en": "Mongols",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "grua"
+   ]
+  },
+  "13": {
+   "clave": "celts",
+   "nombre": "Celtas",
+   "nombre_en": "Celts",
+   "sin": [
+    "escuderos",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "linea_sangre",
+    "grua"
+   ]
+  },
+  "14": {
+   "clave": "spanish",
+   "nombre": "Españoles",
+   "nombre_en": "Spanish",
+   "sin": [
+    "pozo_aurifero",
+    "guerrero_aguila",
+    "ballestero",
+    "grua"
+   ]
+  },
+  "15": {
+   "clave": "aztecs",
+   "nombre": "Aztecas",
+   "nombre_en": "Aztecs",
+   "sin": [
+    "barda_escamas",
+    "barda_malla",
+    "anillo_pulgar",
+    "linea_sangre",
+    "cria_caballos",
+    "caballeria_ligera",
+    "albanileria"
+   ]
+  },
+  "16": {
+   "clave": "mayans",
+   "nombre": "Maya",
+   "nombre_en": "Maya",
+   "sin": [
+    "pozo_aurifero",
+    "barda_escamas",
+    "barda_malla",
+    "gambesones",
+    "linea_sangre",
+    "cria_caballos",
+    "caballeria_ligera"
+   ]
+  },
+  "17": {
+   "clave": "huns",
+   "nombre": "Hunos",
+   "nombre_en": "Huns",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "grua"
+   ]
+  },
+  "18": {
+   "clave": "koreans",
+   "nombre": "Coreanos",
+   "nombre_en": "Koreans",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "linea_sangre"
+   ]
+  },
+  "19": {
+   "clave": "italians",
+   "nombre": "Italianos",
+   "nombre_en": "Italians",
+   "sin": [
+    "pozo_aurifero",
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "20": {
+   "clave": "indians",
+   "nombre": "Indostanos",
+   "nombre_en": "Hindustanis",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "grua"
+   ]
+  },
+  "21": {
+   "clave": "incas",
+   "nombre": "Inca",
+   "nombre_en": "Inca",
+   "sin": [
+    "barda_escamas",
+    "barda_malla",
+    "hombre_de_armas",
+    "espadachin",
+    "gambesones",
+    "guerrero_aguila",
+    "linea_sangre",
+    "cria_caballos",
+    "caballeria_ligera"
+   ]
+  },
+  "22": {
+   "clave": "magyars",
+   "nombre": "Magiares",
+   "nombre_en": "Magyars",
+   "sin": [
+    "escuderos",
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "23": {
+   "clave": "slavs",
+   "nombre": "Eslavos",
+   "nombre_en": "Slavs",
+   "sin": [
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "grua"
+   ]
+  },
+  "24": {
+   "clave": "portuguese",
+   "nombre": "Portugueses",
+   "nombre_en": "Portuguese",
+   "sin": [
+    "pozo_aurifero",
+    "escuderos",
+    "guerrero_aguila"
+   ]
+  },
+  "25": {
+   "clave": "ethiopians",
+   "nombre": "Etíopes",
+   "nombre_en": "Ethiopians",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "linea_sangre",
+    "grua"
+   ]
+  },
+  "26": {
+   "clave": "malians",
+   "nombre": "Malíes",
+   "nombre_en": "Malians",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "27": {
+   "clave": "berbers",
+   "nombre": "Bereberes",
+   "nombre_en": "Berbers",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "28": {
+   "clave": "khmer",
+   "nombre": "Jemeres",
+   "nombre_en": "Khmer",
+   "sin": [
+    "escuderos",
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "grua"
+   ]
+  },
+  "29": {
+   "clave": "malay",
+   "nombre": "Malayos",
+   "nombre_en": "Malay",
+   "sin": [
+    "barda_malla",
+    "gambesones",
+    "guerrero_aguila",
+    "linea_sangre"
+   ]
+  },
+  "30": {
+   "clave": "burmese",
+   "nombre": "Birmanos",
+   "nombre_en": "Burmese",
+   "sin": [
+    "armadura_cuero",
+    "guerrero_aguila",
+    "anillo_pulgar"
+   ]
+  },
+  "31": {
+   "clave": "vietnamese",
+   "nombre": "Vietnamitas",
+   "nombre_en": "Vietnamese",
+   "sin": [
+    "pozo_aurifero",
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "32": {
+   "clave": "bulgarians",
+   "nombre": "Búlgaros",
+   "nombre_en": "Bulgarians",
+   "sin": [
+    "guerrero_aguila",
+    "ballestero",
+    "grua"
+   ]
+  },
+  "33": {
+   "clave": "tatars",
+   "nombre": "Tártaros",
+   "nombre_en": "Tatars",
+   "sin": [
+    "cota_malla",
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "34": {
+   "clave": "cumans",
+   "nombre": "Cumanos",
+   "nombre_en": "Cumans",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "cria_caballos",
+    "grua"
+   ]
+  },
+  "35": {
+   "clave": "lithuanians",
+   "nombre": "Lituanos",
+   "nombre_en": "Lithuanians",
+   "sin": [
+    "pozo_aurifero",
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "36": {
+   "clave": "burgundians",
+   "nombre": "Borgoñeses",
+   "nombre_en": "Burgundians",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "linea_sangre"
+   ]
+  },
+  "37": {
+   "clave": "sicilians",
+   "nombre": "Sicilianos",
+   "nombre_en": "Sicilians",
+   "sin": [
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "grua"
+   ]
+  },
+  "38": {
+   "clave": "poles",
+   "nombre": "Polacos",
+   "nombre_en": "Poles",
+   "sin": [
+    "pozo_aurifero",
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "39": {
+   "clave": "bohemians",
+   "nombre": "Bohemios",
+   "nombre_en": "Bohemians",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "linea_sangre",
+    "grua"
+   ]
+  },
+  "40": {
+   "clave": "dravidians",
+   "nombre": "Dravídicos",
+   "nombre_en": "Dravidians",
+   "sin": [
+    "pozo_aurifero",
+    "guerrero_aguila",
+    "linea_sangre",
+    "grua"
+   ]
+  },
+  "41": {
+   "clave": "bengalis",
+   "nombre": "Bengalíes",
+   "nombre_en": "Bengalis",
+   "sin": [
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "grua"
+   ]
+  },
+  "42": {
+   "clave": "gurjaras",
+   "nombre": "Gurjara",
+   "nombre_en": "Gurjaras",
+   "sin": [
+    "piquero",
+    "escuderos",
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "43": {
+   "clave": "romans",
+   "nombre": "Romanos",
+   "nombre_en": "Romans",
+   "sin": [
+    "incendio",
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "grua"
+   ]
+  },
+  "44": {
+   "clave": "armenians",
+   "nombre": "Armenios",
+   "nombre_en": "Armenians",
+   "sin": [
+    "guerrero_aguila",
+    "anillo_pulgar"
+   ]
+  },
+  "45": {
+   "clave": "georgians",
+   "nombre": "Georgianos",
+   "nombre_en": "Georgians",
+   "sin": [
+    "pozo_aurifero",
+    "guerrero_aguila",
+    "anillo_pulgar"
+   ]
+  },
+  "46": {
+   "clave": "achaemenids",
+   "nombre": "Aqueménidas",
+   "nombre_en": "Achaemenids",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "47": {
+   "clave": "athenians",
+   "nombre": "Atenienses",
+   "nombre_en": "Athenians",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "cria_caballos"
+   ]
+  },
+  "48": {
+   "clave": "spartans",
+   "nombre": "Espartanos",
+   "nombre_en": "Spartans",
+   "sin": [
+    "pozo_aurifero",
+    "gambesones",
+    "guerrero_aguila",
+    "albanileria",
+    "grua"
+   ]
+  },
+  "49": {
+   "clave": "shu",
+   "nombre": "Shu",
+   "nombre_en": "Shu",
+   "sin": [
+    "fundicion",
+    "guerrero_aguila",
+    "linea_sangre"
+   ]
+  },
+  "50": {
+   "clave": "wu",
+   "nombre": "Wu",
+   "nombre_en": "Wu",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar"
+   ]
+  },
+  "51": {
+   "clave": "wei",
+   "nombre": "Wei",
+   "nombre_en": "Wei",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "52": {
+   "clave": "jurchens",
+   "nombre": "Yurchen",
+   "nombre_en": "Jurchens",
+   "sin": [
+    "espadachin",
+    "guerrero_aguila",
+    "anillo_pulgar"
+   ]
+  },
+  "53": {
+   "clave": "khitans",
+   "nombre": "Kitán",
+   "nombre_en": "Khitans",
+   "sin": [
+    "collera",
+    "arado_pesado",
+    "pozo_aurifero",
+    "guerrero_aguila",
+    "linea_sangre"
+   ]
+  },
+  "54": {
+   "clave": "macedonians",
+   "nombre": "Macedonios",
+   "nombre_en": "Macedonians",
+   "sin": [
+    "barda_escamas",
+    "barda_malla",
+    "gambesones",
+    "guerrero_aguila"
+   ]
+  },
+  "55": {
+   "clave": "thracians",
+   "nombre": "Tracios",
+   "nombre_en": "Thracians",
+   "sin": [
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "cria_caballos",
+    "grua"
+   ]
+  },
+  "56": {
+   "clave": "puru",
+   "nombre": "Purus",
+   "nombre_en": "Puru",
+   "sin": [
+    "pozo_aurifero",
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "linea_sangre"
+   ]
+  },
+  "57": {
+   "clave": "muisca",
+   "nombre": "Muiscas",
+   "nombre_en": "Muisca",
+   "sin": [
+    "barda_escamas",
+    "barda_malla",
+    "hombre_de_armas",
+    "espadachin",
+    "incendio",
+    "gambesones",
+    "guerrero_aguila",
+    "linea_sangre",
+    "cria_caballos",
+    "caballeria_ligera"
+   ]
+  },
+  "58": {
+   "clave": "mapuche",
+   "nombre": "Mapuches",
+   "nombre_en": "Mapuche",
+   "sin": [
+    "barda_escamas",
+    "barda_malla",
+    "hombre_de_armas",
+    "espadachin",
+    "escuderos",
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "linea_sangre",
+    "cria_caballos",
+    "caballeria_ligera"
+   ]
+  },
+  "59": {
+   "clave": "tupi",
+   "nombre": "Tupís",
+   "nombre_en": "Tupi",
+   "sin": [
+    "barda_escamas",
+    "barda_malla",
+    "hombre_de_armas",
+    "espadachin",
+    "gambesones",
+    "guerrero_aguila",
+    "anillo_pulgar",
+    "linea_sangre",
+    "cria_caballos",
+    "caballeria_ligera",
+    "albanileria"
+   ]
+  },
+  "60": {
+   "clave": "saxons",
+   "nombre": "Sajones",
+   "nombre_en": "Saxons",
+   "sin": [
+    "guerrero_aguila"
+   ]
+  },
+  "61": {
+   "clave": "varangians",
+   "nombre": "Varegos",
+   "nombre_en": "Varangians",
+   "sin": [
+    "pozo_aurifero",
+    "guerrero_aguila",
+    "anillo_pulgar"
+   ]
+  },
+  "62": {
+   "clave": "danes",
+   "nombre": "Daneses",
+   "nombre_en": "Danes",
+   "sin": [
+    "guerrero_aguila",
+    "grua"
+   ]
+  }
+ }
+}

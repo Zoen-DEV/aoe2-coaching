@@ -101,8 +101,7 @@ def test_vincular(tmp: Path):
 
 
 def test_historial_ui(tmp: Path):
-    print("Historial: «Ver repetición» y «Mostrar en carpeta»")
-    from PySide6.QtGui import QGuiApplication
+    print("Historial: «Carpeta» de la repetición")
     from PySide6.QtWidgets import QApplication
     app = QApplication.instance() or QApplication(sys.argv)
     from historial_ui import ContenidoHistorial
@@ -115,30 +114,17 @@ def test_historial_ui(tmp: Path):
     hist.poner(sin)
     hist.guardar()
     c = ContenidoHistorial(hist)
-    abiertos, carpetas, juego = [], [], {"abierto": False}
-    c.juego_abierto = lambda: juego["abierto"]
-    c.abrir_juego = lambda: abiertos.append(1)
+    carpetas = []
     c.mostrar_en_carpeta = carpetas.append
     c.abrir("con")
     app.processEvents()
-    comprobar(c.ver_repeticion.isEnabled() and c.en_carpeta.isEnabled(), "con repetición, los dos botones activos")
+    comprobar(c.en_carpeta.isEnabled(), "con repetición, «Carpeta» está activo")
     comprobar(H.Historial(hist.archivo).buscar("con").get("repeticion") == rep["larga"].name,
               "el vínculo queda guardado en historial.json")
-    c.ver_repeticion.click()
-    comprobar(abiertos == [1], "con el juego cerrado, lo abre")
-    comprobar(rep["larga"].stem in c.nota_repeticion.text() and c.nota_repeticion.isVisibleTo(c),
-              "y dice qué repetición elegir")
-    comprobar(QGuiApplication.clipboard().text() == rep["larga"].stem, "con el nombre copiado")
-    juego["abierto"] = True
-    c.ver_repeticion.click()
-    comprobar(abiertos == [1] and c.nota_repeticion.text().startswith(textos.t("hi_como_ver", nombre="")[:10]),
-              "con el juego abierto, no lo vuelve a abrir")
     c.en_carpeta.click()
-    comprobar(carpetas == [rep["larga"]], "«Mostrar en carpeta» señala el archivo")
+    comprobar(carpetas == [rep["larga"]], "«Carpeta» señala el archivo")
     c.elegir("sin")
-    comprobar(not c.ver_repeticion.isEnabled() and not c.en_carpeta.isEnabled(),
-              "sin repetición, los botones quedan desactivados")
-    comprobar(not c.nota_repeticion.isVisibleTo(c), "y la nota de la otra partida desaparece")
+    comprobar(not c.en_carpeta.isEnabled(), "sin repetición, el botón queda desactivado")
     R.poner_perfil(None)
 
 

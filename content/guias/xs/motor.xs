@@ -220,7 +220,7 @@ void guiaEscribirEstado(int jugador = 0, int t = 0, int paso = 0)
     int enObra = guiaUnidades(jugador, cGuiaIdCasa) - guiaTerminados(jugador, cGuiaIdCasa);
     int edad = guiaEdad(jugador);
     xsWriteInt(4722);
-    xsWriteInt(2);
+    xsWriteInt(3);
     xsWriteInt(cGuiaCodigo);
     xsWriteInt(t);
     xsWriteInt(jugador);
@@ -242,6 +242,7 @@ void guiaEscribirEstado(int jugador = 0, int t = 0, int paso = 0)
     xsWriteInt(poblacion);
     xsWriteInt(libre);
     xsWriteInt(enObra);
+    guiaEscribirTierlist(jugador);
     xsWriteInt(9999);
     xsCloseFile();
 }
