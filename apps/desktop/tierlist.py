@@ -9,6 +9,7 @@ marcada como pendiente, en curso o hecha.
 
 from dataclasses import dataclass, field
 
+import civilizaciones
 from lector import Estado
 
 NIVELES = ("S", "A", "B", "C")
@@ -20,6 +21,7 @@ class Tecnologia:
     clave: str
     nombre: str
     estado: int  # PENDIENTE, EN_CURSO o HECHA
+    id: int | None = None  # ID del juego (para su icono)
 
 
 @dataclass
@@ -82,7 +84,8 @@ def construir(guia: dict, estado: Estado, ingles: bool = False) -> Tierlist | No
         if e == SIN or clave in sin:
             continue
         nombres = datos["nombres"].get(clave) or [clave, clave]
-        filas[nivel_de[clave]].append(Tecnologia(clave, nombres[1 if ingles else 0], min(e, HECHA)))
+        filas[nivel_de[clave]].append(Tecnologia(clave, nombres[1 if ingles else 0], min(e, HECHA),
+                                                civilizaciones.TECNOLOGIAS.get(clave)))
     # Dentro de cada nivel, las pendientes primero: son las que quedan por investigar.
     niveles = [(nivel, sorted(fila, key=lambda t: t.estado == HECHA)) for nivel, fila in zip(NIVELES, filas) if fila]
     if not niveles:

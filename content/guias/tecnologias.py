@@ -156,10 +156,13 @@ def escribir_civilizaciones(datos: dict) -> None:
     un módulo de Python porque la app empaquetada no lleva archivos de datos sueltos."""
     filas = "".join(f"    {int(i)}: ({c['nombre']!r}, {c['nombre_en']!r}),\n"
                     for i, c in sorted(datos["civilizaciones"].items(), key=lambda x: int(x[0])))
+    techs = "".join(f"    {k!r}: {t['id']},\n" for k, t in datos["tecnologias"].items())
     CIVILIZACIONES_APP.write_text(
-        '"""Nombres de las civilizaciones por ID (el del juego), en español e inglés.\n\n'
+        '"""Nombres de las civilizaciones por ID (el del juego), en español e inglés, y el ID\n'
+        'de cada tecnología de la tierlist (para su icono en el overlay).\n\n'
         'Generado por content/guias/tecnologias.py (no editar a mano)."""\n\n'
-        f"NOMBRES = {{\n{filas}}}\n\n\n"
+        f"NOMBRES = {{\n{filas}}}\n\n"
+        f"TECNOLOGIAS = {{\n{techs}}}\n\n\n"
         "def nombre(civ: int, ingles: bool = False) -> str:\n"
         '    """Nombre de la civilización, o "" si no se conoce."""\n'
         "    par = NOMBRES.get(civ)\n"

@@ -12,6 +12,7 @@ Se abre con aoe2c.py (el programa único; ver allí las opciones). También:
 import logging
 import os
 import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -115,6 +116,25 @@ def ritmo(diferencia: int, margen: int) -> tuple[str, QColor]:
     return t("ov_a_tiempo"), BIEN
 
 
+_iconos_en_camino: set[str] = set()
+
+
+def cargar_iconos_tierlist(tier: TL.Tierlist) -> None:
+    """Lee en segundo plano los iconos de la tierlist que falten (la primera vez salen del
+    juego; luego, de la copia en %APPDATA%). Mientras, la ficha deja el hueco vacío."""
+    rutas_ = {iconos_juego.ruta_tecnologia(t.id) for _, techs in tier.niveles for t in techs if t.id is not None}
+    pendientes = [r for r in rutas_ if r and not iconos_juego.leido(r) and r not in _iconos_en_camino]
+    if not pendientes:
+        return
+    _iconos_en_camino.update(pendientes)
+
+    def trabajo():
+        for r in pendientes:
+            iconos_juego.icono(r)
+            _iconos_en_camino.discard(r)
+    threading.Thread(target=trabajo, daemon=True).start()
+
+
 def construir_vista(guia: dict, e: Estado, siguientes: int | None = None, aviso_casas: bool = True) -> Vista:
     """siguientes: pasos de «A continuación» (None = los de la guía). aviso_casas: False lo quita."""
     pasos = guia["pasos"]
@@ -137,6 +157,8 @@ def construir_vista(guia: dict, e: Estado, siguientes: int | None = None, aviso_
             v.resumen += "\n" + t("ov_sin_hacer", pasos=", ".join(saltados))
         v.final = de(guia, "mensaje_final")
         v.tierlist = TL.construir(guia, e, textos.idioma() == "en")
+        if v.tierlist:
+            cargar_iconos_tierlist(v.tierlist)
         return v
 
     p = pasos[e.paso]
@@ -192,6 +214,20 @@ class Pintor:
         if borde:
             self.p.setPen(QPen(borde, 1))
             self.p.drawPath(path)
+
+    def icono(self, r: QRectF, ruta: str, opacidad: float = 1.0):
+        """Icono del juego con las esquinas redondeadas (nada si aún no está leído)."""
+        img = iconos_juego.en_memoria(ruta)
+        if not self.p or img is None:
+            return
+        self.p.save()
+        self.p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        path = QPainterPath()
+        path.addRoundedRect(r, 4, 4)
+        self.p.setClipPath(path)
+        self.p.setOpacity(self.p.opacity() * opacidad)
+        self.p.drawImage(r, img)
+        self.p.restore()
 
     def barra(self, x, y, w, h, fraccion, c):
         self.caja(QRectF(x, y, w, h), h / 2, PISTA)
@@ -361,7 +397,7 @@ class Pintor:
         f_ficha = fuente(8.5, QFont.Weight.DemiBold)
         f_hecha = fuente(8.5, QFont.Weight.Medium)
         f_hecha.setStrikeOut(True)
-        alto, sep, letra = 24, 5, 24
+        alto, sep, letra, icono_lado = 24, 5, 24, 18
         cx0 = x0 + letra + 10
         for nivel, techs in tier.niveles:
             c = COLORES_NIVEL[nivel]
@@ -373,21 +409,28 @@ class Pintor:
                 en_curso = tech.estado == TL.EN_CURSO
                 f = f_hecha if hecha else f_ficha
                 texto = ("✓ " if hecha else "") + tech.nombre
-                extra = 26 if en_curso else 18  # en curso lleva un punto azul delante
+                ruta = iconos_juego.ruta_tecnologia(tech.id) if tech.id is not None else None
+                icono = ruta is not None  # el hueco se guarda aunque el icono aún no esté leído
+                extra = (8 if en_curso else 0) + (icono_lado + 6 if icono else 0) + 18  # punto azul, icono
                 ancho = min(x0 + w - cx0, QFontMetricsF(f).horizontalAdvance(texto) + extra)
                 if cx + ancho > x0 + w and cx > cx0:
                     cx, cy = cx0, cy + alto + sep
                 r = QRectF(cx, cy, ancho, alto)
                 if hecha:
                     self.caja(r, 7, color(TEXTO, 6), color(TEXTO, 16))
-                    self.texto(r.x() + 9, r.y(), r.width() - 18, texto, f, color(APAGADO, 150), h=alto)
                 elif en_curso:
                     self.caja(r, 7, color(ACENTO, 40), color(ACENTO, 150))
-                    self.caja(QRectF(r.x() + 9, r.y() + alto / 2 - 3, 6, 6), 3, ACENTO)
-                    self.texto(r.x() + 17, r.y(), r.width() - 26, texto, f, TEXTO, h=alto)
                 else:
                     self.caja(r, 7, color(c, 22), color(c, 64))
-                    self.texto(r.x() + 9, r.y(), r.width() - 18, texto, f, TEXTO, h=alto)
+                tx = r.x() + 9
+                if icono:  # el icono a la izquierda; el punto azul de la que se investiga, detrás
+                    self.icono(QRectF(r.x() + 3, r.y() + (alto - icono_lado) / 2, icono_lado, icono_lado), ruta,
+                               0.35 if hecha else 1.0)
+                    tx = r.x() + 3 + icono_lado + 6
+                if en_curso:
+                    self.caja(QRectF(tx, r.y() + alto / 2 - 3, 6, 6), 3, ACENTO)
+                    tx += 8
+                self.texto(tx, r.y(), r.right() - 9 - tx, texto, f, color(APAGADO, 150) if hecha else TEXTO, h=alto)
                 cx += ancho + sep
             y = cy + alto + 8
         if self.p:

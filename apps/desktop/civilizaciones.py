@@ -1,4 +1,5 @@
-"""Nombres de las civilizaciones por ID (el del juego), en español e inglés.
+"""Nombres de las civilizaciones por ID (el del juego), en español e inglés, y el ID
+de cada tecnología de la tierlist (para su icono en el overlay).
 
 Generado por content/guias/tecnologias.py (no editar a mano)."""
 
@@ -65,6 +66,49 @@ NOMBRES = {
     60: ('Sajones', 'Saxons'),
     61: ('Varegos', 'Varangians'),
     62: ('Daneses', 'Danes'),
+}
+
+TECNOLOGIAS = {
+    'telar': 22,
+    'carretilla': 213,
+    'carro_de_mano': 249,
+    'vigilancia': 8,
+    'hacha_doble_filo': 202,
+    'sierra_de_arco': 203,
+    'collera': 14,
+    'arado_pesado': 13,
+    'mineria_aurifera': 55,
+    'pozo_aurifero': 182,
+    'mineria_piedra': 278,
+    'caravana': 48,
+    'acunacion': 23,
+    'emplumado': 199,
+    'flecha_punzante': 200,
+    'armadura_acolchada': 211,
+    'armadura_cuero': 212,
+    'forja': 67,
+    'fundicion': 68,
+    'cota_escamas': 74,
+    'cota_malla': 76,
+    'barda_escamas': 81,
+    'barda_malla': 82,
+    'hombre_de_armas': 222,
+    'espadachin': 207,
+    'piquero': 197,
+    'escuderos': 215,
+    'incendio': 602,
+    'gambesones': 875,
+    'guerrero_aguila': 384,
+    'ballestero': 100,
+    'hostigador_elite': 98,
+    'anillo_pulgar': 437,
+    'linea_sangre': 435,
+    'cria_caballos': 39,
+    'caballeria_ligera': 254,
+    'albanileria': 50,
+    'balistica': 93,
+    'matacanes': 322,
+    'grua': 54,
 }
 
 
