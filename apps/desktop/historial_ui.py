@@ -12,7 +12,7 @@ ventana flotante) y la ventana flotante, que solo se ve en el menú principal de
   ranked, sus jugadores (con victorias, derrotas y últimas partidas, de la API), la
   duración, el gráfico de la partida con sus filtros (de los comandos de la repetición,
   ver analisis.py; la rueda del ratón acerca o aleja el tiempo) y, debajo, la comparación
-  de los dos jugadores hasta el final o hasta el momento marcado con un clic en el gráfico. Las dos con «Copiar nombre» (el de la repetición,
+  de los dos jugadores hasta el final o hasta el momento marcado con un clic en el gráfico (la marca se arrastra). Las dos con «Copiar nombre» (el de la repetición,
   para buscarla en el juego).
 
 Los textos que explican algo van en puntos de información (InfoPunto), no a la vista.
@@ -925,12 +925,14 @@ class LienzoPartida(QWidget):
         self._arrastre: tuple[float, tuple[float, float]] | None = None  # (x del clic, vista al pulsar)
         self._pulsado: QPointF | None = None  # donde se pulsó: si se suelta ahí mismo, es un clic
         self.marca: float | None = None  # segundo marcado con un clic
+        self._moviendo_marca = False  # se pulsó sobre la marca: arrastrar la mueve
         self.setMouseTracking(True)
         self._alto()
 
     def poner(self, analisis: dict | None, jugadores: list[dict], metrica: str, tipos: set, mensaje: str = ""):
         if analisis is not self.analisis:
             self.vista = self.marca = None
+            self._moviendo_marca = False
         self.analisis, self.jugadores, self.metrica, self.tipos, self.mensaje = (analisis, jugadores, metrica,
                                                                                  tipos, mensaje)
         self._alto()
@@ -995,9 +997,24 @@ class LienzoPartida(QWidget):
         self.update()
         self.al_marcar(self.marca)
 
+    def _sobre_marca(self, pos: QPointF) -> bool:
+        """El ratón está sobre la línea de la marca (o su tiempo, abajo)."""
+        ini, fin = self._ventana()
+        if self.marca is None or not ini <= self.marca <= fin:
+            return False
+        z = self._zona()
+        return abs(pos.x() - self._x(self.marca, z)) <= 6 and z.top() <= pos.y() <= self.height()
+
+    def _mover_marca(self, x: float):
+        """Arrastrando la marca: sigue al ratón sin salir de lo que se ve."""
+        ini, fin = self._ventana()
+        t = min(max(self._t(x, self._zona()), ini), fin)
+        if t != self.marca:
+            self.poner_marca(t)
+
     def mousePressEvent(self, e):
-        """Clic: marca ese momento (y arrastrar, con zoom, mueve la ventana). Clic derecho:
-        quita la marca."""
+        """Clic: marca ese momento (y arrastrar, con zoom, mueve la ventana). Pulsar sobre
+        la marca y arrastrar la mueve. Clic derecho: quita la marca."""
         if not self.analisis:
             return
         if e.button() == Qt.MouseButton.RightButton:
@@ -1005,12 +1022,22 @@ class LienzoPartida(QWidget):
                 self.poner_marca(None)
             return
         if e.button() == Qt.MouseButton.LeftButton:
+            if self._sobre_marca(e.position()):
+                self._moviendo_marca = True
+                self.setCursor(Qt.CursorShape.SizeHorCursor)
+                return
             self._pulsado = e.position()
             if self.vista is not None:
                 self._arrastre = (e.position().x(), self.vista)
 
     def mouseReleaseEvent(self, e):
         pulsado, self._pulsado, self._arrastre = self._pulsado, None, None
+        if self._moviendo_marca and e.button() == Qt.MouseButton.LeftButton:
+            self._moviendo_marca = False
+            self._mover_marca(e.position().x())
+            if not self._sobre_marca(e.position()):
+                self.unsetCursor()
+            return
         self.unsetCursor()
         z = self._zona()
         if (pulsado is not None and e.button() == Qt.MouseButton.LeftButton
@@ -1170,6 +1197,15 @@ class LienzoPartida(QWidget):
 
     def mouseMoveEvent(self, e):
         self.raton = e.position()
+        if self._moviendo_marca:
+            self._mover_marca(e.position().x())
+            self.update()
+            return
+        if self._arrastre is None and self._pulsado is None:
+            if self._sobre_marca(e.position()):
+                self.setCursor(Qt.CursorShape.SizeHorCursor)
+            else:
+                self.unsetCursor()
         if self._arrastre is not None and (self._pulsado is None
                                            or abs(e.position().x() - self._pulsado.x()) >= 5):
             self.setCursor(Qt.CursorShape.ClosedHandCursor)

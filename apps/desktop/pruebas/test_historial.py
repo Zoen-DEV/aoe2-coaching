@@ -291,8 +291,8 @@ def test_lector_y_seguimiento(tmp: Path):
 
 def test_ranked(tmp: Path):
     print("Ranked: se leen de las repeticiones y se filtran en el historial")
-    from PySide6.QtCore import QPoint, Qt
-    from PySide6.QtGui import QGuiApplication
+    from PySide6.QtCore import QPoint, QPointF, Qt
+    from PySide6.QtGui import QGuiApplication, QMouseEvent
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QPushButton
     app = QApplication.instance() or QApplication(sys.argv)
@@ -469,6 +469,24 @@ def test_ranked(tmp: Path):
                   and vs.estados[1]["aldeanos"] == 0 and vs.estados[1]["militares"] == {}
                   and vs.estados[0]["aldeanos"] == 1, f"un clic en el gráfico marca ese momento ({lienzo.marca})")
         c.grab()  # se pinta con la marca
+        x_marca, y_medio = lienzo._x(lienzo.marca, z), z.center().y()
+        x_fin = z.left() + z.width() * 60 / 75
+        QTest.mousePress(lienzo, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+                         QPoint(int(x_marca + 2), int(y_medio)))
+        for paso in range(1, 6):
+            xp = x_marca + (x_fin - x_marca) * paso / 5
+            QTest.mouseMove(lienzo, QPoint(int(xp), int(y_medio)))
+            # QTest.mouseMove no lleva botones: el evento con el botón pulsado, a mano.
+            lienzo.mouseMoveEvent(QMouseEvent(QMouseEvent.Type.MouseMove, QPointF(xp, y_medio),
+                                              lienzo.mapToGlobal(QPointF(xp, y_medio)), Qt.MouseButton.NoButton,
+                                              Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier))
+            if paso == 3:
+                comprobar(40 < lienzo.marca < 50 and vs.marca == lienzo.marca,
+                          f"arrastrando, la marca y la comparativa siguen al ratón ({lienzo.marca})")
+        QTest.mouseRelease(lienzo, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+                           QPoint(int(x_fin), int(y_medio)))
+        comprobar(abs(lienzo.marca - 60) < 1.5 and vs.marca == lienzo.marca,
+                  f"al soltar, la marca queda donde se arrastró ({lienzo.marca})")
         QTest.mouseClick(lienzo, Qt.MouseButton.RightButton, Qt.KeyboardModifier.NoModifier,
                          QPoint(int(z.center().x()), int(z.center().y())))
         comprobar(lienzo.marca is None and vs.marca is None and vs.estados[1]["aldeanos"] == 2,
