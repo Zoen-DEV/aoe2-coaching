@@ -38,6 +38,7 @@ import actualizacion as A
 import atajos
 import catalogo as K
 import config as C
+import iconos_juego
 import instalador as I
 import repeticiones
 import rutas
@@ -1136,6 +1137,7 @@ class Panel(QWidget):
             self.avisar(t("juego_no_valido"), MAL)
             return False
         self.instalador.juego = Path(carpeta)
+        iconos_juego.poner_juego(Path(carpeta))
         self.config["juego"] = str(carpeta)
         self.guardar_config()
         self.construir()

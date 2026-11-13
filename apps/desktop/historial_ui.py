@@ -10,8 +10,9 @@ ventana flotante) y la ventana flotante, que solo se ve en el menú principal de
 - Con una partida elegida: sus hitos frente a la media de su guía, su lugar en la
   evolución, el paso a paso y la carpeta de su repetición (ver repeticiones.py). Si es
   ranked, sus jugadores (con victorias, derrotas y últimas partidas, de la API), la
-  duración y el gráfico de la partida con sus filtros (de los comandos de la repetición,
-  ver analisis.py; la rueda del ratón acerca o aleja el tiempo). Las dos con «Copiar nombre» (el de la repetición,
+  duración, el gráfico de la partida con sus filtros (de los comandos de la repetición,
+  ver analisis.py; la rueda del ratón acerca o aleja el tiempo) y, debajo, la comparación
+  de los dos jugadores hasta el final o hasta el momento marcado con un clic en el gráfico. Las dos con «Copiar nombre» (el de la repetición,
   para buscarla en el juego).
 
 Los textos que explican algo van en puntos de información (InfoPunto), no a la vista.
@@ -26,6 +27,7 @@ from pathlib import Path
 import analisis as A
 import civilizaciones
 import clasificatorias as R
+import iconos_juego
 import nombres_juego
 import repeticiones
 import textos
@@ -723,8 +725,8 @@ def color_jugador(j: dict) -> QColor:
 class TablaJugadores(QWidget):
     """Jugadores de una partida ranked, por equipos (el propio primero): color, nombre
     y, debajo, un punto por cada una de sus últimas partidas (verde victoria, rojo
-    derrota); civilización y, si la API lo dio, victorias y derrotas, el elo con el que
-    empezó y lo que ganó o perdió."""
+    derrota y gris las que faltan hasta R.ULTIMAS); civilización y, si la API lo dio,
+    victorias y derrotas, el elo con el que empezó y lo que ganó o perdió."""
 
     FILA, CABECERA, HUECO = 44, 30, 10
     ELO = 110  # ancho de la columna del elo
@@ -778,7 +780,10 @@ class TablaJugadores(QWidget):
                     caja(p, QRectF(6, y + 2, w - 12, self.FILA - 4), 3, color(TEXTO, 9))
                 p.fillRect(QRectF(14, y + 10, 3, self.FILA - 20), color_jugador(j))
                 api = R.datos_api(self.registro, j["perfil"]) if self.registro else None
-                ultimas = (api or {}).get("ultimas") or []
+                # Puntos de forma: siempre R.ULTIMAS si la API dio el jugador; las partidas que
+                # no hay (las más antiguas) van delante, en gris.
+                ultimas = (api or {}).get("ultimas")
+                ultimas = [None] * (R.ULTIMAS - len(ultimas)) + ultimas[-R.ULTIMAS:] if ultimas is not None else []
                 f_civ = fuente(9, QFont.Weight.Medium)
                 civ = nombre_civ(j["civ"])
                 ancho_civ = QFontMetricsF(f_civ).horizontalAdvance(civ) + 4
@@ -790,7 +795,7 @@ class TablaJugadores(QWidget):
                     cy = y + 33
                     p.setPen(Qt.PenStyle.NoPen)
                     for n, res in enumerate(ultimas):
-                        p.setBrush(BIEN if res == 1 else MAL)
+                        p.setBrush(color(APAGADO, 110) if res is None else BIEN if res == 1 else MAL)
                         p.drawEllipse(QPointF(28 + self.PUNTO + n * (2 * self.PUNTO + 5), cy), self.PUNTO, self.PUNTO)
                     ancho = len(ultimas) * (2 * self.PUNTO + 5)
                     if isinstance(api.get("racha"), int):
@@ -906,8 +911,9 @@ class LienzoPartida(QWidget):
     CARRIL = 22
     IZQ, DER_ = 44, 16
 
-    def __init__(self):
+    def __init__(self, al_marcar=lambda t: None):
         super().__init__()
+        self.al_marcar = al_marcar  # recibe el segundo marcado (None al quitar la marca)
         self.analisis: dict | None = None
         self.jugadores: list[dict] = []
         self.metrica = "aldeanos"
@@ -917,12 +923,14 @@ class LienzoPartida(QWidget):
         self.puntos: list[tuple[QPointF, str, str, QColor]] = []  # marcas de los carriles, para el ratón
         self.vista: tuple[float, float] | None = None  # (inicio, fin) en segundos con zoom; None = toda
         self._arrastre: tuple[float, tuple[float, float]] | None = None  # (x del clic, vista al pulsar)
+        self._pulsado: QPointF | None = None  # donde se pulsó: si se suelta ahí mismo, es un clic
+        self.marca: float | None = None  # segundo marcado con un clic
         self.setMouseTracking(True)
         self._alto()
 
     def poner(self, analisis: dict | None, jugadores: list[dict], metrica: str, tipos: set, mensaje: str = ""):
         if analisis is not self.analisis:
-            self.vista = None
+            self.vista = self.marca = None
         self.analisis, self.jugadores, self.metrica, self.tipos, self.mensaje = (analisis, jugadores, metrica,
                                                                                  tipos, mensaje)
         self._alto()
@@ -982,14 +990,33 @@ class LienzoPartida(QWidget):
             self._poner_vista(ancla - (ancla - ini) * factor, ancla + (fin - ancla) * factor)
         e.accept()
 
-    def mousePressEvent(self, e):
-        if e.button() == Qt.MouseButton.LeftButton and self.vista is not None:
-            self._arrastre = (e.position().x(), self.vista)
-            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+    def poner_marca(self, t: float | None):
+        self.marca = None if t is None else min(max(t, 0.0), float(self.analisis["duracion"]))
+        self.update()
+        self.al_marcar(self.marca)
 
-    def mouseReleaseEvent(self, _):
-        self._arrastre = None
+    def mousePressEvent(self, e):
+        """Clic: marca ese momento (y arrastrar, con zoom, mueve la ventana). Clic derecho:
+        quita la marca."""
+        if not self.analisis:
+            return
+        if e.button() == Qt.MouseButton.RightButton:
+            if self.marca is not None:
+                self.poner_marca(None)
+            return
+        if e.button() == Qt.MouseButton.LeftButton:
+            self._pulsado = e.position()
+            if self.vista is not None:
+                self._arrastre = (e.position().x(), self.vista)
+
+    def mouseReleaseEvent(self, e):
+        pulsado, self._pulsado, self._arrastre = self._pulsado, None, None
         self.unsetCursor()
+        z = self._zona()
+        if (pulsado is not None and e.button() == Qt.MouseButton.LeftButton
+                and (e.position() - pulsado).manhattanLength() < 5
+                and z.left() - 4 <= e.position().x() <= z.right() + 4):
+            self.poner_marca(self._t(e.position().x(), z))
 
     def mouseDoubleClickEvent(self, _):
         self.vista = None
@@ -1086,8 +1113,25 @@ class LienzoPartida(QWidget):
                     marca(p, centro, tipo, c)
                     self.puntos.append((centro, f"{reloj(t_)} · {texto_evento(tipo, id_, n)}", tipo, c))
                 yc += self.CARRIL
+        self._pintar_marca(p, z, abajo)
         self._pintar_raton(p, z)
         p.end()
+
+    def _pintar_marca(self, p: QPainter, z: QRectF, abajo: float):
+        """El momento marcado: lo de después, apagado; una línea y su tiempo abajo."""
+        ini, fin = self._ventana()
+        if self.marca is None or not ini <= self.marca <= fin:
+            return
+        x = self._x(self.marca, z)
+        p.fillRect(QRectF(x, z.top(), z.right() - x, abajo - z.top()), color(FONDO, 110))
+        p.setPen(QPen(ACENTO, 1.5))
+        p.drawLine(QPointF(x, z.top()), QPointF(x, abajo))
+        f = fuente(7.5, QFont.Weight.Bold)
+        ancho = QFontMetricsF(f).horizontalAdvance(reloj(self.marca)) + 12
+        r = QRectF(min(max(x - ancho / 2, 0), self.width() - ancho), abajo + 2, ancho, 17)
+        p.setPen(Qt.PenStyle.NoPen)
+        caja(p, r, 3, ACENTO)
+        texto(p, r, reloj(self.marca), f, FONDO, CEN)
 
     def _pintar_raton(self, p: QPainter, z: QRectF):
         if self.raton is None:
@@ -1126,7 +1170,9 @@ class LienzoPartida(QWidget):
 
     def mouseMoveEvent(self, e):
         self.raton = e.position()
-        if self._arrastre is not None:
+        if self._arrastre is not None and (self._pulsado is None
+                                           or abs(e.position().x() - self._pulsado.x()) >= 5):
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
             x0, (ini, fin) = self._arrastre
             desplazar = -(e.position().x() - x0) / self._zona().width() * (fin - ini)
             self._poner_vista(ini + desplazar, fin + desplazar)
@@ -1145,7 +1191,7 @@ class GraficoPartida(QWidget):
         caja(p, QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), RADIO, TARJETA, BORDE)
         p.end()
 
-    def __init__(self):
+    def __init__(self, al_marcar=lambda t: None):
         super().__init__()
         self.metrica = "aldeanos"
         self.tipos: set = set(TIPOS_DEFECTO)
@@ -1168,7 +1214,7 @@ class GraficoPartida(QWidget):
             b.toggled.connect(lambda marcado, c=clave: self._tipo(c, marcado))
             cab.addWidget(b)
         lay.addLayout(cab)
-        self.lienzo = LienzoPartida()
+        self.lienzo = LienzoPartida(al_marcar)
         lay.addWidget(self.lienzo)
         self._datos: tuple = (None, [], "")
 
@@ -1199,6 +1245,231 @@ class GraficoPartida(QWidget):
     def _repintar(self):
         analisis, jugadores, mensaje = self._datos
         self.lienzo.poner(analisis, jugadores, self.metrica, set(self.tipos), mensaje)
+
+
+TECH_EDAD = {edad: tech for tech, edad in A.EDADES.items()}
+
+
+class ComparativaPartida(QWidget):
+    """Debajo del gráfico, el propio jugador a la izquierda y el rival a la derecha (VS en
+    medio): aldeanos, militares (y cada tipo de unidad), eAPM medio, tecnologías (con su
+    icono del juego) y edades, hasta el momento marcado en el gráfico o, sin marca, hasta
+    el final. Todo es lo que cada uno mandó hacer, como en el gráfico."""
+
+    PAD, CENTRO = 16, 130
+    CAB, NOMBRES = 38, 40
+    FILA, SUB = 34, 26
+    ICONO, HUECO = 30, 5  # iconos de las tecnologías
+    MINI = 20  # iconos de las listas
+    BLOQUES = ("aldeanos", "militares", "apm", "tecnologias", "edades")
+
+    iconos_listos = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.analisis: dict | None = None
+        self.jugadores: list[dict] = []
+        self.marca: float | None = None
+        self.estados: list[dict] = []  # A.estado_en de los dos jugadores
+        self.consejos: list[tuple[QRectF, str]] = []  # zonas con su texto, para el ratón
+        self.info = InfoPunto(tx("hi_vs_nota"), self)
+        junto_a(self.info, self.PAD, tx("hi_comparativa"), fuente(10.5, QFont.Weight.Bold), 10)
+        self.iconos_listos.connect(self.update)
+        self.setMouseTracking(True)
+        self.setFixedHeight(self.CAB)
+
+    def poner(self, analisis: dict | None, jugadores: list[dict]):
+        self.analisis, self.jugadores = analisis, jugadores[:2]
+        self.marcar(None)
+        self._cargar_iconos()
+
+    def marcar(self, t: float | None):
+        self.marca = t
+        if self.analisis and len(self.jugadores) == 2:
+            dur = self.analisis["duracion"]
+            self.estados = [A.estado_en(self.analisis["jugadores"][j["numero"]], dur if t is None else t, dur)
+                            for j in self.jugadores]
+        else:
+            self.estados = []
+        self._ajustar()
+        self.update()
+
+    def _cargar_iconos(self):
+        """Lee en otro hilo los iconos que puede necesitar la partida (los primeros salen
+        del juego; luego, de la copia en %APPDATA%)."""
+        if not self.analisis:
+            return
+        rutas_: set[str | None] = set()
+        for j in self.jugadores:
+            for _, tipo, id_, _n in self.analisis["jugadores"][j["numero"]]["eventos"]:
+                rutas_.add(iconos_juego.ruta_unidad(id_) if tipo == A.UNIDAD
+                           else iconos_juego.ruta_tecnologia(id_) if tipo in (A.TECNOLOGIA, A.EDAD) else None)
+        pendientes = [r for r in rutas_ if not iconos_juego.leido(r)]
+        if not pendientes:
+            return
+
+        def trabajo():
+            for r in pendientes:
+                iconos_juego.icono(r)
+            try:
+                self.iconos_listos.emit()
+            except RuntimeError:  # la ventana ya se cerró
+                pass
+        threading.Thread(target=trabajo, daemon=True).start()
+
+    # --- Medidas ---
+    def _lado(self) -> float:
+        return (self.width() - 2 * self.PAD - self.CENTRO) / 2
+
+    def _por_fila(self) -> int:
+        return max(1, int((self._lado() + self.HUECO) // (self.ICONO + self.HUECO)))
+
+    def _alto_bloque(self, clave: str) -> float:
+        a, b = self.estados
+        if clave == "militares":
+            n = max(len(a["militares"]), len(b["militares"]))
+            return self.FILA + self.SUB * n + (6 if n else 0)
+        if clave == "tecnologias":
+            filas = max(-(-len(e["tecnologias"]) // self._por_fila()) for e in self.estados)
+            return max(self.FILA, 7 + filas * (self.ICONO + self.HUECO) + 4)
+        if clave == "edades":
+            return max(self.FILA, 4 + self.SUB * max(len(a["edades"]), len(b["edades"])) + 4)
+        return self.FILA
+
+    def _ajustar(self):
+        alto = self.CAB
+        if self.estados:
+            alto += self.NOMBRES + sum(self._alto_bloque(c) for c in self.BLOQUES) + 8
+        if int(alto) != self.height():
+            self.setFixedHeight(int(alto))
+
+    def resizeEvent(self, e):
+        self._ajustar()
+        super().resizeEvent(e)
+
+    # --- Pintar ---
+    def paintEvent(self, _):
+        p = pintor(self)
+        caja(p, QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), RADIO, TARJETA, BORDE)
+        texto(p, QRectF(self.PAD, 8, 200, 20), tx("hi_comparativa"), fuente(10.5, QFont.Weight.Bold), TEXTO)
+        self.consejos = []
+        if not self.estados:
+            p.end()
+            return
+        w = self.width()
+        dur = self.analisis["duracion"]
+        hasta = dur if self.marca is None else self.marca
+        momento = tx("hi_vs_final", t=reloj(dur)) if self.marca is None else tx("hi_vs_hasta", t=reloj(self.marca))
+        texto(p, QRectF(w - self.PAD - 220, 8, 220, 20), momento, fuente(8.5, QFont.Weight.Bold),
+              SECUNDARIO if self.marca is None else ACENTO, DER)
+        lado = self._lado()
+        xc = self.PAD + lado
+        # Nombres y VS.
+        y = self.CAB
+        f_nombre = fuente(10.5, QFont.Weight.Bold)
+        for k, j in enumerate(self.jugadores):
+            barra = self.PAD if k == 0 else w - self.PAD - 3
+            p.fillRect(QRectF(barra, y + 10, 3, self.NOMBRES - 20), color_jugador(j))
+            zona = QRectF(self.PAD + 12, y, lado - 12, self.NOMBRES) if k == 0 else \
+                QRectF(w - self.PAD - lado, y, lado - 12, self.NOMBRES)
+            texto(p, zona, j["nombre"], f_nombre, TEXTO, IZQ if k == 0 else DER)
+        texto(p, QRectF(xc, y, self.CENTRO, self.NOMBRES), "VS", titulo(15, 1.5), ACENTO, CEN)
+        y += self.NOMBRES
+        a, b = self.estados
+        f_rotulo = fuente(7.5, QFont.Weight.Bold, 1.1)
+        for clave in self.BLOQUES:
+            alto = self._alto_bloque(clave)
+            p.setPen(QPen(color(BORDE, 40), 1))
+            p.drawLine(QPointF(self.PAD, y), QPointF(w - self.PAD, y))
+            texto(p, QRectF(xc, y, self.CENTRO, self.FILA), tx(f"hi_vs_{clave}").upper(), f_rotulo, APAGADO, CEN)
+            if clave in ("aldeanos", "apm"):
+                self._numeros(p, y, a[clave], b[clave])
+            elif clave == "militares":
+                self._numeros(p, y, sum(a["militares"].values()), sum(b["militares"].values()))
+                for k, e in enumerate(self.estados):
+                    for n, (unidad, cant) in enumerate(e["militares"].items()):
+                        self._fila_lista(p, k, y + self.FILA + n * self.SUB, iconos_juego.ruta_unidad(unidad),
+                                         nombre_evento(A.UNIDAD, unidad), str(cant), SECUNDARIO)
+            elif clave == "tecnologias":
+                self._tecnologias(p, y)
+            else:
+                for k, e in enumerate(self.estados):
+                    if not e["edades"]:
+                        self._vacio(p, k, y)
+                    for n, (edad, clic, llegada) in enumerate(e["edades"]):
+                        llego = llegada <= hasta
+                        self._fila_lista(p, k, y + 4 + n * self.SUB, iconos_juego.ruta_tecnologia(TECH_EDAD[edad]),
+                                         nombre_edad(edad), reloj(llegada) if llego else "…",
+                                         TEXTO if llego else APAGADO,
+                                         tx("hi_vs_edad_consejo", clic=reloj(clic), llegada=reloj(llegada)))
+            y += alto
+        p.end()
+
+    def _numeros(self, p: QPainter, y: float, izq: int, der: int):
+        f = fuente(13, QFont.Weight.Bold)
+        lado = self._lado()
+        for k, v in enumerate((izq, der)):
+            otro = der if k == 0 else izq
+            c = TEXTO if v >= otro else SECUNDARIO
+            zona = QRectF(self.PAD, y, lado, self.FILA) if k == 0 else \
+                QRectF(self.width() - self.PAD - lado, y, lado, self.FILA)
+            texto(p, zona, str(v), f, c, IZQ if k == 0 else DER)
+
+    def _vacio(self, p: QPainter, k: int, y: float):
+        lado = self._lado()
+        zona = QRectF(self.PAD, y, lado, self.FILA) if k == 0 else \
+            QRectF(self.width() - self.PAD - lado, y, lado, self.FILA)
+        texto(p, zona, "—", fuente(10, QFont.Weight.Medium), APAGADO, IZQ if k == 0 else DER)
+
+    def _icono(self, p: QPainter, r: QRectF, ruta: str | None, consejo: str = ""):
+        img = iconos_juego.en_memoria(ruta)
+        if img is None:
+            caja(p, r, 3, color(TEXTO, 12))
+        else:
+            p.drawImage(r, img)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(color(BORDE, 120), 1))
+            p.drawRect(r)
+        if consejo:
+            self.consejos.append((r, consejo))
+
+    def _fila_lista(self, p: QPainter, k: int, y: float, ruta: str | None, nombre: str, valor: str, c_valor,
+                    consejo: str = ""):
+        """Una fila de lista: icono, nombre y valor; la del rival, en espejo (el valor
+        siempre hacia el centro)."""
+        lado, w, m = self._lado(), self.width(), self.MINI
+        f_nombre, f_valor = fuente(9, QFont.Weight.Medium), fuente(9, QFont.Weight.Bold)
+        ancho_valor = 44
+        cy = y + (self.SUB - m) / 2
+        if k == 0:
+            icono = QRectF(self.PAD, cy, m, m)
+            r_nombre = QRectF(self.PAD + m + 8, y, lado - m - 8 - ancho_valor - 6, self.SUB)
+            r_valor = QRectF(self.PAD + lado - ancho_valor, y, ancho_valor, self.SUB)
+        else:
+            icono = QRectF(w - self.PAD - m, cy, m, m)
+            r_nombre = QRectF(w - self.PAD - lado + ancho_valor + 6, y, lado - m - 8 - ancho_valor - 6, self.SUB)
+            r_valor = QRectF(w - self.PAD - lado, y, ancho_valor, self.SUB)
+        self._icono(p, icono, ruta, consejo or nombre)
+        texto(p, r_nombre, nombre, f_nombre, SECUNDARIO, IZQ if k == 0 else DER)
+        texto(p, r_valor, valor, f_valor, c_valor, DER if k == 0 else IZQ)
+
+    def _tecnologias(self, p: QPainter, y: float):
+        paso, por_fila, w = self.ICONO + self.HUECO, self._por_fila(), self.width()
+        for k, e in enumerate(self.estados):
+            if not e["tecnologias"]:
+                self._vacio(p, k, y)
+            for i, (t, tech) in enumerate(e["tecnologias"]):
+                fila, col = divmod(i, por_fila)
+                x = self.PAD + col * paso if k == 0 else w - self.PAD - self.ICONO - col * paso
+                self._icono(p, QRectF(x, y + 7 + fila * paso, self.ICONO, self.ICONO),
+                            iconos_juego.ruta_tecnologia(tech), f"{reloj(t)} · {nombre_evento(A.TECNOLOGIA, tech)}")
+
+    def mouseMoveEvent(self, e):
+        for zona, consejo in self.consejos:
+            if zona.adjusted(-2, -2, 2, 2).contains(e.position()):
+                QToolTip.showText(e.globalPosition().toPoint(), consejo, self)
+                return
+        QToolTip.hideText()
 
 
 class Conteo(QWidget):
@@ -1470,10 +1741,13 @@ class ContenidoHistorial(QWidget):
         lr.setSpacing(12)
         self.jugadores = TablaJugadores()
         lr.addWidget(self.jugadores)
-        self.grafico_partida = GraficoPartida()
+        self.grafico_partida = GraficoPartida(self._marcar)
         lr.addWidget(self.grafico_partida)
+        self.comparativa = ComparativaPartida()
+        lr.addWidget(self.comparativa)
         lr.addStretch(1)
-        vp.addWidget(self.cuerpo_ranked, 1)
+        self.desplaza_ranked = desplazable(self.cuerpo_ranked)
+        vp.addWidget(self.desplaza_ranked, 1)
         # Práctica: el resto.
         self.cuerpo_practica = QWidget()
         vp_practica = vp
@@ -1706,6 +1980,7 @@ class ContenidoHistorial(QWidget):
             self._pintar_general(regs)
         else:
             self.cuerpo_ranked.hide()
+            self.desplaza_ranked.hide()
             self.resultado_detalle.hide()
             self.cuerpo_practica.show()
             self.borrar.show()
@@ -1731,6 +2006,7 @@ class ContenidoHistorial(QWidget):
         self.aviso.hide()
         self.cuerpo_practica.hide()
         self.cuerpo_ranked.show()
+        self.desplaza_ranked.show()
         self.borrar.hide()
         self.titulo_detalle.setText(f"{fecha_corta(sel['fecha'])} · {mapa_corto(sel['mapa'])}")
         resultado = sel.get("resultado")
@@ -1756,6 +2032,12 @@ class ContenidoHistorial(QWidget):
         jugadores = jugadores_analisis(sel, analisis, yo)
         mensaje = tx("hi_leyendo") if id_ not in self.analisis else tx("hi_sin_analisis")
         self.grafico_partida.poner(analisis, jugadores, mensaje)
+        self.comparativa.poner(analisis, jugadores)
+        self.comparativa.setVisible(bool(analisis) and len(jugadores) >= 2)
+
+    def _marcar(self, t: float | None):
+        """Clic en el gráfico de la partida: la comparación, hasta ese momento."""
+        self.comparativa.marcar(t)
 
     def _pedir_analisis(self, id_: str):
         carpeta = repeticiones.carpeta()

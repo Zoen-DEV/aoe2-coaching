@@ -279,13 +279,27 @@ TEXTOS = {
         "hi_partida": "Partida",
         "hi_partida_nota": "Tiempo de juego. Aldeanos: los puestos en cola. eAPM: comandos por minuto. La llegada "
                            "a cada edad es estimada (clic + lo que tarda, sin bonificaciones de civilización). "
-                           "Rueda: acercar o alejar. Arrastrar o Mayús + rueda: moverse. Doble clic: ver toda.",
+                           "Clic: marcar un momento (clic derecho: quitarlo). Rueda: acercar o alejar. Arrastrar o "
+                           "Mayús + rueda: moverse. Doble clic: ver toda.",
         "hi_f_aldeanos": "Aldeanos",
         "hi_f_apm": "eAPM",
         "hi_f_edades": "Edades",
         "hi_f_edificios": "Edificios",
         "hi_f_tecnologias": "Investigaciones",
         "hi_f_unidades": "Unidades",
+        "hi_comparativa": "Comparativa",
+        "hi_vs_nota": "Lo que cada uno mandó hacer hasta el final de la partida o hasta el momento marcado "
+                      "en el gráfico (clic para marcar, clic derecho para quitar la marca). Militares: unidades "
+                      "puestas en cola. eAPM: la media hasta ese momento. Tecnologías y edades: desde el clic; "
+                      "la llegada a cada edad es estimada.",
+        "hi_vs_final": "Final · {t}",
+        "hi_vs_hasta": "Hasta el {t}",
+        "hi_vs_aldeanos": "Aldeanos",
+        "hi_vs_militares": "Militares",
+        "hi_vs_apm": "eAPM",
+        "hi_vs_tecnologias": "Tecnologías",
+        "hi_vs_edades": "Edades",
+        "hi_vs_edad_consejo": "Clic {clic} · llegada {llegada}",
         "hi_edad_2": "Feudal",
         "hi_edad_3": "Castillos",
         "hi_edad_4": "Imperial",
@@ -589,13 +603,27 @@ TEXTOS = {
         "hi_partida": "Game",
         "hi_partida_nota": "Game time. Villagers: the ones queued. eAPM: commands per minute. Reaching each age "
                            "is estimated (click + research time, without civilization bonuses). "
-                           "Wheel: zoom in or out. Drag or Shift + wheel: pan. Double-click: show all.",
+                           "Click: mark a moment (right-click: clear it). Wheel: zoom in or out. Drag or Shift + "
+                           "wheel: pan. Double-click: show all.",
         "hi_f_aldeanos": "Villagers",
         "hi_f_apm": "eAPM",
         "hi_f_edades": "Ages",
         "hi_f_edificios": "Buildings",
         "hi_f_tecnologias": "Research",
         "hi_f_unidades": "Units",
+        "hi_comparativa": "Comparison",
+        "hi_vs_nota": "What each player ordered up to the end of the game or up to the moment marked on the "
+                      "chart (click to mark, right-click to clear the mark). Military: units queued. eAPM: the "
+                      "average up to that moment. Research and ages: from the click; reaching each age is "
+                      "estimated.",
+        "hi_vs_final": "End · {t}",
+        "hi_vs_hasta": "Up to {t}",
+        "hi_vs_aldeanos": "Villagers",
+        "hi_vs_militares": "Military",
+        "hi_vs_apm": "eAPM",
+        "hi_vs_tecnologias": "Research",
+        "hi_vs_edades": "Ages",
+        "hi_vs_edad_consejo": "Click {clic} · arrival {llegada}",
         "hi_edad_2": "Feudal",
         "hi_edad_3": "Castle",
         "hi_edad_4": "Imperial",

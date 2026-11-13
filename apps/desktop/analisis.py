@@ -175,6 +175,37 @@ def aldeanos_en(serie: list, t: float) -> int:
     return total
 
 
+NO_MILITARES = {ALDEANO, 13, 17, 128, 545, 2148}  # pesquero, barca y carreta mercante, transportes
+
+
+def estado_en(datos: dict, t: float, duracion: float) -> dict:
+    """Lo de un jugador hasta el segundo t (todo lo que mandó hacer hasta entonces):
+    {"aldeanos": n, "militares": {unidad: n} (de más a menos), "apm": eAPM medio,
+    "tecnologias": [[t, id]], "edades": [[edad, clic, llegada]]}."""
+    t = min(max(t, 0.0), float(duracion))
+    militares: dict[int, int] = {}
+    tecnologias: list[list] = []
+    vistas: set[int] = set()
+    for momento, tipo, id_, n in datos["eventos"]:
+        if momento > t:
+            break
+        if tipo == UNIDAD and id_ not in NO_MILITARES:
+            militares[id_] = militares.get(id_, 0) + n
+        elif tipo == TECNOLOGIA and id_ not in vistas:
+            vistas.add(id_)
+            tecnologias.append([momento, id_])
+    acciones = datos["acciones"]
+    minuto = int(t // 60)
+    total = sum(acciones[:minuto])
+    if minuto < len(acciones):  # del minuto en curso, la parte hasta t (el último puede ser más corto)
+        total += acciones[minuto] * min(1.0, (t - 60 * minuto) / max(1.0, min(60.0, duracion - 60 * minuto)))
+    edades = sorted([int(e), c, ll] for e, (c, ll) in datos["edades"].items() if c <= t)
+    return {"aldeanos": aldeanos_en(datos["aldeanos"], t),
+            "militares": dict(sorted(militares.items(), key=lambda kv: -kv[1])),
+            "apm": round(total / (t / 60)) if t >= 1 else 0,
+            "tecnologias": tecnologias, "edades": edades}
+
+
 # --- Repeticiones de prueba ----------------------------------------------------
 
 

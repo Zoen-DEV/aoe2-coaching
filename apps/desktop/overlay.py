@@ -24,6 +24,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import config as C  # noqa: E402
 import logo  # noqa: E402
+import iconos_juego  # noqa: E402
 import repeticiones  # noqa: E402
 import rutas  # noqa: E402
 import textos  # noqa: E402
@@ -1331,6 +1332,7 @@ def main():
         log.info("datos copiados de la versión anterior: %s", ", ".join(copiados))
     perfil = entorno.perfil.carpeta if entorno.perfil else None
     repeticiones.poner_perfil(perfil)  # para vincular cada partida del historial con su repetición
+    iconos_juego.poner_juego(entorno.juego)  # los iconos de la comparación de las ranked
     from instalador import Instalador
     instalador = Instalador(perfil=perfil, juego=entorno.juego)  # guías instaladas desde el catálogo
 

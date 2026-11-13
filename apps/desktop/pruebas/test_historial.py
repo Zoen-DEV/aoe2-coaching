@@ -291,13 +291,18 @@ def test_lector_y_seguimiento(tmp: Path):
 
 def test_ranked(tmp: Path):
     print("Ranked: se leen de las repeticiones y se filtran en el historial")
+    from PySide6.QtCore import QPoint, Qt
     from PySide6.QtGui import QGuiApplication
+    from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QPushButton
     app = QApplication.instance() or QApplication(sys.argv)
     import cabecera as CB
     import clasificatorias as R
     import historial_ui as HU
+    import iconos_juego
     import repeticiones
+    iconos_juego.CACHE = tmp / "iconos"
+    iconos_juego.poner_juego(tmp / "sin_juego")  # sin iconos: huecos vacíos
     sg = tmp / "perfil_ranked" / "savegame"
     yo, rival = 111, 222
     J = CB.JugadorCabecera
@@ -419,6 +424,12 @@ def test_ranked(tmp: Path):
         comprobar(c.tipo is None and c.vista_partida.isVisibleTo(c) and c.cuerpo_ranked.isVisibleTo(c)
                   and not c.cuerpo_practica.isVisibleTo(c) and not c.borrar.isVisibleTo(c),
                   "elegir una ranked desde Práctica vuelve a Todas y muestra sus jugadores (sin Borrar)")
+        c.resize(1300, 900)
+        c.jugadores.grab()
+        anchos = [round(zona.width()) for zona, _ in c.jugadores.rachas]
+        punto = 2 * HU.TablaJugadores.PUNTO + 5
+        comprobar(anchos and all(a == round(R.ULTIMAS * punto + 8) for a in anchos),
+                  f"siempre {R.ULTIMAS} puntos de forma, en gris los que faltan ({anchos})")
         c.pulsar_copiar()
         comprobar(QGuiApplication.clipboard().text() == ranked.removesuffix(".aoe2record")
                   and c.copiar.text() == "Copiado", "Copiar nombre deja el nombre de la repetición en el portapapeles")
@@ -445,6 +456,25 @@ def test_ranked(tmp: Path):
         comprobar(lienzo.vista == (10, 70), f"el zoom deja al menos un minuto ({lienzo.vista})")
         lienzo._poner_vista(-5, 200)
         comprobar(lienzo.vista is None, "con la partida entera a la vista no hay zoom")
+        vs = c.comparativa
+        app.processEvents()
+        tu, el = vs.estados if len(vs.estados) == 2 else ({}, {})
+        comprobar(vs.isVisibleTo(c) and vs.marca is None and tu.get("aldeanos") == 1 and el.get("aldeanos") == 2
+                  and el.get("militares") == {4: 3} and tu.get("tecnologias") == [[15.0, 22]]
+                  and tu.get("edades") == [[2, 15.0, 145.0]], f"comparativa: hasta el final por defecto ({vs.estados})")
+        z = lienzo._zona()
+        QTest.mouseClick(lienzo, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+                         QPoint(int(z.left() + z.width() * 30 / 75), int(z.center().y())))
+        comprobar(lienzo.marca is not None and abs(lienzo.marca - 30) < 1.5 and vs.marca == lienzo.marca
+                  and vs.estados[1]["aldeanos"] == 0 and vs.estados[1]["militares"] == {}
+                  and vs.estados[0]["aldeanos"] == 1, f"un clic en el gráfico marca ese momento ({lienzo.marca})")
+        c.grab()  # se pinta con la marca
+        QTest.mouseClick(lienzo, Qt.MouseButton.RightButton, Qt.KeyboardModifier.NoModifier,
+                         QPoint(int(z.center().x()), int(z.center().y())))
+        comprobar(lienzo.marca is None and vs.marca is None and vs.estados[1]["aldeanos"] == 2,
+                  "el clic derecho quita la marca y vuelve al final")
+        comprobar(A.estado_en(c.analisis[ranked]["jugadores"][2], 75, 75)["apm"] == 2,
+                  "eAPM medio de toda la partida")
         c.grafico_partida._metrica("apm")
         comprobar(lienzo.metrica == "apm" and lienzo._valor(2, 70) == 3, "eAPM en el gráfico")
         c.resize(1300, 900)
