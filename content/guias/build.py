@@ -168,6 +168,11 @@ CLAVES_MAPA_OPCIONALES = {"imagen"}
 HITOS_VALIDOS = ["clic_feudal", "feudal", "clic_castillos", "castillos", "meta"]  # meta = último paso
 NIVELES = ("facil", "media", "dificil")
 CLAVES_PASO = {"titulo", "titulo_en", "texto", "texto_en", "icono", "referencia", "condiciones"}
+CLAVES_PASO_OPCIONALES = {"civs"}
+# Lo que una civilización puede cambiar de un paso (clave "civs": {"britons": {...}}).
+# El número de pasos y los iconos son los mismos para todas.
+CLAVES_VARIANTE = {"titulo", "titulo_en", "texto", "texto_en", "referencia", "condiciones"}
+PARES_VARIANTE = (("titulo", "titulo_en"), ("texto", "texto_en"))  # cada texto, con su traducción
 VERSION_RE = r"\d+\.\d+\.\d+"
 
 
@@ -299,7 +304,7 @@ def load_build_order(path: Path) -> dict:
     for n, step in enumerate(steps, 1):
         where = f"{name} > paso {n}"
         missing = CLAVES_PASO - set(step)
-        extra = set(step) - CLAVES_PASO
+        extra = set(step) - CLAVES_PASO - CLAVES_PASO_OPCIONALES
         if missing or extra:
             raise BuildOrderError(f"{where}: faltan {sorted(missing)} / sobran {sorted(extra)}")
         check_text(step["titulo"], f"{where} > titulo")
@@ -319,9 +324,82 @@ def load_build_order(path: Path) -> dict:
             raise BuildOrderError(f"{where}: necesita al menos una condición")
         for cond in step["condiciones"]:
             check_condition(cond, where)
+        check_variantes(step, where)
+    for clave in civs_con_variante(data):  # cada civilización, con sus referencias en orden
+        refs = [paso_civ(s, clave)["segundos"] for s in steps]
+        if refs != sorted(refs):
+            print(f"aviso: {name}: con {clave}, alguna referencia es anterior a la del paso previo")
     if "tierlist" in data:
         check_tierlist(data["tierlist"], name)
     return data
+
+
+# --- Variantes por civilización -----------------------------------------------
+# Un paso puede llevar "civs": {"britons": {"texto": ..., "texto_en": ..., "condiciones": [...]}}.
+# Lo que no se cambia se queda como en el paso. Las claves son las de tecnologias.json
+# (el nombre en inglés en minúsculas); en el XS y en el manifiesto van por su ID.
+
+
+def civs_por_clave() -> dict[str, int]:
+    return {c["clave"]: int(i) for i, c in load_tecnologias()["civilizaciones"].items()}
+
+
+def check_variantes(step: dict, where: str) -> None:
+    civs = step.get("civs")
+    if civs is None:
+        return
+    validas = civs_por_clave()
+    if not isinstance(civs, dict) or not civs:
+        raise BuildOrderError(f"{where} > civs: un objeto {{civilización: cambios}} con alguna civilización")
+    for clave, cambios in civs.items():
+        w = f"{where} > civs > {clave}"
+        if clave not in validas:
+            raise BuildOrderError(f"{w}: civilización desconocida (valores válidos: {', '.join(sorted(validas))})")
+        if not isinstance(cambios, dict) or not cambios:
+            raise BuildOrderError(f"{w}: lleva algún cambio ({', '.join(sorted(CLAVES_VARIANTE))})")
+        extra = set(cambios) - CLAVES_VARIANTE
+        if extra:
+            raise BuildOrderError(f"{w}: claves que no se pueden cambiar {sorted(extra)} "
+                                  f"(se pueden: {', '.join(sorted(CLAVES_VARIANTE))})")
+        for es, en in PARES_VARIANTE:
+            if (es in cambios) != (en in cambios):
+                raise BuildOrderError(f"{w}: {es} y {en} van juntos")
+            if es in cambios:
+                check_text(cambios[es], f"{w} > {es}")
+                check_en(cambios[en], f"{w} > {en}")
+        if len(cambios.get("titulo", "")) > MAX_TITULO:
+            print(f"aviso: {w}: el título tiene más de {MAX_TITULO} caracteres")
+        if "referencia" in cambios:
+            cambios["segundos"] = parse_time(cambios["referencia"], w)
+        if "condiciones" in cambios:
+            if not isinstance(cambios["condiciones"], list) or not cambios["condiciones"]:
+                raise BuildOrderError(f"{w}: necesita al menos una condición")
+            for cond in cambios["condiciones"]:
+                check_condition(cond, w)
+
+
+def civs_con_variante(bo: dict) -> list[str]:
+    """Civilizaciones con algún paso cambiado, en orden de aparición."""
+    out: list[str] = []
+    for step in bo["pasos"]:
+        for clave in step.get("civs", {}):
+            if clave not in out:
+                out.append(clave)
+    return out
+
+
+def paso_civ(step: dict, clave: str | None) -> dict:
+    """El paso tal como lo ve esa civilización (None = el general)."""
+    cambios = step.get("civs", {}).get(clave, {}) if clave else {}
+    return {k: v for k, v in {**step, **cambios}.items() if k != "civs"}
+
+
+def todas_condiciones(bo: dict):
+    """Condiciones de todos los pasos y de todas sus variantes."""
+    for step in bo["pasos"]:
+        yield from step["condiciones"]
+        for cambios in step.get("civs", {}).values():
+            yield from cambios.get("condiciones", [])
 
 
 # --- Tierlist de tecnologías (al terminar la guía) ---------------------------
@@ -418,11 +496,10 @@ def xs_str(text: str) -> str:
 def counters(bo: dict) -> list[tuple[str, str]]:
     """Recuentos que necesitan las condiciones, en orden: [("edificio", "casa"), ("aldeanos", "pastores")...]."""
     out: list[tuple[str, str]] = []
-    for step in bo["pasos"]:
-        for cond in step["condiciones"]:
-            for kind in CONTADORES:
-                if kind in cond and (kind, cond[kind]) not in out:
-                    out.append((kind, cond[kind]))
+    for cond in todas_condiciones(bo):
+        for kind in CONTADORES:
+            if kind in cond and (kind, cond[kind]) not in out:
+                out.append((kind, cond[kind]))
     return out
 
 
@@ -430,11 +507,10 @@ def techs(bo: dict) -> list[str]:
     """Tecnologías cuyo estado se vuelca al overlay, en orden (las de las condiciones
     y las de las edades)."""
     out: list[str] = []
-    for step in bo["pasos"]:
-        for cond in step["condiciones"]:
-            name = cond.get("tecnologia") or (EDADES[cond["edad"]][1] if "edad" in cond else None)
-            if name and name not in out:
-                out.append(name)
+    for cond in todas_condiciones(bo):
+        name = cond.get("tecnologia") or (EDADES[cond["edad"]][1] if "edad" in cond else None)
+        if name and name not in out:
+            out.append(name)
     return out
 
 
@@ -513,14 +589,33 @@ def cond_progress_expr(cond: dict, index: dict) -> str:
     return f'"{label}: " + guiaTextoEstado(guiaEstadoTech(jugador, {tech}))'
 
 
-def if_chain(func_header: str, var_type: str, cases: list[str], default: str) -> str:
+def if_chain(func_header: str, var_type: str, cases: list[str], default: str,
+             variantes: list[dict[int, str]] | None = None) -> str:
     """Función XS que devuelve un valor según el número de paso (lo guarda en una
-    variable antes del return, que en XS es más fiable que devolver expresiones)."""
+    variable antes del return, que en XS es más fiable que devolver expresiones).
+    variantes: por paso, {ID de civilización: valor} que sustituye al general."""
+    variantes = variantes or [{} for _ in cases]
     lines = [func_header, "{", f"    {var_type} v = {default};"]
+    if any(variantes):
+        lines.append("    int civ = xsGetPlayerCivilization(jugador);")
     for i, value in enumerate(cases):
-        lines += [f"    if (paso == {i})", "    {", f"        v = {value};", "    }"]
+        lines += [f"    if (paso == {i})", "    {", f"        v = {value};"]
+        for civ, otro in variantes[i].items():
+            lines += [f"        if (civ == {civ})", "        {", f"            v = {otro};", "        }"]
+        lines.append("    }")
     lines += ["    return (v);", "}", ""]
     return "\n".join(lines)
+
+
+def variantes_de(bo: dict, valor) -> list[dict[int, str]]:
+    """Por paso, {ID de civilización: valor XS} de las civilizaciones que cambian ese valor.
+    valor(paso) da el valor XS de un paso (general o de una civilización)."""
+    ids = civs_por_clave()
+    out = []
+    for step in bo["pasos"]:
+        base = valor(paso_civ(step, None))
+        out.append({ids[c]: v for c in step.get("civs", {}) if (v := valor(paso_civ(step, c))) != base})
+    return out
 
 
 def generate_steps_xs(bo: dict) -> str:
@@ -581,28 +676,46 @@ def generate_steps_xs(bo: dict) -> str:
         out += [f"    e = guiaEstadoTier(jugador, {tecnologias[name]['id']});  // {name}", "    xsWriteInt(e);"]
     out += ["}", ""]
 
-    # Condición de cada paso: se cumplen todas o ninguna.
+    # Condición de cada paso: se cumplen todas o ninguna. Las civilizaciones con otras
+    # condiciones en ese paso se comprueban antes y salen con su resultado.
+    ids = civs_por_clave()
+    hay_variantes = bool(civs_con_variante(bo))
+
+    def comprobar_condiciones(conds: list[dict], sangria: str) -> list[str]:
+        lines = []
+        for cond in conds:
+            lines += [f"{sangria}if ({cond_value_expr(cond, index)} < {cond_target(cond)})", f"{sangria}{{",
+                      f"{sangria}    return (false);", f"{sangria}}}"]
+        return lines + [f"{sangria}return (true);"]
+
     out += ["bool guiaCumplido(int jugador = 0, int paso = 0)", "{"]
+    if hay_variantes:
+        out.append("    int civ = xsGetPlayerCivilization(jugador);")
     for i, step in enumerate(steps):
         out += [f"    if (paso == {i})", "    {"]
-        for cond in step["condiciones"]:
-            out += [f"        if ({cond_value_expr(cond, index)} < {cond_target(cond)})", "        {",
-                    "            return (false);", "        }"]
-        out += ["        return (true);", "    }"]
+        for clave, cambios in step.get("civs", {}).items():
+            if "condiciones" in cambios:
+                out += [f"        if (civ == {ids[clave]})", "        {"]
+                out += comprobar_condiciones(cambios["condiciones"], " " * 12)
+                out.append("        }")
+        out += comprobar_condiciones(step["condiciones"], " " * 8)
+        out.append("    }")
     out += ["    return (false);", "}", ""]
 
     # Progreso del paso actual.
-    out += ["string guiaProgreso(int jugador = 0, int paso = 0)", "{", '    string v = "";']
-    for i, step in enumerate(steps):
-        expr = ' + " · " + '.join(cond_progress_expr(c, index) for c in step["condiciones"])
-        expr = expr.replace('" + "', "")  # une literales seguidos: "/1" + " · " -> "/1 · "
-        out += [f"    if (paso == {i})", "    {", f"        v = {expr};", "    }"]
-    out += ["    return (v);", "}", ""]
+    def progreso(s: dict) -> str:
+        expr = ' + " · " + '.join(cond_progress_expr(c, index) for c in s["condiciones"])
+        return expr.replace('" + "', "")  # une literales seguidos: "/1" + " · " -> "/1 · "
 
-    out.append(if_chain("string guiaTitulo(int paso = 0)", "string", [xs_str(s["titulo"]) for s in steps], '""'))
-    out.append(if_chain("string guiaTexto(int paso = 0)", "string", [xs_str(s["texto"]) for s in steps], '""'))
+    out.append(if_chain("string guiaProgreso(int jugador = 0, int paso = 0)", "string",
+                        [progreso(s) for s in steps], '""', variantes_de(bo, progreso)))
+    out.append(if_chain("string guiaTitulo(int jugador = 0, int paso = 0)", "string",
+                        [xs_str(s["titulo"]) for s in steps], '""', variantes_de(bo, lambda s: xs_str(s["titulo"]))))
+    out.append(if_chain("string guiaTexto(int jugador = 0, int paso = 0)", "string",
+                        [xs_str(s["texto"]) for s in steps], '""', variantes_de(bo, lambda s: xs_str(s["texto"]))))
     out.append(if_chain("int guiaIcono(int paso = 0)", "int", [str(ICONOS[s["icono"]]) for s in steps], "-1"))
-    out.append(if_chain("int guiaReferencia(int paso = 0)", "int", [str(s["segundos"]) for s in steps], "0"))
+    out.append(if_chain("int guiaReferencia(int jugador = 0, int paso = 0)", "int",
+                        [str(s["segundos"]) for s in steps], "0", variantes_de(bo, lambda s: str(s["segundos"]))))
     return "\n".join(out)
 
 
@@ -611,10 +724,10 @@ def build_manifest(bo: dict) -> dict:
     (qué recuento y qué tecnología va en cada posición)."""
     idx = {c: i for i, c in enumerate(counters(bo))}
     tidx = {t: i for i, t in enumerate(techs(bo))}
-    pasos = []
-    for s in bo["pasos"]:
+
+    def condiciones_manifiesto(condiciones: list[dict]) -> list[dict]:
         conds = []
-        for c in s["condiciones"]:
+        for c in condiciones:
             if es_contador(c):
                 kind = next(k for k in CONTADORES if k in c)
                 conds.append({"tipo": "contador", "indice": idx[(kind, c[kind])], "min": c["min"],
@@ -628,11 +741,27 @@ def build_manifest(bo: dict) -> dict:
                               "etiqueta": TECNOLOGIAS[tech][1]})
         for cond in conds:
             cond["etiqueta_en"] = ETIQUETAS_EN[cond["etiqueta"]]
-        pasos.append({"titulo": s["titulo"], "titulo_en": s["titulo_en"], "texto": s["texto"],
-                      "texto_en": s["texto_en"], "icono": s["icono"],
-                      "referencia": s["segundos"], "condiciones": conds})
+        return conds
+
+    ids = civs_por_clave()
+    pasos = []
+    for s in bo["pasos"]:
+        paso = {"titulo": s["titulo"], "titulo_en": s["titulo_en"], "texto": s["texto"],
+                "texto_en": s["texto_en"], "icono": s["icono"],
+                "referencia": s["segundos"], "condiciones": condiciones_manifiesto(s["condiciones"])}
+        if s.get("civs"):  # lo que cambia cada civilización, por su ID (el del .xsdat)
+            paso["civs"] = {}
+            for clave, cambios in s["civs"].items():
+                v = {k: cambios[k] for k in ("titulo", "titulo_en", "texto", "texto_en") if k in cambios}
+                if "segundos" in cambios:
+                    v["referencia"] = cambios["segundos"]
+                if "condiciones" in cambios:
+                    v["condiciones"] = condiciones_manifiesto(cambios["condiciones"])
+                paso["civs"][str(ids[clave])] = v
+        pasos.append(paso)
     manifest = {
-        "version": 3,
+        # 4: algún paso cambia según la civilización ("civs"); las apps de antes no lo entienden.
+        "version": 4 if civs_con_variante(bo) else 3,
         "id": bo["id"],
         "version_guia": bo["version"],  # versión del contenido (la del catálogo)
         "codigo": codigo_guia(bo),  # va en el .xsdat: así el overlay sabe qué guía se está jugando

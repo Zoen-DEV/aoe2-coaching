@@ -1010,7 +1010,7 @@ class Overlay(QWidget):
     def alto_maximo(self, guia: dict) -> float:
         """La tarjeta más alta posible en esta guía (con aviso de paso y de casas),
         para fijar su borde superior y que los botones no se muevan."""
-        clave = (guia["nombre"], self.config.get("pasos_siguientes"), textos.idioma())
+        clave = (guia["nombre"], guia.get("civ_adaptada"), self.config.get("pasos_siguientes"), textos.idioma())
         if self._alto_max.get(clave) is None:
             altos = []
             for paso in range(len(guia["pasos"]) + 1):

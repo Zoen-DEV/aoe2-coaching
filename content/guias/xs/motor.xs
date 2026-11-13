@@ -53,7 +53,7 @@ int guiaHoraHecho(int jugador = 0, int paso = 0)
 string guiaDesfase(int jugador = 0, int paso = 0)
 {
     string s = "";
-    int diferencia = guiaHoraHecho(jugador, paso) - guiaReferencia(paso);
+    int diferencia = guiaHoraHecho(jugador, paso) - guiaReferencia(jugador, paso);
     if (diferencia > cGuiaMargen)
     {
         s = " (+" + guiaDuracion(diferencia) + ")";
@@ -69,7 +69,7 @@ string guiaDesfase(int jugador = 0, int paso = 0)
 string guiaRitmo(int jugador = 0, int paso = 0)
 {
     string s = "a tiempo";
-    int diferencia = guiaHoraHecho(jugador, paso) - guiaReferencia(paso);
+    int diferencia = guiaHoraHecho(jugador, paso) - guiaReferencia(jugador, paso);
     if (diferencia > cGuiaMargen)
     {
         s = "vas " + guiaDuracion(diferencia) + " tarde";
@@ -87,25 +87,25 @@ string guiaLineaHecho(int jugador = 0, int paso = 0)
     int t = guiaHoraHecho(jugador, paso);
     if (t < 0)
     {
-        s = "[-] " + (paso + 1) + ". " + guiaTitulo(paso) + " · sin hacer";
+        s = "[-] " + (paso + 1) + ". " + guiaTitulo(jugador, paso) + " · sin hacer";
     }
     else
     {
-        s = "[x] " + (paso + 1) + ". " + guiaTitulo(paso) + " · " + guiaReloj(t) + guiaDesfase(jugador, paso);
+        s = "[x] " + (paso + 1) + ". " + guiaTitulo(jugador, paso) + " · " + guiaReloj(t) + guiaDesfase(jugador, paso);
     }
     return (s);
 }
 
 string guiaLineaActual(int jugador = 0, int paso = 0)
 {
-    string s = "» " + (paso + 1) + ". " + guiaTexto(paso) + " (ref. " + guiaReloj(guiaReferencia(paso)) + ")";
+    string s = "» " + (paso + 1) + ". " + guiaTexto(jugador, paso) + " (ref. " + guiaReloj(guiaReferencia(jugador, paso)) + ")";
     s = s + "\n     " + guiaProgreso(jugador, paso);
     return (s);
 }
 
-string guiaLineaSiguiente(int paso = 0)
+string guiaLineaSiguiente(int jugador = 0, int paso = 0)
 {
-    string s = "[ ] " + (paso + 1) + ". " + guiaTitulo(paso) + " · " + guiaReloj(guiaReferencia(paso));
+    string s = "[ ] " + (paso + 1) + ". " + guiaTitulo(jugador, paso) + " · " + guiaReloj(guiaReferencia(jugador, paso));
     return (s);
 }
 
@@ -134,7 +134,7 @@ string guiaPanel(int jugador = 0, int paso = 0)
     {
         if (i < cGuiaNumPasos)
         {
-            s = s + "\n" + guiaLineaSiguiente(i);
+            s = s + "\n" + guiaLineaSiguiente(jugador, i);
         }
         i++;
     }
@@ -158,7 +158,7 @@ string guiaPanelFinal(int jugador = 0)
     }
     if (guiaHoraHecho(jugador, ultimo) >= 0)
     {
-        s = s + "\n" + guiaTitulo(ultimo) + " a las " + guiaReloj(guiaHoraHecho(jugador, ultimo)) + " (ref. " + guiaReloj(guiaReferencia(ultimo)) + ", " + guiaRitmo(jugador, ultimo) + ").";
+        s = s + "\n" + guiaTitulo(jugador, ultimo) + " a las " + guiaReloj(guiaHoraHecho(jugador, ultimo)) + " (ref. " + guiaReloj(guiaReferencia(jugador, ultimo)) + ", " + guiaRitmo(jugador, ultimo) + ").";
     }
     s = s + "\n" + guiaMensajeFinal();
     return (s);

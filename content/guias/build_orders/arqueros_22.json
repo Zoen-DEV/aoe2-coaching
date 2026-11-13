@@ -1,6 +1,6 @@
 {
   "id": "arqueros",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "nombre": "Arqueros 22",
   "descripcion": "La apertura clásica de Arabia: 22 de población al pulsar Feudal, 2 galerías de tiro nada más llegar y arqueros sin parar para presionar.",
   "descripcion_en": "The classic Arabia opening: 22 population when you click Feudal, 2 archery ranges as soon as you arrive and non-stop archers to keep up the pressure.",
@@ -37,7 +37,14 @@
       "referencia": "0:35",
       "condiciones": [
         {"edificio": "casa", "min": 2}
-      ]
+      ],
+      "civs": {
+        "persians": {
+          "texto": "Empiezas con 50 de madera y 50 de comida de más. Pon a los 3 aldeanos iniciales a construir 2 casas y crea aldeanos sin parar: tu centro urbano trabaja más rápido.",
+          "texto_en": "You start with 50 extra wood and 50 extra food. Put the 3 starting villagers on 2 houses and make villagers non-stop: your Town Center works faster.",
+          "referencia": "0:33"
+        }
+      }
     },
     {
       "titulo": "6 pastores",
@@ -48,7 +55,14 @@
       "referencia": "1:20",
       "condiciones": [
         {"aldeanos": "pastores", "min": 6}
-      ]
+      ],
+      "civs": {
+        "britons": {
+          "texto": "Manda a los aldeanos al ganado, bajo el centro urbano, hasta tener 6 pastores. Tus pastores trabajan un cuarto más rápido: aprovecha bien cada oveja.",
+          "texto_en": "Send villagers to the sheep under the Town Center until you have 6 shepherds. Your shepherds work 25% faster: make the most of every sheep."
+        },
+        "persians": {"referencia": "1:16"}
+      }
     },
     {
       "titulo": "Campamento y 4 leñadores",
@@ -60,7 +74,10 @@
       "condiciones": [
         {"edificio": "campamento_maderero", "min": 1},
         {"aldeanos": "lenadores", "min": 4}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "3:01"}
+      }
     },
     {
       "titulo": "Primer jabalí",
@@ -71,7 +88,10 @@
       "referencia": "3:30",
       "condiciones": [
         {"aldeanos": "cazadores", "min": 1}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "3:20"}
+      }
     },
     {
       "titulo": "Casa, molino y 4 en bayas",
@@ -84,7 +104,21 @@
         {"edificio": "casa", "min": 3},
         {"edificio": "molino", "min": 1},
         {"aldeanos": "recolectores", "min": 4}
-      ]
+      ],
+      "civs": {
+        "franks": {
+          "titulo": "Casa, molino y 5 en bayas",
+          "titulo_en": "House, mill and 5 on berries",
+          "texto": "Con el aldeano 12, construye una casa y un molino junto a las bayas. Tus recolectores son más rápidos: los aldeanos 12 a 16 van a las bayas.",
+          "texto_en": "With villager 12, build a house and a mill next to the berries. Your foragers are faster: villagers 12 to 16 gather berries.",
+          "condiciones": [
+            {"edificio": "casa", "min": 3},
+            {"edificio": "molino", "min": 1},
+            {"aldeanos": "recolectores", "min": 5}
+          ]
+        },
+        "persians": {"referencia": "4:59"}
+      }
     },
     {
       "titulo": "Segundo jabalí, 13 en comida",
@@ -96,7 +130,24 @@
       "condiciones": [
         {"edificio": "casa", "min": 4},
         {"aldeanos": "comida", "min": 13}
-      ]
+      ],
+      "civs": {
+        "britons": {
+          "titulo": "Segundo jabalí, 12 en comida",
+          "titulo_en": "Second boar, 12 on food",
+          "texto": "Atrae el segundo jabalí con el aldeano 16 y manda el 17 a la madera: con tus pastores rápidos bastan 12 en comida. Construye otra casa.",
+          "texto_en": "Lure the second boar with villager 16 and send villager 17 to wood: with your fast shepherds 12 on food is enough. Build another house.",
+          "condiciones": [
+            {"edificio": "casa", "min": 4},
+            {"aldeanos": "comida", "min": 12}
+          ]
+        },
+        "franks": {
+          "texto": "Atrae el segundo jabalí con el aldeano 17 (el 16 ya está en las bayas). Construye otra casa.",
+          "texto_en": "Lure the second boar with villager 17 (villager 16 is already on berries). Build another house."
+        },
+        "persians": {"referencia": "5:42"}
+      }
     },
     {
       "titulo": "Cuartel y 6 leñadores",
@@ -108,7 +159,20 @@
       "condiciones": [
         {"edificio": "cuartel", "min": 1},
         {"aldeanos": "lenadores", "min": 6}
-      ]
+      ],
+      "civs": {
+        "britons": {
+          "titulo": "Cuartel y 7 leñadores",
+          "titulo_en": "Barracks and 7 on wood",
+          "texto": "Con el aldeano 18, construye un cuartel y luego ponlo a talar. El aldeano 19 también va a la madera: 7 leñadores.",
+          "texto_en": "With villager 18, build a Barracks, then send it to wood. Villager 19 also goes to wood: 7 lumberjacks.",
+          "condiciones": [
+            {"edificio": "cuartel", "min": 1},
+            {"aldeanos": "lenadores", "min": 7}
+          ]
+        },
+        "persians": {"referencia": "6:30"}
+      }
     },
     {
       "titulo": "Campamento minero, 2 en oro",
@@ -120,7 +184,10 @@
       "condiciones": [
         {"edificio": "campamento_minero", "min": 1},
         {"aldeanos": "mineros_oro", "min": 2}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "7:12"}
+      }
     },
     {
       "titulo": "Telar",
@@ -131,7 +198,10 @@
       "referencia": "7:55",
       "condiciones": [
         {"tecnologia": "telar", "estado": "terminada"}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "7:31"}
+      }
     },
     {
       "titulo": "Clic en Edad Feudal",
@@ -142,7 +212,10 @@
       "referencia": "8:00",
       "condiciones": [
         {"tecnologia": "edad_feudal", "estado": "iniciada"}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "7:36"}
+      }
     },
     {
       "titulo": "Edad Feudal",
@@ -153,7 +226,10 @@
       "referencia": "10:10",
       "condiciones": [
         {"edad": "feudal"}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "9:40"}
+      }
     },
     {
       "titulo": "2 galerías de tiro",
@@ -164,7 +240,10 @@
       "referencia": "10:55",
       "condiciones": [
         {"edificio": "galeria_tiro", "min": 2}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "10:25"}
+      }
     },
     {
       "titulo": "4 arqueros",
@@ -175,7 +254,15 @@
       "referencia": "11:30",
       "condiciones": [
         {"unidades": "arqueros", "min": 4}
-      ]
+      ],
+      "civs": {
+        "britons": {
+          "texto": "Crea arqueros sin parar en las 2 galerías: las tuyas trabajan más rápido. Júntalos en un grupo y no los mandes de uno en uno.",
+          "texto_en": "Make archers non-stop from both ranges: yours work faster. Keep them in one group instead of sending them one by one.",
+          "referencia": "11:25"
+        },
+        "persians": {"referencia": "11:00"}
+      }
     },
     {
       "titulo": "6 en oro y 4 granjas",
@@ -187,7 +274,14 @@
       "condiciones": [
         {"aldeanos": "mineros_oro", "min": 6},
         {"edificio": "granja", "min": 4}
-      ]
+      ],
+      "civs": {
+        "franks": {
+          "texto": "Los aldeanos 22 a 25 van al oro. Cuando se acabe la caza, pasa esos aldeanos a granjas: la Collera te la dan gratis.",
+          "texto_en": "Villagers 22 to 25 go to gold. When the hunt runs out, move those villagers to farms: you get Horse Collar for free."
+        },
+        "persians": {"referencia": "11:30"}
+      }
     },
     {
       "titulo": "10 arqueros",
@@ -198,7 +292,15 @@
       "referencia": "13:45",
       "condiciones": [
         {"unidades": "arqueros", "min": 10}
-      ]
+      ],
+      "civs": {
+        "britons": {
+          "texto": "Crea arqueros sin parar en las 2 galerías: las tuyas trabajan más rápido. Júntalos en un grupo y no los mandes de uno en uno.",
+          "texto_en": "Make archers non-stop from both ranges: yours work faster. Keep them in one group instead of sending them one by one.",
+          "referencia": "13:30"
+        },
+        "persians": {"referencia": "13:15"}
+      }
     }
   ]
 }

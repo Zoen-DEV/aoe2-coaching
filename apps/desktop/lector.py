@@ -11,7 +11,8 @@ El script escribe, una vez por segundo, un archivo .xsdat con el nombre del mapa
     civilización no la tiene), 9999
 
 El código dice qué guía se está jugando (todos los mapas cargan el mismo script,
-aoe2c_guia.xs, que es una copia de la guía elegida en el panel). La versión 2 no lleva
+aoe2c_guia.xs, que es una copia de la guía elegida en el panel). Con la civilización,
+parsear() devuelve la guía ya adaptada a ella (adaptar_a_civ). La versión 2 no lleva
 la civilización ni la tierlist (guías de antes de la 1.2.0 de la app). La versión 1 (sin
 código) es la de antes; se reconoce la guía por el número de pasos y de datos.
 
@@ -61,6 +62,17 @@ def cargar_guias(carpeta: Path = GUIAS) -> dict[str, dict]:
     return guias
 
 
+def adaptar_a_civ(guia: dict, civ: int) -> dict:
+    """La guía tal como la ve esa civilización: los pasos con "civs" (manifiesto versión 4)
+    cambian su texto, su referencia o sus condiciones. Sin cambios para ella, la misma guía."""
+    clave = str(civ)
+    if not any(clave in p.get("civs", {}) for p in guia["pasos"]):
+        return guia
+    pasos = [{**{k: v for k, v in p.items() if k != "civs"}, **p.get("civs", {}).get(clave, {})} for p in guia["pasos"]]
+    return {**guia, "pasos": pasos, "civ_adaptada": civ,
+            "nombre_meta": pasos[-1]["titulo"], "nombre_meta_en": pasos[-1]["titulo_en"]}
+
+
 def mapas_de(guias: dict[str, dict]) -> set[str]:
     """Nombres de los mapas [AoE2C] (en minúsculas), que son los de los .xsdat."""
     return {m.lower() for g in guias.values() for m in g.get("mapas", [])}
@@ -91,7 +103,7 @@ def parsear(data: bytes, guias) -> tuple[dict, Estado] | None:
                     if guia.get("codigo") == codigo:
                         estado = _parsear_en(data, pos + 12, guia, version)
                         if estado:
-                            return guia, estado
+                            return adaptar_a_civ(guia, estado.civ), estado
             elif version == 1:  # formato antiguo, sin código: la primera guía que encaje
                 for guia in guias:
                     estado = _parsear_en(data, pos + 8, guia)

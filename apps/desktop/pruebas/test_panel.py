@@ -590,6 +590,82 @@ def test_tierlist(tmp: Path):
     comprobar(w.opacidad == 1.0, "la tierlist sigue a la vista pasados los 90 s")
 
 
+def test_variantes_civ(tmp: Path):
+    print("Pasos adaptados a la civilización")
+    import build as B
+    AR, HA = GUIAS["arqueros"], GUIAS["hombres_armas"]
+
+    # build.py: manifiesto versión 4 con los cambios por ID; el script elige por civilización.
+    comprobar(AR["version"] == 4 and HA["version"] == 4 and FC["version"] == 3,
+              "las guías con variantes usan el manifiesto 4; las demás siguen en el 3")
+    jabali = AR["pasos"][5]
+    comprobar(set(jabali["civs"]) == {"1", "2", "8"}, "el segundo jabalí cambia para britanos (1), francos (2) y persas (8)")
+    comprobar(jabali["civs"]["1"]["condiciones"][1]["min"] == 12 and jabali["condiciones"][1]["min"] == 13,
+              "los britanos van con 12 en comida; el resto, con 13")
+    texto = (MOD / "resources" / "_common" / "xs" / "guia_arqueros.xs").read_text(encoding="ascii")
+    comprobar("string guiaTitulo(int jugador = 0, int paso = 0)" in texto and "if (civ == 1)" in texto
+              and "int civ = xsGetPlayerCivilization(jugador);" in texto,
+              "el script mira la civilización del jugador en cada paso")
+    sin = (MOD / "resources" / "_common" / "xs" / "guia_fast_castle.xs").read_text(encoding="ascii")
+    comprobar("if (civ ==" not in sin, "una guía sin variantes no compara civilizaciones")
+    motor = (GUIAS_DIR / "xs" / "motor.xs").read_text(encoding="utf-8")
+    comprobar("guiaTitulo(paso)" not in motor and "guiaReferencia(paso)" not in motor,
+              "el motor pasa el jugador al título, el texto y la referencia")
+
+    base = json.loads((GUIAS_DIR / "build_orders" / "arqueros_22.json").read_text(encoding="utf-8"))
+    casos = [({"klingons": {"referencia": "1:00"}}, "desconocida"),
+             ({"britons": {"titulo": "Otro"}}, "titulo_en"),
+             ({"britons": {"icono": "casa"}}, "no se pueden cambiar"),
+             ({"britons": {"condiciones": [{"unidades": "dragones", "min": 1}]}}, "dragones"),
+             ({"britons": {}}, "algún cambio")]
+    for civs, espera in casos:
+        datos = json.loads(json.dumps(base))
+        datos["pasos"][0]["civs"] = civs
+        p = tmp / "civ_mala.json"
+        p.write_text(json.dumps(datos), encoding="utf-8")
+        try:
+            B.load_build_order(p)
+            ok = False
+        except B.BuildOrderError as e:
+            ok = espera in str(e)
+        comprobar(ok, f"civs = {civs} da error")
+
+    # Lector: la guía llega ya adaptada a la civilización del .xsdat.
+    horas = [p["referencia"] for p in AR["pasos"][:5]] + [-1] * (len(AR["pasos"]) - 5)
+    archivo = tmp / "[AoE2C] Arabia.xsdat"
+
+    def leer(civ: int, version: int = 3) -> dict:
+        e = estado_de(AR, 330, horas)
+        e.civ = civ
+        L.escribir_prueba(archivo, AR, e, version=version)
+        guia, leido = L.parsear(archivo.read_bytes(), GUIAS)
+        comprobar(guia["id"] == "arqueros" and leido.civ == (civ if version >= 3 else 0), f"se lee la partida (civ {civ})")
+        return guia
+
+    britanos, francos, persas, otra = leer(1), leer(2), leer(8), leer(4)
+    comprobar(britanos["pasos"][5]["titulo"] == "Segundo jabalí, 12 en comida"
+              and britanos["pasos"][6]["condiciones"][1]["min"] == 7, "britanos: 12 en comida y 7 leñadores")
+    comprobar(britanos["pasos"][-1]["referencia"] == 13 * 60 + 30 and britanos["nombre_meta"] == AR["nombre_meta"],
+              "britanos: los 10 arqueros, antes (galerías más rápidas)")
+    comprobar(francos["pasos"][4]["condiciones"][2]["min"] == 5 and "Collera" in francos["pasos"][13]["texto"],
+              "francos: 5 en bayas y la Collera gratis")
+    comprobar([p["referencia"] for p in persas["pasos"]][:2] == [33, 76] and "50 de madera" in persas["pasos"][0]["texto"],
+              "persas: referencias antes y el recurso extra del inicio")
+    comprobar(all("civs" not in p for p in persas["pasos"]), "la guía adaptada ya no lleva las variantes")
+    comprobar(otra is AR, "otra civilización (celtas) ve la guía general")
+    comprobar(leer(1, version=2) is AR, "un registro sin civilización (formato 2) ve la guía general")
+    v = O_construir_vista(britanos, estado_de(britanos, 400, [p["referencia"] for p in britanos["pasos"][:5]]
+                                               + [-1] * (len(britanos["pasos"]) - 5)))
+    comprobar(v.condiciones[1].valor.endswith("/12"), "el overlay cuenta hasta 12 en comida con britanos")
+
+
+def O_construir_vista(guia: dict, e: L.Estado):
+    from PySide6.QtWidgets import QApplication
+    QApplication.instance() or QApplication(sys.argv)
+    import overlay as O
+    return O.construir_vista(guia, e)
+
+
 def main():
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
@@ -605,6 +681,7 @@ def main():
         test_panel(tmp)
         test_overlay_con_panel(tmp)
         test_tierlist(tmp)
+        test_variantes_civ(tmp)
     print("\nTodo bien.")
 
 

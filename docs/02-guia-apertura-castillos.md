@@ -318,6 +318,7 @@ Cada paso lleva:
 - `texto`: la instrucción completa, que solo se ve en el paso actual.
 - `titulo_en` y `texto_en`: lo mismo en inglés. Las etiquetas de las condiciones ("Casas", "Leñadores"...) se traducen solas (`ETIQUETAS_EN` en `build.py`).
 - `icono`, `referencia` (`m:ss`) y `condiciones`.
+- `civs` (opcional): lo que cambia ese paso para algunas civilizaciones. Por ejemplo, `{"britons": {"titulo": ..., "titulo_en": ..., "texto": ..., "texto_en": ..., "condiciones": [...]}, "persians": {"referencia": "1:16"}}`. Se puede cambiar `titulo`, `texto` (cada uno con su `_en`), `referencia` y `condiciones`; lo demás se queda como en el paso. El número de pasos y los iconos son iguales para todas. Las civilizaciones van por su clave de `tecnologias.json` (el nombre en inglés en minúsculas).
 
 El paso se cumple cuando se cumplen todas sus condiciones:
 
@@ -335,6 +336,16 @@ Iconos: `casa`, `molino`, `campamento_maderero`, `campamento_minero`, `granja`, 
 
 **Tierlist** (opcional, `tierlist`): `{"S": [...], "A": [...], "B": [...], "C": [...]}` con claves de `tecnologias.json` (`carretilla`, `collera`, `forja`, `barda_escamas`, `ballestero`, `linea_sangre`…), cada una una sola vez. Es la de la guía en general; `tierlist.json` la ajusta por mapa y civilización. Al cambiar `tierlist.json`, sube la `version` de las guías.
 
+**Pasos por civilización:** el script mira la civilización del jugador (`xsGetPlayerCivilization`) en cada paso, y la app usa la que trae el `.xsdat` (`adaptar_a_civ` en `lector.py`). Una guía con `civs` genera un manifiesto de versión 4, que pide la app 1.7.0 o posterior (`APP_MINIMA_GUIA` en `content/catalogo.py`). Las guías Arqueros 22 y Hombres de armas + arqueros se adaptan a tres civilizaciones:
+
+| Civilización | Bonus del juego | Cambios |
+|---|---|---|
+| Britanos | Pastores +25 %; galerías de tiro +10 % más rápidas | Mención de los pastores, 12 en comida (el aldeano 17 va a la madera) y 7 leñadores; los arqueros, unos segundos antes |
+| Francos | Recolectores +15 %; tecnologías del molino gratis | 5 en bayas (el segundo jabalí lo trae el aldeano 17) y aviso de la Collera gratis en las granjas |
+| Persas | +50 de madera y +50 de comida; centro urbano +5 %/+10 % más rápido en Oscura/Feudal | Mención del inicio y referencias un 5 % antes (la llegada a Feudal, unos 30 s antes) |
+
+Los números son una primera estimación, igual que los tiempos de referencia: hay que probarlos en partida.
+
 Para añadir edificios, tareas o tecnologías, se amplían las tablas del principio de `build.py`. Los IDs salen de `resources\_common\dat\CivTechTrees\*.json` y `random_map.def`.
 
 ## Límites
@@ -342,7 +353,7 @@ Para añadir edificios, tareas o tecnologías, se amplían las tablas del princi
 - **Solo en partidas con estos mapas**, contra la IA o en una sala personalizada. **No funciona en clasificatorias**, porque ahí solo se juega con mapas oficiales. Para clasificatorias existen overlays externos como RTS_Overlay, que se avanzan a mano o por tiempo.
 - **El panel tapa parte de la vista** arriba en el centro: unas 10 líneas de unos 50 caracteres. El juego no deja moverlo; se puede acortar con `pasos_hechos_visibles` y `pasos_siguientes_visibles`.
 - **Un solo color por panel:** el juego solo acepta la etiqueta de color al principio del texto, así que el panel no puede colorear cada línea.
-- **Civilizaciones con un inicio distinto** (más aldeanos, pastos en lugar de granjas, casas que no hacen falta…) pueden seguir la guía, pero los números y los tiempos no les cuadran. Los pastos no cuentan como granjas.
+- **Civilizaciones con un inicio distinto** (más aldeanos, pastos en lugar de granjas, casas que no hacen falta…) pueden seguir la guía, pero los números y los tiempos no les cuadran, salvo en los pasos que tengan su variante (`civs`). Los pastos no cuentan como granjas.
 - **Multijugador:** el juego reparte a los demás jugadores el `.xs` que el anfitrión tiene en la carpeta `xs` de su perfil. Sin probar.
 
 ## Lo que aprendimos de XS
@@ -382,6 +393,7 @@ Para añadir edificios, tareas o tecnologías, se amplían las tablas del princi
 - **Probar el historial en una partida:** que se abra al salir, que la pestaña del menú no tape ningún botón del juego y que los tiempos de Feudal y Castillos cuadren con la pantalla de puntuación.
 - **Civilización en el historial:** el `.xsdat` ya la incluye (versión 3, para la tierlist); falta guardarla en el historial.
 - **Probar la tierlist en una partida:** que `xsGetPlayerCivilization` da la civilización correcta, que `xsGetTechState` devuelve "desactivada" (-1) con las tecnologías que la civilización no tiene y "terminada" con las que da gratis (carretilla de los vikingos, herrería de los magiares). Los niveles son una primera estimación, igual que los tiempos de referencia.
+- **Probar los pasos por civilización en una partida** (Arqueros 22 con britanos, francos y persas): que el script y el overlay muestren la variante y que los números y las referencias sean razonables. Siguientes candidatas: las civilizaciones con un inicio distinto (chinos, mayas, hunos…), y Scouts, Fast Castle y Drush FC.
 - **Tierlist: tecnología única de Castillos** de cada civilización (en `civilizations.json`, `unique_tech_id_1`): no está, porque cada una necesita su propio nivel.
 
 - **Probar en una partida** que al salir de la partida se reinicia y que la animación de plegado va fluida.
