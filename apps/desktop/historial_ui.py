@@ -86,6 +86,17 @@ def resumen_rivales(reg: dict, yo: int | None) -> str:
     return tx("hi_vs", nombre=rivales[0]["nombre"]) + otros
 
 
+def cambio_elo(reg: dict, perfil: int | None) -> tuple[str, object]:
+    """«+44» (verde) o «−42» (ámbar) del jugador en una ranked; "" si no se sabe."""
+    par = R.elo_de(reg, perfil)
+    if par is None:
+        return "", APAGADO
+    dif = par[1] - par[0]
+    if dif == 0:
+        return "±0", APAGADO
+    return (f"+{dif}", BIEN) if dif > 0 else (f"−{-dif}", ATENCION)
+
+
 def desfase(seg: int | float | None) -> tuple[str, object]:
     """Texto y color de una diferencia de tiempo (negativo = más rápido)."""
     if seg is None:
@@ -501,9 +512,16 @@ class ListaPartidas(QWidget):
         self.update()
 
     def _fila_ranked(self, p: QPainter, reg: dict, y: float, ancho: float, elegida: bool):
-        """Ranked: fecha y modo («RM 1v1») arriba; debajo, mapa y rival, y la civilización propia."""
+        """Ranked: fecha, modo («RM 1v1») y elo ganado o perdido arriba; debajo, mapa y
+        rival, y la civilización propia."""
         texto(p, QRectF(12, y + 8, ancho - 60, 18), fecha_corta(reg["fecha"]), fuente(9.5, QFont.Weight.Bold), TEXTO)
-        texto(p, QRectF(12, y + 8, ancho, 18), R.titulo(reg), fuente(8.5, QFont.Weight.Bold), ACENTO, DER)
+        dif, c_dif = cambio_elo(reg, self.yo)
+        f_dif = fuente(10, QFont.Weight.Bold)
+        ancho_dif = QFontMetricsF(f_dif).horizontalAdvance(dif) + 8 if dif else 0
+        if dif:
+            texto(p, QRectF(12, y + 8, ancho, 18), dif, f_dif, c_dif, DER)
+        texto(p, QRectF(12, y + 8, ancho - ancho_dif, 18), R.titulo(reg), fuente(8.5, QFont.Weight.Bold),
+              APAGADO if dif else ACENTO, DER)
         mia = R.yo_en(reg, self.yo)
         civ = nombre_civ(mia["civ"]) if mia else ""
         f_civ = fuente(8.5, QFont.Weight.DemiBold)
@@ -696,18 +714,21 @@ class TablaPasos(QWidget):
 
 class TablaJugadores(QWidget):
     """Jugadores de una partida ranked, por equipos (el propio primero): color,
-    nombre y civilización."""
+    nombre, civilización y, si la API lo dio, el elo con el que empezó y lo que ganó
+    o perdió."""
 
     FILA, CABECERA, HUECO = 34, 30, 10
+    ELO = 110  # ancho de la columna del elo
 
     def __init__(self):
         super().__init__()
         self.equipos: list[list[dict]] = []
+        self.registro: dict | None = None
         self.yo: int | None = None
 
     def poner(self, registro: dict | None, yo: int | None):
         self.equipos = R.equipos(registro, yo) if registro else []
-        self.yo = yo
+        self.registro, self.yo = registro, yo
         filas = sum(len(e) for e in self.equipos)
         self.setFixedHeight(self.CABECERA + self.FILA * filas + self.HUECO * max(0, len(self.equipos) - 1) + 10)
         self.update()
@@ -718,6 +739,11 @@ class TablaJugadores(QWidget):
         caja(p, r, RADIO, TARJETA, BORDE)
         w = r.width()
         texto(p, QRectF(16, 8, 200, 20), tx("hi_jugadores"), fuente(10.5, QFont.Weight.Bold), TEXTO)
+        con_elo = bool(self.registro and self.registro.get("elo"))
+        col_elo = self.ELO if con_elo else 0
+        if con_elo:
+            texto(p, QRectF(w - 16 - col_elo, 8, col_elo, 20), tx("hi_col_elo"), fuente(7.5, QFont.Weight.Bold, 1.1),
+                  APAGADO, DER)
         y = self.CABECERA
         for k, equipo in enumerate(self.equipos):
             if k:
@@ -733,9 +759,18 @@ class TablaJugadores(QWidget):
                 f_civ = fuente(9, QFont.Weight.Medium)
                 civ = nombre_civ(j["civ"])
                 ancho_civ = QFontMetricsF(f_civ).horizontalAdvance(civ) + 4
-                texto(p, QRectF(28, y, w - 60 - ancho_civ, self.FILA), j["nombre"],
+                fin = w - 16 - (col_elo + 24 if con_elo else 0)
+                texto(p, QRectF(28, y, fin - 40 - ancho_civ, self.FILA), j["nombre"],
                       fuente(9.5, QFont.Weight.Bold if soy else QFont.Weight.DemiBold), TEXTO if soy else SECUNDARIO)
-                texto(p, QRectF(w - 16 - ancho_civ, y, ancho_civ, self.FILA), civ, f_civ, SECUNDARIO, DER)
+                texto(p, QRectF(fin - ancho_civ, y, ancho_civ, self.FILA), civ, f_civ, SECUNDARIO, DER)
+                par = R.elo_de(self.registro, j["perfil"]) if con_elo else None
+                if par is not None:
+                    dif, c_dif = cambio_elo(self.registro, j["perfil"])
+                    f_dif = fuente(8.5, QFont.Weight.Bold)
+                    ancho_dif = QFontMetricsF(f_dif).horizontalAdvance("−000") + 4
+                    texto(p, QRectF(w - 16 - ancho_dif, y, ancho_dif, self.FILA), dif, f_dif, c_dif, DER)
+                    texto(p, QRectF(w - 16 - col_elo, y, col_elo - ancho_dif - 8, self.FILA), str(par[0]),
+                          fuente(9.5, QFont.Weight.DemiBold), TEXTO, DER)
                 y += self.FILA
         p.end()
 
@@ -982,6 +1017,8 @@ class ContenidoHistorial(QWidget):
         self.titulo_detalle = QLabel("")
         self.titulo_detalle.setFont(titulo(13, 0.3))
         fila.addWidget(self.titulo_detalle)
+        self.resultado_detalle = etiqueta("", 9, QFont.Weight.Bold)  # ranked: Victoria o Derrota
+        fila.addWidget(self.resultado_detalle, 0, Qt.AlignmentFlag.AlignVCenter)
         self.guia_detalle = etiqueta("", 9.5, QFont.Weight.Medium, APAGADO)
         fila.addWidget(self.guia_detalle, 1, Qt.AlignmentFlag.AlignBottom)
         self.copiar = QPushButton(tx("hi_copiar"))
@@ -1075,10 +1112,12 @@ class ContenidoHistorial(QWidget):
             return
         self._leyendo_ranked = True
         self._ranked_leidas_en = time.monotonic()
+        perfil = self.perfil()
 
         def trabajo():
             try:
                 lista = R.leer()
+                R.completar(lista, perfil or R.perfil_comun(lista))  # resultado y elo, de la API
             except Exception:  # noqa: BLE001 - un archivo raro no debe tumbar el historial
                 lista = None
             self.ranked_leidas.emit(lista)
@@ -1086,7 +1125,7 @@ class ContenidoHistorial(QWidget):
 
     def _poner_ranked(self, lista):
         self._leyendo_ranked = False
-        if lista is None or [r["id"] for r in lista] == [r["id"] for r in self.ranked]:
+        if lista is None or lista == self.ranked:
             return
         self.ranked = lista
         self.refrescar()
@@ -1232,6 +1271,7 @@ class ContenidoHistorial(QWidget):
             self._pintar_general(regs)
         else:
             self.cuerpo_ranked.hide()
+            self.resultado_detalle.hide()
             self.cuerpo_practica.show()
             self.borrar.show()
             self.fichas.preparar(claves, nombres)
@@ -1239,7 +1279,14 @@ class ContenidoHistorial(QWidget):
 
     def _pintar_resumen_ranked(self, regs: list[dict], yo: int | None):
         n = len(regs)
-        self.rotulo_ranked.setText(tx("hi_ranked_una") if n == 1 else tx("hi_ranked_partidas", n=n))
+        partes = [tx("hi_ranked_una") if n == 1 else tx("hi_ranked_partidas", n=n)]
+        resultados = [r.get("resultado") for r in regs]
+        if any(resultados):
+            partes.append(tx("hi_balance", v=resultados.count("victoria"), d=resultados.count("derrota")).upper())
+        ultimo = next((par for r in reversed(regs) if (par := R.elo_de(r, yo))), None)
+        if ultimo:
+            partes.append(tx("hi_elo_actual", elo=ultimo[1]))
+        self.rotulo_ranked.setText("  ·  ".join(partes))
         mias = [R.yo_en(r, yo) for r in regs]
         self.conteo_civs.poner([nombre_civ(j["civ"]) for j in mias if j])
         self.conteo_mapas.poner([mapa_corto(r["mapa"]) for r in regs])
@@ -1252,6 +1299,12 @@ class ContenidoHistorial(QWidget):
         self.borrar.hide()
         self.titulo_detalle.setText(f"{fecha_corta(sel['fecha'])} · {mapa_corto(sel['mapa'])}")
         self.guia_detalle.setText(R.titulo(sel))
+        resultado = sel.get("resultado")
+        c = BIEN if resultado == "victoria" else ATENCION
+        self.resultado_detalle.setText(tx(f"hi_{resultado}") if resultado else "")
+        self.resultado_detalle.setStyleSheet(f"color: {c.name()}; background: {_rgba(c, 26)}; "
+                                             f"border: 1px solid {_rgba(c, 90)}; border-radius: 2px; padding: 2px 8px;")
+        self.resultado_detalle.setVisible(bool(resultado))
         self._poner_repeticion(sel)
         self.jugadores.poner(sel, yo)
 

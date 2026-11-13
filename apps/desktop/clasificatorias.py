@@ -9,15 +9,20 @@ Leer una cabecera cuesta unos 60 ms, así que lo leído se guarda en
 clasificatorias.json (también las repeticiones que no son clasificatorias, como None)
 y solo se leen las nuevas. Las de un jugador ("SP Replay...") ni se abren. Una
 repetición que aún se está escribiendo (partida en curso) se deja para más tarde.
+
+Las de Partida rápida no son clasificatorias (la cabecera lo dice) y no entran. El
+resultado y el elo no están en la repetición: salen de la API oficial (completar()).
 """
 
 import json
 import os
 import time
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
 import cabecera as CB
+import estadisticas as E
 import repeticiones
 import rutas
 
@@ -111,6 +116,118 @@ def leer(savegame: Path | None = None, archivo: Path | None = ARCHIVO, ahora=tim
         _guardar(archivo, vistas)
     out.sort(key=lambda r: r["fecha"])
     return out
+
+
+# --- Resultado y elo, de la API oficial -----------------------------------------
+#
+# getRecentMatchHistory da las últimas partidas de un jugador con, por jugador, si ganó
+# (outcome 1) o perdió (0) y su elo antes y después. Cada partida se empareja con su
+# repetición por los jugadores y la hora de inicio (la repetición empieza unos segundos
+# después). Lo encontrado se guarda en clasificatorias.json: "resultado" (victoria o
+# derrota del jugador) y "elo" ({perfil: [antes, después]}). La API solo guarda las
+# últimas partidas, así que pasados DIAS_API ya no se pregunta por una partida.
+
+URL_HISTORIAL = "https://aoe-api.worldsedgelink.com/community/leaderboard/getRecentMatchHistory"
+DIAS_API = 14
+MARGEN_INICIO = 300  # segundos entre el inicio según la API y la hora en el nombre de la repetición
+ESPERA_API = 300.0  # segundos entre preguntas por partidas que aún no salen
+_ultima_peticion = -ESPERA_API
+
+
+def url_historial(perfil: int) -> str:
+    return f"{URL_HISTORIAL}?{urllib.parse.urlencode({'title': 'age2', 'profile_ids': f'[{int(perfil)}]'})}"
+
+
+def leer_historial(respuesta: object) -> list[dict]:
+    """Las partidas de una respuesta de getRecentMatchHistory: {"inicio", "jugadores":
+    {perfil: (outcome, antes, después)}}. Las entradas raras se saltan."""
+    if not isinstance(respuesta, dict):
+        raise E.EstadisticasError("respuesta inesperada: no es un objeto")
+    resultado = respuesta.get("result")
+    if not isinstance(resultado, dict) or resultado.get("code") != 0:
+        mensaje = resultado.get("message") if isinstance(resultado, dict) else None
+        raise E.EstadisticasError(f"la API respondió con un error: {mensaje or resultado!r}")
+    partidas = respuesta.get("matchHistoryStats")
+    if not isinstance(partidas, list):
+        raise E.EstadisticasError("respuesta inesperada: matchHistoryStats no es una lista")
+    out = []
+    for m in partidas:
+        try:
+            jugadores = {}
+            for x in m["matchhistorymember"]:
+                jugadores[int(x["profile_id"])] = (int(x["outcome"]), int(x["oldrating"]), int(x["newrating"]))
+            out.append({"inicio": int(m["startgametime"]), "jugadores": jugadores})
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+
+
+def emparejar(registro: dict, partidas: list[dict]) -> dict | None:
+    """La partida de la API con los mismos jugadores y la hora de inicio más cercana."""
+    try:
+        inicio = datetime.fromisoformat(registro["fecha"]).timestamp()
+    except (KeyError, ValueError):
+        return None
+    perfiles = {j["perfil"] for j in registro["jugadores"] if j["perfil"] > 0}
+    candidatas = [m for m in partidas if set(m["jugadores"]) == perfiles and abs(m["inicio"] - inicio) <= MARGEN_INICIO]
+    return min(candidatas, key=lambda m: abs(m["inicio"] - inicio), default=None)
+
+
+def poner_resultado(registro: dict, partida: dict, yo: int) -> bool:
+    """Anota el elo de todos y el resultado del jugador. False si no está en la partida."""
+    if yo not in partida["jugadores"]:
+        return False
+    registro["elo"] = {str(p): [antes, despues] for p, (_, antes, despues) in partida["jugadores"].items()}
+    outcome = partida["jugadores"][yo][0]
+    registro["resultado"] = "victoria" if outcome == 1 else "derrota" if outcome == 0 else None
+    return True
+
+
+def pendientes(registros: list[dict], ahora: float) -> list[dict]:
+    """Ranked sin resultado aún y lo bastante recientes para que la API las tenga."""
+    out = []
+    for r in registros:
+        if "resultado" in r:
+            continue
+        try:
+            if ahora - datetime.fromisoformat(r["fecha"]).timestamp() <= DIAS_API * 86400:
+                out.append(r)
+        except (KeyError, ValueError):
+            continue
+    return out
+
+
+def completar(registros: list[dict], yo: int | None, archivo: Path | None = ARCHIVO,
+              pedir=E._pedir_url, ahora=time.time, forzar: bool = False) -> bool:
+    """Pide a la API el resultado y el elo de las ranked que no los tienen y los guarda.
+    Devuelve True si anotó alguno. Sin conexión o con un error de la API, no hace nada
+    (se vuelve a probar pasados ESPERA_API segundos)."""
+    global _ultima_peticion
+    if not yo:
+        return False
+    faltan = pendientes(registros, ahora())
+    if not faltan or (not forzar and time.monotonic() - _ultima_peticion < ESPERA_API):
+        return False
+    _ultima_peticion = time.monotonic()
+    try:
+        partidas = leer_historial(json.loads(pedir(url_historial(yo))))
+    except (E.EstadisticasError, ValueError):
+        return False
+    hechas = [r for r in faltan if (m := emparejar(r, partidas)) is not None and poner_resultado(r, m, yo)]
+    if not hechas:
+        return False
+    vistas = _cargar(archivo)
+    for r in hechas:
+        if vistas.get(r["id"]):
+            vistas[r["id"]].update(resultado=r["resultado"], elo=r["elo"])
+    _guardar(archivo, vistas)
+    return True
+
+
+def elo_de(registro: dict, perfil: int | None) -> tuple[int, int] | None:
+    """(antes, después) del jugador, si se sabe."""
+    par = (registro.get("elo") or {}).get(str(perfil))
+    return (par[0], par[1]) if isinstance(par, list) and len(par) == 2 else None
 
 
 # --- Lo que muestra el historial ----------------------------------------------

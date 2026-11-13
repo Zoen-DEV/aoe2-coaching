@@ -330,6 +330,36 @@ def test_ranked(tmp: Path):
         CB.leer_archivo = original
     comprobar(R.nombre_repeticion(regs[0]) == ranked.removesuffix(".aoe2record"), "nombre sin extensión")
 
+    # Resultado y elo, de la API (con una respuesta inventada).
+    import json
+    from datetime import datetime
+    inicio = int(datetime(2026, 11, 12, 12, 13, 5).timestamp())  # la API: unos segundos antes que la repetición
+    respuesta = {"result": {"code": 0, "message": "SUCCESS"}, "matchHistoryStats": [
+        {"startgametime": inicio, "matchhistorymember": [
+            {"profile_id": yo, "outcome": 1, "oldrating": 949, "newrating": 993},
+            {"profile_id": rival, "outcome": 0, "oldrating": 1010, "newrating": 966}]},
+        {"startgametime": inicio + 7200, "matchhistorymember": [  # otra partida, con otro rival
+            {"profile_id": yo, "outcome": 0, "oldrating": 993, "newrating": 950},
+            {"profile_id": 999, "outcome": 1, "oldrating": 980, "newrating": 1020}]},
+        {"startgametime": "roto"}]}
+    pedidas = []
+    pedir = lambda url: pedidas.append(url) or json.dumps(respuesta).encode()  # noqa: E731
+    ahora = lambda: datetime(2026, 11, 13).timestamp()  # noqa: E731
+    comprobar(R.completar(regs, yo, cache, pedir, ahora, forzar=True), "la API trae el resultado")
+    comprobar(pedidas == [R.URL_HISTORIAL + "?title=age2&profile_ids=%5B111%5D"], "una sola petición, con el perfil")
+    comprobar(regs[0]["resultado"] == "victoria" and R.elo_de(regs[0], yo) == (949, 993)
+              and R.elo_de(regs[0], rival) == (1010, 966), "victoria y elo antes y después de cada jugador")
+    comprobar("resultado" not in regs[1], "una partida sin su pareja en la API se queda sin resultado")
+    comprobar(R.leer(sg, cache)[0]["resultado"] == "victoria", "el resultado queda guardado")
+    comprobar(not R.completar(regs, yo, cache, pedir, ahora) and len(pedidas) == 1,
+              "no se vuelve a preguntar enseguida")
+    comprobar(R.pendientes(regs, datetime(2026, 12, 30).timestamp()) == [], "pasados unos días ya no se pregunta")
+    import estadisticas as E
+
+    def falla(url):
+        raise E.EstadisticasError("sin conexión", reintentable=True)
+    comprobar(not R.completar(regs, yo, cache, falla, ahora, forzar=True), "sin conexión, no pasa nada")
+
     h = H.historial_de_ejemplo(GUIA, 3)
     repeticiones.poner_perfil(sg.parent)
     try:
@@ -354,6 +384,12 @@ def test_ranked(tmp: Path):
         c.pulsar_borrar()
         c.pulsar_borrar()
         comprobar(c.buscar(ranked) is not None, "una ranked no se borra")
+        comprobar(c.resultado_detalle.isVisibleTo(c) and c.resultado_detalle.text() == "Victoria",
+                  "el detalle dice si ganaste")
+        comprobar(HU.cambio_elo(c.buscar(ranked), yo)[0] == "+44", "y cuánto elo")
+        c.filtrar_tipo(HU.RANKED)
+        comprobar("1 V · 0 D" in c.rotulo_ranked.text() and "ELO 993" in c.rotulo_ranked.text(),
+                  f"resumen: balance y elo actual («{c.rotulo_ranked.text()}»)")
         c.elegir(h.registros[0]["id"])
         comprobar(c.cuerpo_practica.isVisibleTo(c) and c.borrar.isVisibleTo(c) and not c.copiar.isEnabled(),
                   "una práctica sin repetición: Copiar desactivado")
