@@ -9,8 +9,10 @@ ventana flotante) y la ventana flotante, que solo se ve en el menú principal de
   con varias guías, una fila por guía; con solo ranked, civilizaciones, mapas y rivales.
 - Con una partida elegida: sus hitos frente a la media de su guía, su lugar en la
   evolución, el paso a paso y la carpeta de su repetición (ver repeticiones.py). Si es
-  ranked, sus jugadores. Las dos con «Copiar nombre» (el de la repetición, para
-  buscarla en el juego).
+  ranked, sus jugadores (con victorias, derrotas y últimas partidas, de la API), la
+  duración, el gráfico de la partida con sus filtros y el build order (de los comandos de
+  la repetición, ver analisis.py). Las dos con «Copiar nombre» (el de la repetición,
+  para buscarla en el juego).
 
 Los textos que explican algo van en puntos de información (InfoPunto), no a la vista.
 """
@@ -21,8 +23,10 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
+import analisis as A
 import civilizaciones
 import clasificatorias as R
+import nombres_juego
 import repeticiones
 import textos
 
@@ -32,7 +36,7 @@ from PySide6.QtWidgets import (QButtonGroup, QFrame, QHBoxLayout, QLabel, QPushB
                                QVBoxLayout, QWidget)
 
 # Mismos colores que el panel (estilo.py, «Panel e historial»), no los del overlay.
-from estilo import ATENCION, BANDERAS_CLIC, BIEN, ORO_CLARO, PISTA, SERIE_CASTILLOS, SERIE_FEUDAL
+from estilo import ATENCION, BANDERAS_CLIC, BIEN, MAL, ORO_CLARO, PISTA, SERIE_CASTILLOS, SERIE_FEUDAL
 from estilo import ORO as ACENTO
 from estilo import P_APAGADO as APAGADO
 from estilo import P_BORDE as BORDE
@@ -712,23 +716,35 @@ class TablaPasos(QWidget):
 # --- Ranked -------------------------------------------------------------------
 
 
-class TablaJugadores(QWidget):
-    """Jugadores de una partida ranked, por equipos (el propio primero): color,
-    nombre, civilización y, si la API lo dio, el elo con el que empezó y lo que ganó
-    o perdió."""
+def color_jugador(j: dict) -> QColor:
+    return COLORES_JUGADOR[j["color"]] if 0 <= j["color"] < len(COLORES_JUGADOR) else APAGADO
 
-    FILA, CABECERA, HUECO = 34, 30, 10
+
+class TablaJugadores(QWidget):
+    """Jugadores de una partida ranked, por equipos (el propio primero): color, nombre
+    y, debajo, un punto por cada una de sus últimas partidas (verde victoria, rojo
+    derrota); civilización y, si la API lo dio, victorias y derrotas, el elo con el que
+    empezó y lo que ganó o perdió."""
+
+    FILA, CABECERA, HUECO = 44, 30, 10
     ELO = 110  # ancho de la columna del elo
+    VD = 96  # ancho de la columna de victorias y derrotas
+    PUNTO = 4.0  # radio de los puntos de forma
 
     def __init__(self):
         super().__init__()
         self.equipos: list[list[dict]] = []
         self.registro: dict | None = None
         self.yo: int | None = None
+        self.rachas: list[tuple[QRectF, int]] = []  # zona de los puntos y racha, para el consejo
+        self.info = InfoPunto(tx("hi_jugadores_nota"), self)
+        junto_a(self.info, 16, tx("hi_jugadores"), fuente(10.5, QFont.Weight.Bold), 10)
+        self.setMouseTracking(True)
 
     def poner(self, registro: dict | None, yo: int | None):
         self.equipos = R.equipos(registro, yo) if registro else []
         self.registro, self.yo = registro, yo
+        self.info.setVisible(bool(registro and registro.get("jugadores_api")))
         filas = sum(len(e) for e in self.equipos)
         self.setFixedHeight(self.CABECERA + self.FILA * filas + self.HUECO * max(0, len(self.equipos) - 1) + 10)
         self.update()
@@ -740,10 +756,16 @@ class TablaJugadores(QWidget):
         w = r.width()
         texto(p, QRectF(16, 8, 200, 20), tx("hi_jugadores"), fuente(10.5, QFont.Weight.Bold), TEXTO)
         con_elo = bool(self.registro and self.registro.get("elo"))
+        con_vd = bool(self.registro and self.registro.get("jugadores_api"))
         col_elo = self.ELO if con_elo else 0
+        col_vd = self.VD if con_vd else 0
+        f_cab = fuente(7.5, QFont.Weight.Bold, 1.1)
         if con_elo:
-            texto(p, QRectF(w - 16 - col_elo, 8, col_elo, 20), tx("hi_col_elo"), fuente(7.5, QFont.Weight.Bold, 1.1),
-                  APAGADO, DER)
+            texto(p, QRectF(w - 16 - col_elo, 8, col_elo, 20), tx("hi_col_elo"), f_cab, APAGADO, DER)
+        x_vd = w - 16 - col_elo - (24 if con_elo else 0) - col_vd
+        if con_vd:
+            texto(p, QRectF(x_vd, 8, col_vd, 20), tx("hi_col_vd"), f_cab, APAGADO, DER)
+        self.rachas = []
         y = self.CABECERA
         for k, equipo in enumerate(self.equipos):
             if k:
@@ -754,15 +776,30 @@ class TablaJugadores(QWidget):
                 soy = j["perfil"] == self.yo
                 if soy:
                     caja(p, QRectF(6, y + 2, w - 12, self.FILA - 4), 3, color(TEXTO, 9))
-                c = COLORES_JUGADOR[j["color"]] if 0 <= j["color"] < len(COLORES_JUGADOR) else APAGADO
-                p.fillRect(QRectF(14, y + 9, 3, self.FILA - 18), c)
+                p.fillRect(QRectF(14, y + 10, 3, self.FILA - 20), color_jugador(j))
+                api = R.datos_api(self.registro, j["perfil"]) if self.registro else None
+                ultimas = (api or {}).get("ultimas") or []
                 f_civ = fuente(9, QFont.Weight.Medium)
                 civ = nombre_civ(j["civ"])
                 ancho_civ = QFontMetricsF(f_civ).horizontalAdvance(civ) + 4
-                fin = w - 16 - (col_elo + 24 if con_elo else 0)
-                texto(p, QRectF(28, y, fin - 40 - ancho_civ, self.FILA), j["nombre"],
+                fin = x_vd - (24 if con_vd else 0) if con_vd else w - 16 - (col_elo + 24 if con_elo else 0)
+                alto_nombre = 24 if ultimas else self.FILA
+                texto(p, QRectF(28, y + (6 if ultimas else 0), fin - 40 - ancho_civ, alto_nombre), j["nombre"],
                       fuente(9.5, QFont.Weight.Bold if soy else QFont.Weight.DemiBold), TEXTO if soy else SECUNDARIO)
+                if ultimas:
+                    cy = y + 33
+                    p.setPen(Qt.PenStyle.NoPen)
+                    for n, res in enumerate(ultimas):
+                        p.setBrush(BIEN if res == 1 else MAL)
+                        p.drawEllipse(QPointF(28 + self.PUNTO + n * (2 * self.PUNTO + 5), cy), self.PUNTO, self.PUNTO)
+                    ancho = len(ultimas) * (2 * self.PUNTO + 5)
+                    if isinstance(api.get("racha"), int):
+                        self.rachas.append((QRectF(24, cy - 8, ancho + 8, 16), api["racha"]))
                 texto(p, QRectF(fin - ancho_civ, y, ancho_civ, self.FILA), civ, f_civ, SECUNDARIO, DER)
+                if con_vd and api:
+                    f_vd = fuente(9.5, QFont.Weight.DemiBold)
+                    texto(p, QRectF(x_vd, y, col_vd, self.FILA), f"{api['victorias']} – {api['derrotas']}", f_vd,
+                          SECUNDARIO, DER)
                 par = R.elo_de(self.registro, j["perfil"]) if con_elo else None
                 if par is not None:
                     dif, c_dif = cambio_elo(self.registro, j["perfil"])
@@ -772,6 +809,372 @@ class TablaJugadores(QWidget):
                     texto(p, QRectF(w - 16 - col_elo, y, col_elo - ancho_dif - 8, self.FILA), str(par[0]),
                           fuente(9.5, QFont.Weight.DemiBold), TEXTO, DER)
                 y += self.FILA
+        p.end()
+
+    def mouseMoveEvent(self, e):
+        for zona, racha in self.rachas:
+            if zona.contains(e.position()):
+                n = f"+{racha}" if racha > 0 else str(racha)
+                QToolTip.showText(e.globalPosition().toPoint(), tx("hi_racha", n=n), self)
+                return
+        QToolTip.hideText()
+
+
+# --- Ranked: lo que pasó en la partida (de los comandos de la repetición) -------
+
+METRICAS = (("aldeanos", "hi_f_aldeanos"), ("apm", "hi_f_apm"))
+TIPOS_EVENTO = ((A.EDAD, "hi_f_edades"), (A.EDIFICIO, "hi_f_edificios"), (A.TECNOLOGIA, "hi_f_tecnologias"),
+                (A.UNIDAD, "hi_f_unidades"))
+TIPOS_DEFECTO = {A.EDAD, A.EDIFICIO, A.TECNOLOGIA}
+AGRUPAR = 20  # segundos: lo mismo repetido dentro de este margen va en una fila («Casa ×3»)
+MAX_COLUMNAS = 4  # jugadores en el build order
+
+
+def nombre_evento(tipo: str, id_: int) -> str:
+    grupo = {A.EDIFICIO: nombres_juego.EDIFICIOS, A.UNIDAD: nombres_juego.UNIDADES}.get(tipo,
+                                                                                       nombres_juego.TECNOLOGIAS)
+    par = grupo.get(id_)
+    if par is None:
+        return f"#{id_}"
+    return par[1] if textos.idioma() == "en" else par[0]
+
+
+def nombre_edad(edad: int | str) -> str:
+    return tx(f"hi_edad_{edad}")
+
+
+def jugadores_analisis(registro: dict, analisis: dict | None, yo: int | None) -> list[dict]:
+    """Jugadores de la partida que salen en el análisis, el propio primero."""
+    if not analisis:
+        return []
+    return [j for e in R.equipos(registro, yo) for j in e if j["numero"] in analisis["jugadores"]]
+
+
+def agrupar(eventos: list, tipos: set) -> list[list]:
+    """[t, tipo, id, cantidad] de esos tipos, con lo igual seguido en una sola fila."""
+    out: list[list] = []
+    ultimo: dict[tuple, float] = {}
+    for t, tipo, id_, n in eventos:
+        if tipo not in tipos:
+            continue
+        if out and out[-1][1] == tipo and out[-1][2] == id_ and t - ultimo[(tipo, id_)] <= AGRUPAR:
+            out[-1][3] += n
+        else:
+            out.append([t, tipo, id_, n])
+        ultimo[(tipo, id_)] = t
+    return out
+
+
+def texto_evento(tipo: str, id_: int, n: int) -> str:
+    nombre = nombre_edad(A.EDADES[id_]) if tipo == A.EDAD else nombre_evento(tipo, id_)
+    return f"{nombre} ×{n}" if n > 1 else nombre
+
+
+def marca(p: QPainter, c: QPointF, tipo: str, relleno: QColor, tam: float = 3.5):
+    """La forma de cada tipo de evento: edificio cuadrado, investigación círculo, unidad
+    triángulo y edad rombo."""
+    p.setPen(QPen(color(FONDO, 230), 1))
+    p.setBrush(relleno)
+    if tipo == A.EDIFICIO:
+        p.drawRect(QRectF(c.x() - tam, c.y() - tam, 2 * tam, 2 * tam))
+    elif tipo == A.UNIDAD:
+        p.drawPolygon([QPointF(c.x(), c.y() - tam - 0.5), QPointF(c.x() + tam + 0.5, c.y() + tam),
+                       QPointF(c.x() - tam - 0.5, c.y() + tam)])
+    elif tipo == A.EDAD:
+        t = tam + 1.5
+        p.drawPolygon([QPointF(c.x(), c.y() - t), QPointF(c.x() + t, c.y()), QPointF(c.x(), c.y() + t),
+                       QPointF(c.x() - t, c.y())])
+    else:
+        p.drawEllipse(c, tam, tam)
+
+
+def escala(maximo: float) -> tuple[float, float]:
+    """(tope, paso) redondos para el eje vertical."""
+    for paso in (5, 10, 20, 25, 50, 100):
+        if maximo <= paso * 5:
+            return max(paso, -(-maximo // paso) * paso), paso
+    return -(-maximo // 100) * 100, 100
+
+
+class LienzoPartida(QWidget):
+    """Arriba, la línea de aldeanos o de eAPM de cada jugador a lo largo de la partida, con
+    la subida de edad (barra del clic a la llegada y línea en la llegada). Debajo, un carril
+    por jugador con sus edificios, investigaciones y unidades. Al pasar el ratón, los
+    valores de ese momento o el nombre del evento."""
+
+    ALTO = 190  # zona de las líneas
+    CARRIL = 22
+    IZQ, DER_ = 44, 16
+
+    def __init__(self):
+        super().__init__()
+        self.analisis: dict | None = None
+        self.jugadores: list[dict] = []
+        self.metrica = "aldeanos"
+        self.tipos: set = set(TIPOS_DEFECTO)
+        self.mensaje = ""
+        self.raton: QPointF | None = None
+        self.puntos: list[tuple[QPointF, str, str, QColor]] = []  # marcas de los carriles, para el ratón
+        self.setMouseTracking(True)
+        self._alto()
+
+    def poner(self, analisis: dict | None, jugadores: list[dict], metrica: str, tipos: set, mensaje: str = ""):
+        self.analisis, self.jugadores, self.metrica, self.tipos, self.mensaje = (analisis, jugadores, metrica,
+                                                                                 tipos, mensaje)
+        self._alto()
+        self.update()
+
+    def _alto(self):
+        carriles = len(self.jugadores) if self.tipos else 0
+        self.setFixedHeight(self.ALTO + 14 + self.CARRIL * carriles + 26)
+
+    def _zona(self) -> QRectF:
+        return QRectF(self.IZQ, 10, self.width() - self.IZQ - self.DER_, self.ALTO - 10)
+
+    def _duracion(self) -> float:
+        return max(60.0, float(self.analisis["duracion"])) if self.analisis else 60.0
+
+    def _x(self, t: float, z: QRectF) -> float:
+        return z.left() + min(max(t, 0), self._duracion()) / self._duracion() * z.width()
+
+    def _serie(self, numero: int) -> list[tuple[float, float]]:
+        datos = self.analisis["jugadores"][numero]
+        dur = self._duracion()
+        if self.metrica == "apm":
+            return [(m * 60 + 30, n) for m, n in enumerate(datos["acciones"]) if m * 60 + 60 <= dur + 1]
+        serie = [(0.0, 0.0)]
+        for t, n in datos["aldeanos"]:
+            serie += [(t, serie[-1][1]), (t, float(n))]  # escalones
+        return serie + [(dur, serie[-1][1])]
+
+    def _valor(self, numero: int, t: float) -> float | None:
+        datos = self.analisis["jugadores"][numero]
+        if self.metrica == "apm":
+            m = int(t // 60)
+            return datos["acciones"][m] if 0 <= m < len(datos["acciones"]) else None
+        return A.aldeanos_en(datos["aldeanos"], t)
+
+    def paintEvent(self, _):
+        p = pintor(self)
+        z = self._zona()
+        if not self.analisis or not self.jugadores:
+            texto(p, QRectF(0, 0, self.width(), self.ALTO), self.mensaje, fuente(9.5, QFont.Weight.Medium), APAGADO,
+                  CEN)
+            p.end()
+            return
+        dur = self._duracion()
+        series = {j["numero"]: self._serie(j["numero"]) for j in self.jugadores}
+        maximo = max((v for s in series.values() for _, v in s), default=0)
+        tope, paso_y = escala(max(maximo, 1))
+        y = lambda v: z.bottom() - v / tope * z.height()  # noqa: E731
+        f_eje = fuente(7.5, QFont.Weight.Medium)
+        abajo = self.height() - 22
+        # Rejilla: minutos en vertical (también en los carriles) y valores en horizontal.
+        paso_x = 300 if dur <= 2400 else 600
+        t = 0
+        while t <= dur:
+            x = self._x(t, z)
+            p.setPen(QPen(color(TEXTO, 12), 1))
+            p.drawLine(QPointF(x, z.top()), QPointF(x, abajo))
+            texto(p, QRectF(x - 30, abajo + 4, 60, 16), reloj(t), f_eje, APAGADO, CEN)
+            t += paso_x
+        v = 0
+        while v <= tope:
+            p.setPen(QPen(color(TEXTO, 16), 1))
+            p.drawLine(QPointF(z.left(), y(v)), QPointF(z.right(), y(v)))
+            texto(p, QRectF(0, y(v) - 8, z.left() - 8, 16), str(int(v)), f_eje, APAGADO, DER)
+            v += paso_y
+        # Edades: barra del clic a la llegada arriba y línea discontinua en la llegada.
+        if A.EDAD in self.tipos:
+            for k, j in enumerate(self.jugadores):
+                c = color_jugador(j)
+                for edad, (clic, llegada) in self.analisis["jugadores"][j["numero"]]["edades"].items():
+                    xl = self._x(llegada, z)
+                    p.setPen(QPen(color(c, 130), 1, Qt.PenStyle.DashLine))
+                    p.drawLine(QPointF(xl, z.top()), QPointF(xl, z.bottom()))
+                    yb = z.top() + 2 + 6 * k
+                    caja(p, QRectF(self._x(clic, z), yb, max(2.0, xl - self._x(clic, z)), 3), 1.5, color(c, 200))
+                    texto(p, QRectF(xl + 3, yb - 5, 60, 14), nombre_edad(edad)[0], fuente(7.5, QFont.Weight.Bold), c)
+        # Líneas.
+        for j in self.jugadores:
+            s = series[j["numero"]]
+            if len(s) < 2:
+                continue
+            path = QPainterPath(QPointF(self._x(s[0][0], z), y(s[0][1])))
+            for t_, v_ in s[1:]:
+                path.lineTo(QPointF(self._x(t_, z), y(v_)))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(color_jugador(j), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                          Qt.PenJoinStyle.RoundJoin))
+            p.drawPath(path)
+        # Carriles.
+        self.puntos = []
+        if self.tipos:
+            yc = z.bottom() + 14
+            for j in self.jugadores:
+                c = color_jugador(j)
+                p.fillRect(QRectF(z.left() - 14, yc + 5, 3, self.CARRIL - 10), c)
+                p.setPen(QPen(color(TEXTO, 10), 1))
+                p.drawLine(QPointF(z.left(), yc + self.CARRIL / 2), QPointF(z.right(), yc + self.CARRIL / 2))
+                for t_, tipo, id_, n in agrupar(self.analisis["jugadores"][j["numero"]]["eventos"], self.tipos):
+                    centro = QPointF(self._x(t_, z), yc + self.CARRIL / 2)
+                    marca(p, centro, tipo, c)
+                    self.puntos.append((centro, f"{reloj(t_)} · {texto_evento(tipo, id_, n)}", tipo, c))
+                yc += self.CARRIL
+        self._pintar_raton(p, z)
+        p.end()
+
+    def _pintar_raton(self, p: QPainter, z: QRectF):
+        if self.raton is None:
+            return
+        lineas: list[tuple[str, QColor | None]] = []
+        if z.adjusted(0, 0, 0, 6).contains(self.raton):
+            t = (self.raton.x() - z.left()) / z.width() * self._duracion()
+            x = self._x(t, z)
+            p.setPen(QPen(color(TEXTO, 60), 1))
+            p.drawLine(QPointF(x, z.top()), QPointF(x, z.bottom()))
+            lineas.append((reloj(t), None))
+            for j in self.jugadores:
+                v = self._valor(j["numero"], t)
+                lineas.append((f"{j['nombre']}  {'—' if v is None else int(v)}", color_jugador(j)))
+        else:
+            cerca = min(self.puntos, key=lambda m: (m[0] - self.raton).manhattanLength(), default=None)
+            if cerca is None or (cerca[0] - self.raton).manhattanLength() > 9:
+                return
+            lineas.append((cerca[1], cerca[3]))
+            x = cerca[0].x()
+        f = fuente(8.5, QFont.Weight.Medium)
+        ancho = max(QFontMetricsF(f).horizontalAdvance(t_) for t_, _ in lineas) + 40
+        alto = 14 + 17 * len(lineas)
+        bx = x + 12 if x + 12 + ancho < self.width() - 4 else x - 12 - ancho
+        by = min(max(4.0, self.raton.y() - alto / 2), self.height() - alto - 4)
+        p.setBrush(Qt.BrushStyle.NoBrush)  # caja() dibuja el borde con el pincel activo
+        caja(p, QRectF(bx, by, ancho, alto), 4, color(FONDO, 250), color(ACENTO, 90))
+        for k, (t_, c) in enumerate(lineas):
+            texto(p, QRectF(bx + 10, by + 7 + 17 * k, ancho - 34, 17), t_,
+                  fuente(8.5, QFont.Weight.DemiBold if c is None else QFont.Weight.Medium),
+                  TEXTO if c is None else SECUNDARIO)
+            if c is not None:
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(c)
+                p.drawEllipse(QPointF(bx + ancho - 14, by + 7 + 17 * k + 8.5), 3.5, 3.5)
+
+    def mouseMoveEvent(self, e):
+        self.raton = e.position()
+        self.update()
+
+    def leaveEvent(self, _):
+        self.raton = None
+        self.update()
+
+
+class GraficoPartida(QWidget):
+    """El lienzo con sus filtros: aldeanos o eAPM, y qué eventos se ven (también en el
+    build order, por `al_cambiar`)."""
+
+    def paintEvent(self, _):
+        p = pintor(self)
+        caja(p, QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), RADIO, TARJETA, BORDE)
+        p.end()
+
+    def __init__(self, al_cambiar):
+        super().__init__()
+        self.al_cambiar = al_cambiar
+        self.metrica = "aldeanos"
+        self.tipos: set = set(TIPOS_DEFECTO)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(16, 10, 12, 8)
+        lay.setSpacing(8)
+        cab = QHBoxLayout()
+        cab.setSpacing(6)
+        cab.addLayout(con_info(etiqueta(tx("hi_partida"), 10.5, QFont.Weight.Bold), InfoPunto(tx("hi_partida_nota"))))
+        cab.addStretch(1)
+        self.grupo_metrica = QButtonGroup(self)
+        for clave, rotulo in METRICAS:
+            b = self._chip(tx(rotulo), clave == self.metrica)
+            b.clicked.connect(lambda _=False, c=clave: self._metrica(c))
+            self.grupo_metrica.addButton(b)
+            cab.addWidget(b)
+        cab.addSpacing(12)
+        for clave, rotulo in TIPOS_EVENTO:
+            b = self._chip(tx(rotulo), clave in self.tipos)
+            b.toggled.connect(lambda marcado, c=clave: self._tipo(c, marcado))
+            cab.addWidget(b)
+        lay.addLayout(cab)
+        self.lienzo = LienzoPartida()
+        lay.addWidget(self.lienzo)
+        self._datos: tuple = (None, [], "")
+
+    @staticmethod
+    def _chip(texto_: str, marcado: bool) -> QPushButton:
+        b = QPushButton(texto_)
+        b.setObjectName("chip")
+        b.setCheckable(True)
+        b.setChecked(marcado)
+        b.setCursor(Qt.CursorShape.PointingHandCursor)
+        return b
+
+    def _metrica(self, clave: str):
+        self.metrica = clave
+        self._repintar()
+
+    def _tipo(self, clave: str, marcado: bool):
+        if marcado:
+            self.tipos.add(clave)
+        else:
+            self.tipos.discard(clave)
+        self._repintar()
+        self.al_cambiar()
+
+    def poner(self, analisis: dict | None, jugadores: list[dict], mensaje: str = ""):
+        self._datos = (analisis, jugadores, mensaje)
+        self._repintar()
+
+    def _repintar(self):
+        analisis, jugadores, mensaje = self._datos
+        self.lienzo.poner(analisis, jugadores, self.metrica, set(self.tipos), mensaje)
+
+
+class TablaBuildOrder(QWidget):
+    """Una columna por jugador (el propio primero) con lo que hizo y cuándo: edificios,
+    investigaciones, unidades y edades, según los filtros del gráfico."""
+
+    CAB, FILA = 30, 22
+
+    def __init__(self):
+        super().__init__()
+        self.columnas: list[tuple[dict, list[list]]] = []
+
+    def poner(self, analisis: dict | None, jugadores: list[dict], tipos: set):
+        self.columnas = [(j, agrupar(analisis["jugadores"][j["numero"]]["eventos"], tipos))
+                         for j in jugadores[:MAX_COLUMNAS]] if analisis else []
+        filas = max((len(e) for _, e in self.columnas), default=0)
+        self.setFixedHeight(self.CAB + self.FILA * filas + 6)
+        self.update()
+
+    def paintEvent(self, _):
+        p = pintor(self)
+        if not self.columnas:
+            p.end()
+            return
+        ancho = (self.width() - 8) / len(self.columnas)
+        f_t = fuente(8.5, QFont.Weight.DemiBold)
+        f_n = fuente(9, QFont.Weight.Medium)
+        for k, (j, eventos) in enumerate(self.columnas):
+            x = 4 + k * ancho
+            c = color_jugador(j)
+            p.fillRect(QRectF(x + 4, 8, 3, 14), c)
+            texto(p, QRectF(x + 14, 4, ancho - 24, 22), j["nombre"], fuente(9.5, QFont.Weight.Bold), TEXTO)
+            y = self.CAB
+            for t, tipo, id_, n in eventos:
+                texto(p, QRectF(x + 4, y, 40, self.FILA), reloj(t), f_t, APAGADO, DER)
+                marca(p, QPointF(x + 56, y + self.FILA / 2), tipo, c, 3.2)
+                texto(p, QRectF(x + 68, y, ancho - 80, self.FILA), texto_evento(tipo, id_, n), f_n,
+                      TEXTO if tipo == A.EDAD else SECUNDARIO)
+                y += self.FILA
+            if k:
+                p.setPen(QPen(color(BORDE, 40), 1))
+                p.drawLine(QPointF(x - 2, 6), QPointF(x - 2, self.height() - 6))
         p.end()
 
 
@@ -832,6 +1235,8 @@ QPushButton:hover {{ color: {ORO_CLARO.name()}; background: {_rgba(ACENTO, 22)};
 QPushButton:disabled {{ color: {_rgba(APAGADO, 140)}; background: transparent; border-color: {_rgba(BORDE, 24)}; }}
 QPushButton#filtro {{ padding: 5px 13px; }}
 QPushButton#filtro:checked {{ color: {ORO_CLARO.name()}; background: {_rgba(ACENTO, 28)}; border-color: {ACENTO.name()}; }}
+QPushButton#chip {{ padding: 3px 10px; font-size: 8.5pt; color: {APAGADO.name()}; }}
+QPushButton#chip:checked {{ color: {ORO_CLARO.name()}; background: {_rgba(ACENTO, 22)}; border-color: {_rgba(ACENTO, 160)}; }}
 QPushButton#cerrar {{ padding: 0; min-width: 26px; max-width: 26px; min-height: 26px; max-height: 26px;
                      font-size: 10pt; }}
 QPushButton#borrar[confirmar="true"] {{ color: #ffc4c4; border-color: rgba(255,96,96,140);
@@ -911,6 +1316,7 @@ class ContenidoHistorial(QWidget):
 
     LATERAL = 268
     ranked_leidas = Signal(object)  # desde el hilo que lee las repeticiones
+    analisis_leido = Signal(str, object)  # (id, análisis o None), desde el hilo que lee una repetición
 
     def __init__(self, historial: Historial, perfil=lambda: None):
         super().__init__()
@@ -924,6 +1330,9 @@ class ContenidoHistorial(QWidget):
         self._leyendo_ranked = False
         self._ranked_leidas_en = -RELEER_RANKED
         self.ranked_leidas.connect(self._poner_ranked)
+        self.analisis: dict[str, dict | None] = {}  # por id de ranked (None = no se pudo leer)
+        self._analizando: set[str] = set()
+        self.analisis_leido.connect(self._poner_analisis)
         self.fin_de_partida = False
         self.repeticion = None  # Path de la repetición de la partida elegida
         self.mostrar_en_carpeta = repeticiones.mostrar_en_carpeta
@@ -1031,13 +1440,22 @@ class ContenidoHistorial(QWidget):
             b.clicked.connect(al_pulsar)
             fila.addWidget(b)
         vp.addLayout(fila)
-        # Ranked: sus jugadores.
+        # Ranked: sus jugadores, el gráfico de la partida y el build order.
         self.cuerpo_ranked = QWidget()
         lr = QVBoxLayout(self.cuerpo_ranked)
         lr.setContentsMargins(0, 0, 0, 0)
+        lr.setSpacing(12)
         self.jugadores = TablaJugadores()
         lr.addWidget(self.jugadores)
-        lr.addStretch(1)
+        self.grafico_partida = GraficoPartida(self._poner_build_order)
+        lr.addWidget(self.grafico_partida)
+        self.panel_build_order = Panel()
+        lb = QVBoxLayout(self.panel_build_order)
+        lb.setContentsMargins(12, 10, 6, 8)
+        lb.addWidget(etiqueta(tx("hi_build_order"), 10.5, QFont.Weight.Bold))
+        self.build_order = TablaBuildOrder()
+        lb.addWidget(desplazable(self.build_order), 1)
+        lr.addWidget(self.panel_build_order, 1)
         vp.addWidget(self.cuerpo_ranked, 1)
         # Práctica: el resto.
         self.cuerpo_practica = QWidget()
@@ -1298,7 +1716,6 @@ class ContenidoHistorial(QWidget):
         self.cuerpo_ranked.show()
         self.borrar.hide()
         self.titulo_detalle.setText(f"{fecha_corta(sel['fecha'])} · {mapa_corto(sel['mapa'])}")
-        self.guia_detalle.setText(R.titulo(sel))
         resultado = sel.get("resultado")
         c = BIEN if resultado == "victoria" else ATENCION
         self.resultado_detalle.setText(tx(f"hi_{resultado}") if resultado else "")
@@ -1307,6 +1724,53 @@ class ContenidoHistorial(QWidget):
         self.resultado_detalle.setVisible(bool(resultado))
         self._poner_repeticion(sel)
         self.jugadores.poner(sel, yo)
+        self._pintar_analisis(sel, yo)
+
+    # Ranked: lo que pasó en la partida, de su repetición (se lee en otro hilo).
+    def _pintar_analisis(self, sel: dict, yo: int | None):
+        id_ = sel["id"]
+        if id_ not in self.analisis:
+            self._pedir_analisis(id_)
+        analisis = self.analisis.get(id_)
+        titulo_ = R.titulo(sel)
+        if analisis:
+            titulo_ += f"  ·  {reloj(analisis['duracion'])}"
+        self.guia_detalle.setText(titulo_)
+        jugadores = jugadores_analisis(sel, analisis, yo)
+        mensaje = tx("hi_leyendo") if id_ not in self.analisis else tx("hi_sin_analisis")
+        self.grafico_partida.poner(analisis, jugadores, mensaje)
+        self.panel_build_order.setVisible(bool(analisis))
+        self._poner_build_order()
+
+    def _poner_build_order(self):
+        sel = self.buscar(self.seleccion)
+        analisis = self.analisis.get(sel["id"]) if es_ranked(sel) else None
+        jugadores = jugadores_analisis(sel, analisis, self.yo()) if analisis else []
+        self.build_order.poner(analisis, jugadores, self.grafico_partida.tipos)
+
+    def _pedir_analisis(self, id_: str):
+        carpeta = repeticiones.carpeta()
+        if id_ in self._analizando:
+            return
+        if carpeta is None or not (carpeta / id_).is_file():
+            self.analisis[id_] = None
+            return
+        self._analizando.add(id_)
+
+        def trabajo():
+            try:
+                resultado = A.analizar(carpeta / id_)
+            except Exception:  # noqa: BLE001 - una repetición rara no debe tumbar el historial
+                resultado = None
+            self.analisis_leido.emit(id_, resultado)
+        threading.Thread(target=trabajo, daemon=True).start()
+
+    def _poner_analisis(self, id_: str, analisis):
+        self._analizando.discard(id_)
+        self.analisis[id_] = analisis
+        sel = self.buscar(self.seleccion)
+        if sel is not None and sel["id"] == id_ and self.vista_partida.isVisibleTo(self):
+            self._pintar_analisis(sel, self.yo())
 
     def _pintar_general(self, regs: list[dict]):
         n = min(len(regs), VENTANA_MEDIA)

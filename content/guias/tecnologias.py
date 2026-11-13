@@ -26,6 +26,7 @@ import rutas  # noqa: E402
 
 SALIDA = HERE / "tecnologias.json"
 CIVILIZACIONES_APP = RAIZ / "apps" / "desktop" / "civilizaciones.py"  # los nombres, para la app
+NOMBRES_APP = RAIZ / "apps" / "desktop" / "nombres_juego.py"  # unidades, edificios y tecnologías, para la app
 
 # clave: ID de la tecnología (la que se pasa a xsGetTechState). Las mejoras de unidad
 # (ballestero, caballería ligera...) usan la tecnología que hace la mejora.
@@ -165,6 +166,53 @@ def escribir_civilizaciones(datos: dict) -> None:
         encoding="utf-8", newline="\n")
 
 
+def nombres_juego(juego: Path) -> dict[str, dict[int, tuple[str, str]]]:
+    """Nombres de todas las unidades, edificios y tecnologías de los árboles de las
+    civilizaciones (para el build order de las repeticiones): {grupo: {ID: (es, en)}}."""
+    dat = juego / "resources" / "_common" / "dat"
+    es, en = cadenas(juego, "es"), cadenas(juego, "en")
+    out: dict[str, dict[int, tuple[str, str]]] = {"UNIDADES": {}, "EDIFICIOS": {}, "TECNOLOGIAS": {}}
+
+    def poner(grupo: str, id_: int, nodo: dict):
+        if id_ is None or id_ < 0 or id_ in out[grupo]:
+            return
+        sid = nodo.get("Name String ID")
+        out[grupo][id_] = (limpiar(es.get(sid, nodo["Name"])), limpiar(en.get(sid, nodo["Name"])))
+
+    # Primero las civilizaciones normales, en el orden del juego (Britanos, Francos...): las
+    # de Chronicles llaman distinto a algunas cosas («Edad Cívica» en vez de «Edad Feudal»).
+    civs = json.loads((dat / "civilizations.json").read_text(encoding="utf-8"))["civilization_list"]
+    orden = [dat / "CivTechTrees" / f"{c['tech_tree_name']}.json" for c in civs[1:]]
+    orden += [r for r in sorted((dat / "CivTechTrees").glob("*.json")) if r not in orden]
+    for ruta in orden:
+        if not ruta.is_file():
+            continue
+        arbol = json.loads(ruta.read_text(encoding="utf-8"))
+        for nodo in arbol.get("civ_techs_buildings", []):
+            poner("EDIFICIOS", nodo.get("Node ID"), nodo)
+        for nodo in arbol.get("civ_techs_units", []):
+            tipo = nodo.get("Node Type")
+            if tipo in TIPOS_TECNOLOGIA:
+                poner("TECNOLOGIAS", nodo.get("Node ID"), nodo)
+            elif tipo in TIPOS_MEJORA or tipo == "Unit":
+                poner("UNIDADES", nodo.get("Node ID"), nodo)
+                if nodo.get("Trigger Tech ID", -1) >= 0:
+                    poner("TECNOLOGIAS", nodo["Trigger Tech ID"], nodo)
+            elif tipo == "BuildingNonTech":
+                poner("EDIFICIOS", nodo.get("Node ID"), nodo)
+    return out
+
+
+def escribir_nombres(nombres: dict[str, dict[int, tuple[str, str]]]) -> None:
+    partes = ['"""Nombres de unidades, edificios y tecnologías por ID (los del juego), en español e\n'
+              'inglés, para el build order de las repeticiones.\n\n'
+              'Generado por content/guias/tecnologias.py (no editar a mano)."""\n']
+    for grupo, valores in nombres.items():
+        filas = "".join(f"    {i}: ({par[0]!r}, {par[1]!r}),\n" for i, par in sorted(valores.items()))
+        partes.append(f"\n{grupo} = {{\n{filas}}}\n")
+    NOMBRES_APP.write_text("".join(partes), encoding="utf-8", newline="\n")
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     if "--solo-app" in sys.argv[1:]:  # sin el juego: rehace civilizaciones.py desde tecnologias.json
@@ -175,6 +223,9 @@ def main() -> None:
     datos = generar(Path(juego))
     SALIDA.write_text(json.dumps(datos, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     escribir_civilizaciones(datos)
+    nombres = nombres_juego(Path(juego))
+    escribir_nombres(nombres)
+    print(f"{sum(len(v) for v in nombres.values())} nombres -> {NOMBRES_APP}")
     print(f"{len(datos['tecnologias'])} tecnologías y {len(datos['civilizaciones'])} civilizaciones -> {SALIDA}")
 
 

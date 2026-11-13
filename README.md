@@ -54,7 +54,7 @@ Armar las guías, los mapas y el mod de AoE2C (sin `--install` no toca el juego)
 py content/guias/build.py
 ```
 
-Volver a sacar del juego las tecnologías y civilizaciones de la tierlist (con una civilización nueva o al añadir una tecnología a su catálogo; el resultado, `content/guias/tecnologias.json`, se sube a git):
+Volver a sacar del juego las tecnologías y civilizaciones de la tierlist y los nombres de unidades, edificios y tecnologías del build order de las ranked (con una civilización nueva o al añadir una tecnología a su catálogo; el resultado, `content/guias/tecnologias.json`, `apps/desktop/civilizaciones.py` y `apps/desktop/nombres_juego.py`, se sube a git):
 
 ```bash
 py content/guias/tecnologias.py

@@ -120,27 +120,38 @@ def leer(savegame: Path | None = None, archivo: Path | None = ARCHIVO, ahora=tim
 
 # --- Resultado y elo, de la API oficial -----------------------------------------
 #
-# getRecentMatchHistory da las últimas partidas de un jugador con, por jugador, si ganó
-# (outcome 1) o perdió (0) y su elo antes y después. Cada partida se empareja con su
-# repetición por los jugadores y la hora de inicio (la repetición empieza unos segundos
-# después). Lo encontrado se guarda en clasificatorias.json: "resultado" (victoria o
-# derrota del jugador) y "elo" ({perfil: [antes, después]}). La API solo guarda las
-# últimas partidas, así que pasados DIAS_API ya no se pregunta por una partida.
+# getRecentMatchHistory da las últimas partidas de unos jugadores con, por jugador, si
+# ganó (outcome 1) o perdió (0), su elo antes y después, y sus victorias, derrotas y racha
+# en esa clasificación tras la partida. Cada partida se empareja con su repetición por los
+# jugadores y la hora de inicio (la repetición empieza unos segundos después). Se pregunta
+# por todos los jugadores de las partidas pendientes a la vez, así salen también las
+# últimas partidas de los rivales. Lo encontrado se guarda en clasificatorias.json:
+# "resultado" (victoria o derrota del jugador), "elo" ({perfil: [antes, después]}) y
+# "jugadores_api" ({perfil: {"victorias", "derrotas", "racha", "ultimas"}}, con "ultimas"
+# los resultados de sus últimas ULTIMAS partidas del mismo tipo hasta esta, 1 = victoria y
+# 0 = derrota, de la más antigua a esta). La API solo guarda las últimas partidas, así que
+# pasados DIAS_API ya no se pregunta por una partida.
 
 URL_HISTORIAL = "https://aoe-api.worldsedgelink.com/community/leaderboard/getRecentMatchHistory"
 DIAS_API = 14
 MARGEN_INICIO = 300  # segundos entre el inicio según la API y la hora en el nombre de la repetición
 ESPERA_API = 300.0  # segundos entre preguntas por partidas que aún no salen
+ULTIMAS = 5  # partidas de cada jugador en sus puntos de forma
+MAX_PERFILES = 12  # perfiles por los que se pregunta de una vez
+PERFILES_POR_PETICION = 4
 _ultima_peticion = -ESPERA_API
 
 
-def url_historial(perfil: int) -> str:
-    return f"{URL_HISTORIAL}?{urllib.parse.urlencode({'title': 'age2', 'profile_ids': f'[{int(perfil)}]'})}"
+def url_historial(perfiles: int | list[int]) -> str:
+    lista = [perfiles] if isinstance(perfiles, int) else perfiles
+    ids = ",".join(str(int(p)) for p in lista)
+    return f"{URL_HISTORIAL}?{urllib.parse.urlencode({'title': 'age2', 'profile_ids': f'[{ids}]'})}"
 
 
 def leer_historial(respuesta: object) -> list[dict]:
-    """Las partidas de una respuesta de getRecentMatchHistory: {"inicio", "jugadores":
-    {perfil: (outcome, antes, después)}}. Las entradas raras se saltan."""
+    """Las partidas de una respuesta de getRecentMatchHistory: {"inicio", "tipo",
+    "jugadores": {perfil: (outcome, antes, después)}, "totales": {perfil: (victorias,
+    derrotas, racha)}}. Las entradas raras se saltan."""
     if not isinstance(respuesta, dict):
         raise E.EstadisticasError("respuesta inesperada: no es un objeto")
     resultado = respuesta.get("result")
@@ -153,10 +164,14 @@ def leer_historial(respuesta: object) -> list[dict]:
     out = []
     for m in partidas:
         try:
-            jugadores = {}
+            jugadores, totales = {}, {}
             for x in m["matchhistorymember"]:
-                jugadores[int(x["profile_id"])] = (int(x["outcome"]), int(x["oldrating"]), int(x["newrating"]))
-            out.append({"inicio": int(m["startgametime"]), "jugadores": jugadores})
+                perfil = int(x["profile_id"])
+                jugadores[perfil] = (int(x["outcome"]), int(x["oldrating"]), int(x["newrating"]))
+                if all(k in x for k in ("wins", "losses", "streak")):
+                    totales[perfil] = (int(x["wins"]), int(x["losses"]), int(x["streak"]))
+            out.append({"inicio": int(m["startgametime"]), "tipo": m.get("matchtype_id"), "jugadores": jugadores,
+                        "totales": totales})
         except (KeyError, TypeError, ValueError):
             continue
     return out
@@ -173,21 +188,39 @@ def emparejar(registro: dict, partidas: list[dict]) -> dict | None:
     return min(candidatas, key=lambda m: abs(m["inicio"] - inicio), default=None)
 
 
-def poner_resultado(registro: dict, partida: dict, yo: int) -> bool:
-    """Anota el elo de todos y el resultado del jugador. False si no está en la partida."""
+def ultimas(perfil: int, partida: dict, partidas: list[dict]) -> list[int]:
+    """Resultados (1 victoria, 0 derrota) de las últimas ULTIMAS partidas del jugador del
+    mismo tipo que `partida`, hasta ella incluida, de la más antigua a la más reciente."""
+    suyas = {}
+    for m in partidas:
+        if m.get("tipo") == partida.get("tipo") and m["inicio"] <= partida["inicio"] and perfil in m["jugadores"]:
+            outcome = m["jugadores"][perfil][0]
+            if outcome in (0, 1):
+                suyas[m["inicio"]] = outcome  # la misma partida puede venir repetida
+    return [suyas[k] for k in sorted(suyas)][-ULTIMAS:]
+
+
+def poner_resultado(registro: dict, partida: dict, yo: int, partidas: list[dict] | None = None) -> bool:
+    """Anota el elo, las victorias, derrotas, racha y últimas partidas de todos y el
+    resultado del jugador. False si no está en la partida."""
     if yo not in partida["jugadores"]:
         return False
     registro["elo"] = {str(p): [antes, despues] for p, (_, antes, despues) in partida["jugadores"].items()}
     outcome = partida["jugadores"][yo][0]
     registro["resultado"] = "victoria" if outcome == 1 else "derrota" if outcome == 0 else None
+    otras = partidas if partidas is not None else [partida]
+    registro["jugadores_api"] = {
+        str(p): {"victorias": v, "derrotas": d, "racha": racha, "ultimas": ultimas(p, partida, otras)}
+        for p, (v, d, racha) in partida.get("totales", {}).items()}
     return True
 
 
 def pendientes(registros: list[dict], ahora: float) -> list[dict]:
-    """Ranked sin resultado aún y lo bastante recientes para que la API las tenga."""
+    """Ranked sin resultado (o sin los datos de los jugadores) y lo bastante recientes
+    para que la API las tenga."""
     out = []
     for r in registros:
-        if "resultado" in r:
+        if "resultado" in r and "jugadores_api" in r:
             continue
         try:
             if ahora - datetime.fromisoformat(r["fecha"]).timestamp() <= DIAS_API * 86400:
@@ -209,19 +242,34 @@ def completar(registros: list[dict], yo: int | None, archivo: Path | None = ARCH
     if not faltan or (not forzar and time.monotonic() - _ultima_peticion < ESPERA_API):
         return False
     _ultima_peticion = time.monotonic()
+    perfiles = [yo]
+    for r in reversed(faltan):  # las más recientes primero
+        for j in r["jugadores"]:
+            if j["perfil"] > 0 and j["perfil"] not in perfiles:
+                perfiles.append(j["perfil"])
+    partidas = []
+    perfiles = perfiles[:MAX_PERFILES]
     try:
-        partidas = leer_historial(json.loads(pedir(url_historial(yo))))
+        for k in range(0, len(perfiles), PERFILES_POR_PETICION):  # con más, la respuesta pasa del límite
+            partidas += leer_historial(json.loads(pedir(url_historial(perfiles[k:k + PERFILES_POR_PETICION]))))
     except (E.EstadisticasError, ValueError):
         return False
-    hechas = [r for r in faltan if (m := emparejar(r, partidas)) is not None and poner_resultado(r, m, yo)]
+    hechas = [r for r in faltan
+              if (m := emparejar(r, partidas)) is not None and poner_resultado(r, m, yo, partidas)]
     if not hechas:
         return False
     vistas = _cargar(archivo)
     for r in hechas:
         if vistas.get(r["id"]):
-            vistas[r["id"]].update(resultado=r["resultado"], elo=r["elo"])
+            vistas[r["id"]].update(resultado=r["resultado"], elo=r["elo"], jugadores_api=r["jugadores_api"])
     _guardar(archivo, vistas)
     return True
+
+
+def datos_api(registro: dict, perfil: int | None) -> dict | None:
+    """Victorias, derrotas, racha y últimas partidas del jugador, si la API las dio."""
+    datos = (registro.get("jugadores_api") or {}).get(str(perfil))
+    return datos if isinstance(datos, dict) else None
 
 
 def elo_de(registro: dict, perfil: int | None) -> tuple[int, int] | None:

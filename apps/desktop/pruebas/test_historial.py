@@ -292,7 +292,7 @@ def test_lector_y_seguimiento(tmp: Path):
 def test_ranked(tmp: Path):
     print("Ranked: se leen de las repeticiones y se filtran en el historial")
     from PySide6.QtGui import QGuiApplication
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QPushButton
     app = QApplication.instance() or QApplication(sys.argv)
     import cabecera as CB
     import clasificatorias as R
@@ -303,7 +303,12 @@ def test_ranked(tmp: Path):
     J = CB.JugadorCabecera
     uno = [J(1, "Yo", yo, 2, 0, 8), J(2, "Rook", rival, 3, 1, 1)]
     ranked = "MP Replay v101.103.57257.0 @2026.11.12 121309 (2).aoe2record"
-    CB.escribir_prueba(sg / ranked, uno, mapa="Arabia")
+    import analisis as A
+    A.escribir_prueba(sg / ranked, uno, b"".join([
+        A.sync_prueba(10_000), A.construir_prueba(1, 70), A.cola_prueba(1, A.ALDEANO),
+        A.sync_prueba(5_000), A.investigar_prueba(1, 101), A.construir_prueba(1, 70), A.investigar_prueba(1, 22),
+        A.sync_prueba(50_000), A.cola_prueba(2, A.ALDEANO, 2), A.construir_prueba(2, 12), A.cola_prueba(2, 4, 3),
+        A.sync_prueba(10_000)]), mapa="Arabia")
     CB.escribir_prueba(sg / "MP Replay v101.103.57257.0 @2026.11.12 131309 (1).aoe2record",
                        [J(1, "Yo", yo, 2, 0, 8), J(2, "Otro", 333, 3, 1, 4)], mapa="Arena")
     CB.escribir_prueba(sg / "MP Replay v101.103.57257.0 @2026.11.11 101010 (1).aoe2record", uno,
@@ -335,24 +340,60 @@ def test_ranked(tmp: Path):
     from datetime import datetime
     inicio = int(datetime(2026, 11, 12, 12, 13, 5).timestamp())  # la API: unos segundos antes que la repetición
     respuesta = {"result": {"code": 0, "message": "SUCCESS"}, "matchHistoryStats": [
-        {"startgametime": inicio, "matchhistorymember": [
-            {"profile_id": yo, "outcome": 1, "oldrating": 949, "newrating": 993},
-            {"profile_id": rival, "outcome": 0, "oldrating": 1010, "newrating": 966}]},
-        {"startgametime": inicio + 7200, "matchhistorymember": [  # otra partida, con otro rival
+        {"startgametime": inicio, "matchtype_id": 6, "matchhistorymember": [
+            {"profile_id": yo, "outcome": 1, "oldrating": 949, "newrating": 993, "wins": 5, "losses": 3, "streak": 2},
+            {"profile_id": rival, "outcome": 0, "oldrating": 1010, "newrating": 966, "wins": 40, "losses": 38,
+             "streak": -1}]},
+        {"startgametime": inicio + 7200, "matchtype_id": 6, "matchhistorymember": [  # otra partida, con otro rival
             {"profile_id": yo, "outcome": 0, "oldrating": 993, "newrating": 950},
             {"profile_id": 999, "outcome": 1, "oldrating": 980, "newrating": 1020}]},
+        {"startgametime": inicio - 3600, "matchtype_id": 6, "matchhistorymember": [  # una anterior del rival
+            {"profile_id": rival, "outcome": 1, "oldrating": 990, "newrating": 1010},
+            {"profile_id": 444, "outcome": 0, "oldrating": 1000, "newrating": 980}]},
+        {"startgametime": inicio - 1800, "matchtype_id": 7, "matchhistorymember": [  # del rival, en equipo
+            {"profile_id": rival, "outcome": 0, "oldrating": 900, "newrating": 890}]},
         {"startgametime": "roto"}]}
     pedidas = []
     pedir = lambda url: pedidas.append(url) or json.dumps(respuesta).encode()  # noqa: E731
     ahora = lambda: datetime(2026, 11, 13).timestamp()  # noqa: E731
     comprobar(R.completar(regs, yo, cache, pedir, ahora, forzar=True), "la API trae el resultado")
-    comprobar(pedidas == [R.URL_HISTORIAL + "?title=age2&profile_ids=%5B111%5D"], "una sola petición, con el perfil")
+    comprobar(pedidas == [R.URL_HISTORIAL + "?title=age2&profile_ids=%5B111%2C333%2C222%5D"],
+              "una sola petición, con el perfil propio y los de los rivales")
     comprobar(regs[0]["resultado"] == "victoria" and R.elo_de(regs[0], yo) == (949, 993)
               and R.elo_de(regs[0], rival) == (1010, 966), "victoria y elo antes y después de cada jugador")
+    comprobar(R.datos_api(regs[0], rival) == {"victorias": 40, "derrotas": 38, "racha": -1, "ultimas": [1, 0]},
+              "victorias, derrotas, racha y últimas partidas del rival (solo las del mismo tipo, hasta esta)")
+    comprobar(R.datos_api(regs[0], yo)["ultimas"] == [1], "las partidas posteriores no cuentan")
+    muchas = [{"inicio": k, "tipo": 6, "jugadores": {yo: (k % 2, 0, 0)}} for k in range(10)]
+    comprobar(R.ultimas(yo, muchas[-1], muchas) == [1, 0, 1, 0, 1], f"como mucho {R.ULTIMAS}, la última al final")
+    pedidas_antes = len(pedidas)
+    muchos = [{"perfil": p, "numero": 1, "equipo": 1, "color": 0, "civ": 1, "nombre": ""} for p in range(1, 10)]
+    R.completar([{"id": "x", "fecha": regs[0]["fecha"], "jugadores": muchos}], yo, None, pedir, ahora, forzar=True)
+    comprobar(len(pedidas) - pedidas_antes == 3, "con muchos jugadores, se pregunta en grupos (la respuesta tiene tope)")
     comprobar("resultado" not in regs[1], "una partida sin su pareja en la API se queda sin resultado")
     comprobar(R.leer(sg, cache)[0]["resultado"] == "victoria", "el resultado queda guardado")
-    comprobar(not R.completar(regs, yo, cache, pedir, ahora) and len(pedidas) == 1,
+    comprobar(not R.completar(regs, yo, cache, pedir, ahora) and len(pedidas) == pedidas_antes + 3,
               "no se vuelve a preguntar enseguida")
+    comprobar(R.leer(sg, cache)[0]["jugadores_api"] == regs[0]["jugadores_api"], "los datos de los jugadores quedan guardados")
+
+    # Lo que pasó en la partida, de los comandos de la repetición.
+    an = A.analizar(sg / ranked)
+    comprobar(an["duracion"] == 75, f"duración en tiempo de juego ({an['duracion']} s)")
+    j1, j2 = an["jugadores"][1], an["jugadores"][2]
+    comprobar(j1["eventos"] == [[10.0, A.EDIFICIO, 70, 1], [15.0, A.EDAD, 101, 1], [15.0, A.EDIFICIO, 70, 1],
+                                [15.0, A.TECNOLOGIA, 22, 1]], "build order: edificios, edad e investigaciones")
+    comprobar(j1["edades"] == {"2": [15.0, 145.0]}, "Feudal: clic y llegada estimada")
+    comprobar(j1["aldeanos"] == [[10.0, 1]] and j2["aldeanos"] == [[65.0, 2]], "aldeanos en cola, acumulados")
+    comprobar(j2["eventos"] == [[65.0, A.EDIFICIO, 12, 1], [65.0, A.UNIDAD, 4, 3]], "unidades con su cantidad")
+    comprobar(j1["acciones"] == [5] and j2["acciones"] == [0, 3], "acciones por minuto")
+    comprobar(A.aldeanos_en(j2["aldeanos"], 64) == 0 and A.aldeanos_en(j2["aldeanos"], 70) == 2, "aldeanos en un momento")
+    comprobar(HU.agrupar(j1["eventos"], {A.EDIFICIO}) == [[10.0, A.EDIFICIO, 70, 2]] and
+              HU.texto_evento(A.EDIFICIO, 70, 2) == "Casa ×2", "lo mismo seguido va en una fila: «Casa ×2»")
+    try:
+        A.analizar_bytes(open(sg / "MP Replay v101.103.57257.0 @2026.11.12 131309 (1).aoe2record", "rb").read())
+        comprobar(False, "una repetición sin partida da error")
+    except A.AnalisisError:
+        comprobar(True, "una repetición sin partida da error")
     comprobar(R.pendientes(regs, datetime(2026, 12, 30).timestamp()) == [], "pasados unos días ya no se pregunta")
     import estadisticas as E
 
@@ -387,6 +428,25 @@ def test_ranked(tmp: Path):
         comprobar(c.resultado_detalle.isVisibleTo(c) and c.resultado_detalle.text() == "Victoria",
                   "el detalle dice si ganaste")
         comprobar(HU.cambio_elo(c.buscar(ranked), yo)[0] == "+44", "y cuánto elo")
+        limite = time.monotonic() + 5
+        while ranked not in c.analisis and time.monotonic() < limite:
+            app.processEvents()
+            time.sleep(0.02)
+        app.processEvents()
+        comprobar(c.analisis.get(ranked) is not None and c.guia_detalle.text().endswith("1:15"),
+                  f"la repetición se lee aparte y el detalle da la duración («{c.guia_detalle.text()}»)")
+        lienzo = c.grafico_partida.lienzo
+        comprobar([j["numero"] for j in lienzo.jugadores] == [1, 2] and c.panel_build_order.isVisibleTo(c),
+                  "gráfico y build order con los dos jugadores, el propio primero")
+        comprobar([len(e) for _, e in c.build_order.columnas] == [4, 1], "build order: edificios, edades e investigaciones")
+        boton_unidades = [b for b in c.grafico_partida.findChildren(QPushButton) if b.text() == "Unidades"][0]
+        boton_unidades.setChecked(True)
+        comprobar([len(e) for _, e in c.build_order.columnas] == [4, 2] and A.UNIDAD in lienzo.tipos,
+                  "el filtro de unidades las añade al gráfico y al build order")
+        c.grafico_partida._metrica("apm")
+        comprobar(lienzo.metrica == "apm" and lienzo._valor(2, 70) == 3, "eAPM en el gráfico")
+        c.resize(1300, 900)
+        c.grab()  # se pinta sin errores
         c.filtrar_tipo(HU.RANKED)
         comprobar("1 V · 0 D" in c.rotulo_ranked.text() and "ELO 993" in c.rotulo_ranked.text(),
                   f"resumen: balance y elo actual («{c.rotulo_ranked.text()}»)")

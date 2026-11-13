@@ -244,10 +244,12 @@ Comparten la Alta Edad Media con Scouts (6 pastores, 4 leñadores, jabalíes, 4 
 | `apps/desktop/tierlist.py` | Arma la tierlist del final: aplica los ajustes de mapa y civilización y marca cada tecnología como pendiente, en curso o hecha. |
 | `content/guias/tierlist.json` | Ajustes comunes de la tierlist: por mapa y por civilización (`sube`/`baja` un nivel) y nombres cortos. |
 | `content/guias/tecnologias.json` | Datos del juego para la tierlist (generado por `tecnologias.py`, se sube a git): ID, edad y nombre de cada tecnología, y nombre de cada civilización y qué tecnologías no tiene. |
-| `content/guias/tecnologias.py` | Genera `tecnologias.json` con el juego instalado (`CivTechTrees`, `civilizations.json` y los textos oficiales). Hay que volver a ejecutarlo con cada civilización nueva o al añadir una tecnología a su `CATALOGO`. |
+| `content/guias/tecnologias.py` | Genera `tecnologias.json` (y `civilizaciones.py` y `nombres_juego.py` para la app) con el juego instalado (`CivTechTrees`, `civilizations.json` y los textos oficiales). Hay que volver a ejecutarlo con cada civilización nueva o al añadir una tecnología a su `CATALOGO`. |
 | `apps/desktop/historial.py` | Registra cada partida (pasos e hitos) y calcula mejores marcas, medias y puntos débiles. |
 | `apps/desktop/historial_ui.py` | El contenido del historial (página Historial del panel y ventana flotante del juego) y los puntos de información (`InfoPunto`). |
 | `apps/desktop/repeticiones.py` | Vincula cada partida del historial con su `.aoe2record` (botón "Carpeta"). |
+| `apps/desktop/analisis.py` | Lee los comandos de una repetición: build order, subida de edad, eAPM y aldeanos de cada jugador (gráfico «Partida» de las ranked). |
+| `apps/desktop/nombres_juego.py` | Nombres de unidades, edificios y tecnologías por ID (generado por `content/guias/tecnologias.py`). |
 | `apps/desktop/soporte.py` | "Copiar datos para soporte" (sin datos personales) y la invitación al Discord. |
 | `apps/desktop/pruebas/test_soporte.py` | Pruebas de las repeticiones y del soporte. |
 | `apps/desktop/estilo.py` | Colores y fuentes comunes del overlay y del historial. |
