@@ -624,7 +624,8 @@ class Overlay(QWidget):
         self.boton_plegar = BotonRedondo("plegar", lambda _: self.plegar(True), t("ov_plegar"), derecha)
         self.pestana = Pestana(lambda _: self.plegar(False), derecha)
         # Historial: la ventana y la pestaña que la abre fuera de partida.
-        self.ventana_historial = VentanaHistorial(historial, self.cerrar_historial) if historial else None
+        self.ventana_historial = (VentanaHistorial(historial, self.cerrar_historial, self.perfil_propio)
+                                  if historial else None)
         self.idioma = textos.idioma()  # para rehacer los textos fijos si el panel cambia el idioma
         self.pestana_historial = PestanaHistorial(lambda _: self.abrir_historial(), derecha)
         self.historial_abierto = False
@@ -761,7 +762,7 @@ class Overlay(QWidget):
         if self.ventana_historial:
             self.ventana_historial.hide()
             self.ventana_historial.deleteLater()
-            self.ventana_historial = VentanaHistorial(self.historial, self.cerrar_historial)
+            self.ventana_historial = VentanaHistorial(self.historial, self.cerrar_historial, self.perfil_propio)
             self.historial_abierto = self.historial_manual = False
             self.opacidad_historial = 0.0
 

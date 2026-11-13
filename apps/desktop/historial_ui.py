@@ -1,22 +1,32 @@
 """Historial de partidas: el contenido (lo usan la página Historial del panel y la
 ventana flotante) y la ventana flotante, que solo se ve en el menú principal del juego.
 
-- Arriba, un filtro por guía. Por defecto se ven todas las partidas.
+- Arriba, un filtro: Todas, Ranked, Práctica y, en las prácticas, por guía. Por defecto
+  se ven todas las partidas. Las ranked salen de las repeticiones (clasificatorias.py).
 - A la izquierda, «Resumen» y la lista de partidas.
 - A la derecha, sin partida elegida, el resumen: con una guía, la media de cada hito
   frente a las partidas anteriores, la evolución y los pasos donde más tiempo se pierde;
-  con varias guías, una fila por guía.
+  con varias guías, una fila por guía; con solo ranked, civilizaciones, mapas y rivales.
 - Con una partida elegida: sus hitos frente a la media de su guía, su lugar en la
-  evolución, el paso a paso y la carpeta de su repetición (ver repeticiones.py).
+  evolución, el paso a paso y la carpeta de su repetición (ver repeticiones.py). Si es
+  ranked, sus jugadores. Las dos con «Copiar nombre» (el de la repetición, para
+  buscarla en el juego).
 
 Los textos que explican algo van en puntos de información (InfoPunto), no a la vista.
 """
 
+import threading
+import time
+from collections import Counter
 from datetime import datetime
+from pathlib import Path
 
+import civilizaciones
+import clasificatorias as R
 import repeticiones
+import textos
 
-from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
+from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (QButtonGroup, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QToolTip,
                                QVBoxLayout, QWidget)
@@ -31,11 +41,14 @@ from estilo import P_SECUNDARIO as SECUNDARIO
 from estilo import P_TARJETA as TARJETA
 from estilo import P_TEXTO as TEXTO
 from estilo import cargar_fuentes, color, fuente, titulo
+from match_ui import COLORES_JUGADOR
 from historial import (VENTANA_MEDIA, Historial, comparacion_final, duracion, nombre_hito, pasos_hechos, principal,
                        puntos_debiles, reloj, resumen_hito, tramos, valor_principal, vista)
 from textos import t as tx
 
 MARGEN = 14  # sombra alrededor de la tarjeta
+RELEER_RANKED = 20.0  # segundos entre lecturas de la carpeta de repeticiones
+RANKED, PRACTICA = "ranked", "practica"
 RADIO = 5
 PARTIDAS_GRAFICO = 20
 IZQ = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
@@ -54,6 +67,23 @@ def fecha_corta(iso: str) -> str:
 def mapa_corto(mapa: str) -> str:
     """«[AoE2C] Arena» -> «Arena»: en el historial todos los mapas son de AoE2C."""
     return mapa.split(" Guia")[0].removeprefix("[AoE2C] ")
+
+
+def es_ranked(reg: dict | None) -> bool:
+    return bool(reg) and reg.get("tipo") == RANKED
+
+
+def nombre_civ(civ: int) -> str:
+    return civilizaciones.nombre(civ, textos.idioma() == "en") or "?"
+
+
+def resumen_rivales(reg: dict, yo: int | None) -> str:
+    """«vs Rook» o, por equipos, «vs Rook +3»."""
+    rivales = R.rivales(reg, yo)
+    if not rivales:
+        return ""
+    otros = f" +{len(rivales) - 1}" if len(rivales) > 1 else ""
+    return tx("hi_vs", nombre=rivales[0]["nombre"]) + otros
 
 
 def desfase(seg: int | float | None) -> tuple[str, object]:
@@ -456,17 +486,31 @@ class ListaPartidas(QWidget):
         self.seleccion = None
         self.marcas: dict[str, tuple] = {}
         self.con_guia = False
+        self.yo: int | None = None
         self.encima: int | None = None
         self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-    def poner(self, registros: list[dict], seleccion: str | None, marcas: dict[str, tuple], con_guia: bool):
+    def poner(self, registros: list[dict], seleccion: str | None, marcas: dict[str, tuple], con_guia: bool,
+              yo: int | None = None):
         """marcas: por guía, (media, mejor) de su hito principal. con_guia: escribe la
-        guía en cada fila (cuando se ven partidas de varias)."""
+        guía en cada fila (cuando se ven partidas de varias). yo: perfil propio (ranked)."""
         self.registros, self.seleccion = registros, seleccion
-        self.marcas, self.con_guia = marcas, con_guia
+        self.marcas, self.con_guia, self.yo = marcas, con_guia, yo
         self.setFixedHeight(self.FILA * len(registros) + 4)
         self.update()
+
+    def _fila_ranked(self, p: QPainter, reg: dict, y: float, ancho: float, elegida: bool):
+        """Ranked: fecha y modo («RM 1v1») arriba; debajo, mapa y rival, y la civilización propia."""
+        texto(p, QRectF(12, y + 8, ancho - 60, 18), fecha_corta(reg["fecha"]), fuente(9.5, QFont.Weight.Bold), TEXTO)
+        texto(p, QRectF(12, y + 8, ancho, 18), R.titulo(reg), fuente(8.5, QFont.Weight.Bold), ACENTO, DER)
+        mia = R.yo_en(reg, self.yo)
+        civ = nombre_civ(mia["civ"]) if mia else ""
+        f_civ = fuente(8.5, QFont.Weight.DemiBold)
+        texto(p, QRectF(12, y + 27, ancho, 16), civ, f_civ, SECUNDARIO, DER)
+        sub = " · ".join(x for x in (mapa_corto(reg["mapa"]), resumen_rivales(reg, self.yo)) if x)
+        texto(p, QRectF(12, y + 27, ancho - QFontMetricsF(f_civ).horizontalAdvance(civ) - 10, 16), sub,
+              fuente(8.5, QFont.Weight.Medium), SECUNDARIO if elegida else APAGADO)
 
     def paintEvent(self, _):
         p = pintor(self)
@@ -480,6 +524,10 @@ class ListaPartidas(QWidget):
             elif k == self.encima:
                 caja(p, fila, 3, color(TEXTO, 10))
             ancho = w - 24
+            if es_ranked(reg):
+                self._fila_ranked(p, reg, y, ancho, elegida)
+                y += self.FILA
+                continue
             valor = valor_principal(reg)
             media_guia, mejor = self.marcas.get(reg["guia"], (None, None))
             texto(p, QRectF(12, y + 8, ancho - 60, 18), fecha_corta(reg["fecha"]), fuente(9.5, QFont.Weight.Bold),
@@ -643,6 +691,90 @@ class TablaPasos(QWidget):
         p.end()
 
 
+# --- Ranked -------------------------------------------------------------------
+
+
+class TablaJugadores(QWidget):
+    """Jugadores de una partida ranked, por equipos (el propio primero): color,
+    nombre y civilización."""
+
+    FILA, CABECERA, HUECO = 34, 30, 10
+
+    def __init__(self):
+        super().__init__()
+        self.equipos: list[list[dict]] = []
+        self.yo: int | None = None
+
+    def poner(self, registro: dict | None, yo: int | None):
+        self.equipos = R.equipos(registro, yo) if registro else []
+        self.yo = yo
+        filas = sum(len(e) for e in self.equipos)
+        self.setFixedHeight(self.CABECERA + self.FILA * filas + self.HUECO * max(0, len(self.equipos) - 1) + 10)
+        self.update()
+
+    def paintEvent(self, _):
+        p = pintor(self)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        caja(p, r, RADIO, TARJETA, BORDE)
+        w = r.width()
+        texto(p, QRectF(16, 8, 200, 20), tx("hi_jugadores"), fuente(10.5, QFont.Weight.Bold), TEXTO)
+        y = self.CABECERA
+        for k, equipo in enumerate(self.equipos):
+            if k:
+                p.setPen(QPen(color(BORDE, 40), 1))
+                p.drawLine(QPointF(16, y + self.HUECO / 2), QPointF(w - 16, y + self.HUECO / 2))
+                y += self.HUECO
+            for j in equipo:
+                soy = j["perfil"] == self.yo
+                if soy:
+                    caja(p, QRectF(6, y + 2, w - 12, self.FILA - 4), 3, color(TEXTO, 9))
+                c = COLORES_JUGADOR[j["color"]] if 0 <= j["color"] < len(COLORES_JUGADOR) else APAGADO
+                p.fillRect(QRectF(14, y + 9, 3, self.FILA - 18), c)
+                f_civ = fuente(9, QFont.Weight.Medium)
+                civ = nombre_civ(j["civ"])
+                ancho_civ = QFontMetricsF(f_civ).horizontalAdvance(civ) + 4
+                texto(p, QRectF(28, y, w - 60 - ancho_civ, self.FILA), j["nombre"],
+                      fuente(9.5, QFont.Weight.Bold if soy else QFont.Weight.DemiBold), TEXTO if soy else SECUNDARIO)
+                texto(p, QRectF(w - 16 - ancho_civ, y, ancho_civ, self.FILA), civ, f_civ, SECUNDARIO, DER)
+                y += self.FILA
+        p.end()
+
+
+class Conteo(QWidget):
+    """Una tarjeta con lo más repetido (civilizaciones, mapas, rivales) y una barra por fila."""
+
+    FILAS = 6
+
+    def __init__(self, clave_titulo: str):
+        super().__init__()
+        self.clave_titulo = clave_titulo
+        self.filas: list[tuple[str, int]] = []
+        self.setMinimumHeight(54 + 30 * self.FILAS)
+
+    def poner(self, valores: list[str]):
+        self.filas = Counter(v for v in valores if v).most_common(self.FILAS)
+        self.update()
+
+    def paintEvent(self, _):
+        p = pintor(self)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        caja(p, r, RADIO, TARJETA, BORDE)
+        texto(p, QRectF(16, 10, r.width() - 32, 20), tx(self.clave_titulo), fuente(10.5, QFont.Weight.Bold), TEXTO)
+        if not self.filas:
+            texto(p, QRectF(16, 42, r.width() - 32, 20), "—", fuente(9.5, QFont.Weight.Medium), APAGADO)
+            p.end()
+            return
+        maximo = self.filas[0][1]
+        y, w = 42, r.width() - 32
+        for nombre, n in self.filas:
+            texto(p, QRectF(16, y, w - 40, 18), nombre, fuente(9, QFont.Weight.Medium), SECUNDARIO)
+            texto(p, QRectF(16, y, w, 18), str(n), fuente(9, QFont.Weight.Bold), TEXTO, DER)
+            caja(p, QRectF(16, y + 21, w, 4), 2, PISTA)
+            caja(p, QRectF(16, y + 21, max(4, w * n / maximo), 4), 2, ACENTO)
+            y += 30
+        p.end()
+
+
 # --- Contenido ---------------------------------------------------------------
 
 
@@ -738,16 +870,25 @@ class ContenidoHistorial(QWidget):
     """El filtro por guía, la barra lateral con las partidas y el panel con los datos. Lo
     usan la página Historial del panel y la ventana flotante del juego.
 
-    `filtro` es el nombre de una guía o None (todas las partidas, lo normal)."""
+    `tipo` es None (todas las partidas, lo normal), RANKED o PRACTICA; `filtro`, el nombre
+    de una guía (solo prácticas) o None. perfil: el ID de perfil propio, si se sabe (para
+    reconocer al jugador en las ranked)."""
 
     LATERAL = 268
+    ranked_leidas = Signal(object)  # desde el hilo que lee las repeticiones
 
-    def __init__(self, historial: Historial):
+    def __init__(self, historial: Historial, perfil=lambda: None):
         super().__init__()
         cargar_fuentes()
         self.historial = historial
+        self.perfil = perfil
         self.seleccion: str | None = None  # None = resumen
+        self.tipo: str | None = None  # None = ranked y prácticas
         self.filtro: str | None = None  # None = todas las guías
+        self.ranked: list[dict] = []
+        self._leyendo_ranked = False
+        self._ranked_leidas_en = -RELEER_RANKED
+        self.ranked_leidas.connect(self._poner_ranked)
         self.fin_de_partida = False
         self.repeticion = None  # Path de la repetición de la partida elegida
         self.mostrar_en_carpeta = repeticiones.mostrar_en_carpeta
@@ -801,6 +942,22 @@ class ContenidoHistorial(QWidget):
         cuerpo.addWidget(self.vista_guias, 1)
 
         # Resumen de una guía: medias, evolución y dónde se pierde tiempo.
+        self.vista_ranked = QWidget()
+        vr = QVBoxLayout(self.vista_ranked)
+        vr.setContentsMargins(0, 0, 0, 0)
+        vr.setSpacing(12)
+        self.rotulo_ranked = etiqueta("", 7.5, QFont.Weight.Bold, APAGADO, 1.4)
+        vr.addLayout(con_info(self.rotulo_ranked, InfoPunto(tx("hi_ranked_nota"))))
+        fila_conteos = QHBoxLayout()
+        fila_conteos.setSpacing(12)
+        self.conteo_civs, self.conteo_mapas, self.conteo_rivales = (Conteo("hi_tus_civs"), Conteo("hi_mapas"),
+                                                                    Conteo("hi_rivales"))
+        for c in (self.conteo_civs, self.conteo_mapas, self.conteo_rivales):
+            fila_conteos.addWidget(c, 1)
+        vr.addLayout(fila_conteos)
+        vr.addStretch(1)
+        cuerpo.addWidget(self.vista_ranked, 1)
+
         self.vista_general = QWidget()
         vg = QVBoxLayout(self.vista_general)
         vg.setContentsMargins(0, 0, 0, 0)
@@ -827,14 +984,31 @@ class ContenidoHistorial(QWidget):
         fila.addWidget(self.titulo_detalle)
         self.guia_detalle = etiqueta("", 9.5, QFont.Weight.Medium, APAGADO)
         fila.addWidget(self.guia_detalle, 1, Qt.AlignmentFlag.AlignBottom)
+        self.copiar = QPushButton(tx("hi_copiar"))
         self.en_carpeta = QPushButton(tx("hi_en_carpeta"))
         self.borrar = QPushButton(tx("hi_borrar"))
         self.borrar.setObjectName("borrar")
-        for b, al_pulsar in ((self.en_carpeta, self.pulsar_en_carpeta), (self.borrar, self.pulsar_borrar)):
+        for b, al_pulsar in ((self.copiar, self.pulsar_copiar), (self.en_carpeta, self.pulsar_en_carpeta),
+                             (self.borrar, self.pulsar_borrar)):
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.clicked.connect(al_pulsar)
             fila.addWidget(b)
         vp.addLayout(fila)
+        # Ranked: sus jugadores.
+        self.cuerpo_ranked = QWidget()
+        lr = QVBoxLayout(self.cuerpo_ranked)
+        lr.setContentsMargins(0, 0, 0, 0)
+        self.jugadores = TablaJugadores()
+        lr.addWidget(self.jugadores)
+        lr.addStretch(1)
+        vp.addWidget(self.cuerpo_ranked, 1)
+        # Práctica: el resto.
+        self.cuerpo_practica = QWidget()
+        vp_practica = vp
+        vp = QVBoxLayout(self.cuerpo_practica)
+        vp.setContentsMargins(0, 0, 0, 0)
+        vp.setSpacing(12)
+        vp_practica.addWidget(self.cuerpo_practica, 1)
         # La partida que acaba de terminar, en una línea.
         self.aviso = etiqueta("", 10, QFont.Weight.DemiBold, BIEN)
         self.aviso.setWordWrap(True)
@@ -864,19 +1038,61 @@ class ContenidoHistorial(QWidget):
         self.elegir(seleccion)
 
     def filtrar(self, guia: str | None):
-        """Solo las partidas de una guía (None = todas)."""
+        """Solo las prácticas de una guía (None = todas las partidas)."""
+        self.tipo = PRACTICA if guia else None
         self.filtro = guia
         self.refrescar()
 
+    def filtrar_tipo(self, tipo: str | None):
+        """Solo las ranked, solo las prácticas o todas (None)."""
+        self.tipo, self.filtro = tipo, None
+        self.refrescar()
+
+    def buscar(self, id_: str | None) -> dict | None:
+        return self.historial.buscar(id_) or next((r for r in self.ranked if r["id"] == id_), None)
+
     def elegir(self, id_: str | None):
         self.seleccion = id_
-        reg = self.historial.buscar(id_)
-        if reg and self.filtro and reg["guia"] != self.filtro:
-            self.filtro = None  # la partida pedida no es de la guía filtrada
+        reg = self.buscar(id_)
+        if reg and not self._se_ve(reg):
+            self.tipo, self.filtro = None, None  # la partida pedida no está en el filtro elegido
+        self.refrescar()
+
+    def _se_ve(self, reg: dict) -> bool:
+        if es_ranked(reg):
+            return self.tipo in (None, RANKED)
+        return self.tipo != RANKED and self.filtro in (None, reg["guia"])
+
+    def yo(self) -> int | None:
+        return self.perfil() or R.perfil_comun(self.ranked)
+
+    # Ranked: se leen en otro hilo (la primera vez puede tardar unos segundos).
+    def _pedir_ranked(self):
+        if self._leyendo_ranked or time.monotonic() - self._ranked_leidas_en < RELEER_RANKED:
+            return
+        if repeticiones.carpeta() is None:
+            self.ranked = []
+            return
+        self._leyendo_ranked = True
+        self._ranked_leidas_en = time.monotonic()
+
+        def trabajo():
+            try:
+                lista = R.leer()
+            except Exception:  # noqa: BLE001 - un archivo raro no debe tumbar el historial
+                lista = None
+            self.ranked_leidas.emit(lista)
+        threading.Thread(target=trabajo, daemon=True).start()
+
+    def _poner_ranked(self, lista):
+        self._leyendo_ranked = False
+        if lista is None or [r["id"] for r in lista] == [r["id"] for r in self.ranked]:
+            return
+        self.ranked = lista
         self.refrescar()
 
     def pulsar_borrar(self):
-        if self.seleccion is None:
+        if self.seleccion is None or es_ranked(self.buscar(self.seleccion)):
             return
         if self.borrar.property("confirmar"):
             self.historial.quitar(self.seleccion)
@@ -892,14 +1108,29 @@ class ContenidoHistorial(QWidget):
         if self.repeticion is not None:
             self.mostrar_en_carpeta(self.repeticion)
 
+    def pulsar_copiar(self):
+        """Copia el nombre de la repetición (sin la extensión), el que se ve en el juego."""
+        if self.repeticion is None:
+            return
+        QGuiApplication.clipboard().setText(Path(self.repeticion).stem)
+        self.copiar.setText(tx("hi_copiado"))
+        QTimer.singleShot(1500, lambda: self.copiar.setText(tx("hi_copiar")))
+
     def _poner_repeticion(self, sel: dict):
-        antes = sel.get("repeticion")
-        self.repeticion = repeticiones.de_registro(sel)
-        if sel.get("repeticion") != antes:
-            self.historial.guardar()
+        if es_ranked(sel):
+            carpeta = repeticiones.carpeta()
+            ruta = carpeta / sel["id"] if carpeta else None
+            self.repeticion = ruta if ruta is not None and ruta.is_file() else None
+        else:
+            antes = sel.get("repeticion")
+            self.repeticion = repeticiones.de_registro(sel)
+            if sel.get("repeticion") != antes:
+                self.historial.guardar()
         hay = self.repeticion is not None
-        self.en_carpeta.setEnabled(hay)
-        self.en_carpeta.setToolTip("" if hay else tx("hi_sin_repeticion"))
+        for b, consejo in ((self.en_carpeta, ""), (self.copiar, tx("hi_copiar_nota"))):
+            b.setEnabled(hay)
+            b.setToolTip(consejo if hay else tx("hi_sin_repeticion"))
+        self.copiar.setText(tx("hi_copiar"))
 
     def _reiniciar_borrar(self):
         self.borrar.setText(tx("hi_borrar"))
@@ -907,8 +1138,21 @@ class ContenidoHistorial(QWidget):
         self.borrar.style().polish(self.borrar)
 
     def _pintar_filtros(self, guias: list[tuple[str, int]]):
-        firma = (tuple(guias), self.filtro)
-        self.barra_filtros.setVisible(len(guias) > 1)
+        """Todas, Ranked y Práctica (si hay ranked) y una por guía (si hay varias)."""
+        hay_ranked = bool(self.ranked)
+        practicas = sum(n for _, n in guias)
+        botones: list[tuple[str, int, object, bool]] = [
+            (tx("hi_todas"), practicas + len(self.ranked), lambda: self.filtrar_tipo(None),
+             self.tipo is None and self.filtro is None)]
+        if hay_ranked:
+            botones.append((tx("hi_ranked"), len(self.ranked), lambda: self.filtrar_tipo(RANKED), self.tipo == RANKED))
+            botones.append((tx("hi_practica"), practicas, lambda: self.filtrar_tipo(PRACTICA),
+                            self.tipo == PRACTICA and self.filtro is None))
+        if len(guias) > 1 and self.tipo != RANKED:
+            for nombre, n in guias:
+                botones.append((nombre, n, lambda x=nombre: self.filtrar(x), self.filtro == nombre))
+        self.barra_filtros.setVisible(len(botones) > 1)
+        firma = tuple((t, n, marcado) for t, n, _, marcado in botones)
         if firma == self._firma_filtros:
             return
         self._firma_filtros = firma
@@ -918,46 +1162,65 @@ class ContenidoHistorial(QWidget):
             b.deleteLater()
         while self.filtros.count():
             self.filtros.takeAt(0)
-        total = sum(n for _, n in guias)
-        for nombre, n in [(None, total)] + guias:
-            b = QPushButton(f"{nombre or tx('hi_todas')}   {n}")
+        for k, (rotulo, n, al_pulsar, marcado) in enumerate(botones):
+            if hay_ranked and k == 3:
+                self.filtros.addSpacing(10)  # las guías, aparte
+            b = QPushButton(f"{rotulo}   {n}")
             b.setObjectName("filtro")
             b.setCheckable(True)
-            b.setChecked(nombre == self.filtro)
+            b.setChecked(marcado)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.clicked.connect(lambda _=False, x=nombre: self.filtrar(x))
+            b.clicked.connect(lambda _=False, f=al_pulsar: f())
             self.grupo.addButton(b)
             self.filtros.addWidget(b)
         self.filtros.addStretch(1)
 
     def refrescar(self):
+        self._pedir_ranked()
         self._reiniciar_borrar()
         guias = self.historial.guias()
         if self.filtro not in dict(guias):
             self.filtro = None
-        sel = self.historial.buscar(self.seleccion)
-        if sel and self.filtro and sel["guia"] != self.filtro:
+        if self.tipo == RANKED and not self.ranked:
+            self.tipo = None
+        sel = self.buscar(self.seleccion)
+        if sel and not self._se_ve(sel):
             sel = None
         self.seleccion = sel["id"] if sel else None
-        visibles = self.historial.de_guia(self.filtro)
+        practicas = self.historial.de_guia(self.filtro) if self.tipo != RANKED else []
+        ranked = self.ranked if self.tipo in (None, RANKED) else []
+        visibles = sorted(practicas + ranked, key=lambda r: r["fecha"])
         hay = bool(visibles)
         self.vacio.setVisible(not hay)
         self.contenido.setVisible(hay)
         self._pintar_filtros(guias)
         if not hay:
             return
-        # La guía del panel de la derecha: la de la partida elegida, la filtrada o la única que hay.
-        guia = sel["guia"] if sel else (self.filtro or (guias[0][0] if len(guias) == 1 else None))
+        yo = self.yo()
         marcas = {}
         for nombre, _ in guias:
             de_la_guia = self.historial.de_guia(nombre)
             res = resumen_hito(de_la_guia, principal(de_la_guia[-1]))
             marcas[nombre] = (res["media"], res["mejor"])
         self.resumen.poner(sel is None, len(visibles))
-        self.lista.poner(list(reversed(visibles)), self.seleccion, marcas, self.filtro is None and len(guias) > 1)
-        self.vista_guias.setVisible(guia is None)
-        self.vista_general.setVisible(sel is None and guia is not None)
+        self.lista.poner(list(reversed(visibles)), self.seleccion, marcas, self.filtro is None and len(guias) > 1, yo)
+        # Sin partida elegida y sin prácticas a la vista: el resumen de las ranked.
+        solo_ranked = sel is None and not practicas
+        # La guía del panel de la derecha: la de la partida elegida, la filtrada o la única que hay.
+        if sel is not None:
+            guia = None if es_ranked(sel) else sel["guia"]
+        else:
+            guia = self.filtro or (guias[0][0] if len(guias) == 1 else None)
+        self.vista_ranked.setVisible(solo_ranked)
+        self.vista_guias.setVisible(sel is None and not solo_ranked and guia is None)
+        self.vista_general.setVisible(sel is None and not solo_ranked and guia is not None)
         self.vista_partida.setVisible(sel is not None)
+        if solo_ranked:
+            self._pintar_resumen_ranked(ranked, yo)
+            return
+        if sel is not None and es_ranked(sel):
+            self._pintar_ranked(sel, yo)
+            return
         if guia is None:
             self.tabla_guias.poner(self.historial)
             return
@@ -968,8 +1231,29 @@ class ContenidoHistorial(QWidget):
             self.fichas_general.preparar(claves, nombres)
             self._pintar_general(regs)
         else:
+            self.cuerpo_ranked.hide()
+            self.cuerpo_practica.show()
+            self.borrar.show()
             self.fichas.preparar(claves, nombres)
             self._pintar_partida(regs, sel, len(guias) > 1)
+
+    def _pintar_resumen_ranked(self, regs: list[dict], yo: int | None):
+        n = len(regs)
+        self.rotulo_ranked.setText(tx("hi_ranked_una") if n == 1 else tx("hi_ranked_partidas", n=n))
+        mias = [R.yo_en(r, yo) for r in regs]
+        self.conteo_civs.poner([nombre_civ(j["civ"]) for j in mias if j])
+        self.conteo_mapas.poner([mapa_corto(r["mapa"]) for r in regs])
+        self.conteo_rivales.poner([j["nombre"] for r in regs for j in R.rivales(r, yo)])
+
+    def _pintar_ranked(self, sel: dict, yo: int | None):
+        self.aviso.hide()
+        self.cuerpo_practica.hide()
+        self.cuerpo_ranked.show()
+        self.borrar.hide()
+        self.titulo_detalle.setText(f"{fecha_corta(sel['fecha'])} · {mapa_corto(sel['mapa'])}")
+        self.guia_detalle.setText(R.titulo(sel))
+        self._poner_repeticion(sel)
+        self.jugadores.poner(sel, yo)
 
     def _pintar_general(self, regs: list[dict]):
         n = min(len(regs), VENTANA_MEDIA)
@@ -1023,7 +1307,7 @@ class VentanaHistorial(QWidget):
 
     ANCHO, ALTO = 1140, 800
 
-    def __init__(self, historial: Historial, al_cerrar):
+    def __init__(self, historial: Historial, al_cerrar, perfil=lambda: None):
         super().__init__()
         self.historial = historial
         self.setWindowFlags(BANDERAS_CLIC)
@@ -1047,7 +1331,7 @@ class VentanaHistorial(QWidget):
         cab.addWidget(cerrar)
         raiz.addLayout(cab)
 
-        self.cuerpo = ContenidoHistorial(historial)
+        self.cuerpo = ContenidoHistorial(historial, perfil)
         raiz.addWidget(self.cuerpo, 1)
 
     # La lista, las vistas, elegir(), pulsar_borrar()... son del contenido.

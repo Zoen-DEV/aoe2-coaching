@@ -289,6 +289,79 @@ def test_lector_y_seguimiento(tmp: Path):
     comprobar(abs(r["hitos"]["feudal"] - 770) <= 3, f"llegada a Feudal con lecturas cada 3 s: {r['hitos']['feudal']}")
 
 
+def test_ranked(tmp: Path):
+    print("Ranked: se leen de las repeticiones y se filtran en el historial")
+    from PySide6.QtGui import QGuiApplication
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance() or QApplication(sys.argv)
+    import cabecera as CB
+    import clasificatorias as R
+    import historial_ui as HU
+    import repeticiones
+    sg = tmp / "perfil_ranked" / "savegame"
+    yo, rival = 111, 222
+    J = CB.JugadorCabecera
+    uno = [J(1, "Yo", yo, 2, 0, 8), J(2, "Rook", rival, 3, 1, 1)]
+    ranked = "MP Replay v101.103.57257.0 @2026.11.12 121309 (2).aoe2record"
+    CB.escribir_prueba(sg / ranked, uno, mapa="Arabia")
+    CB.escribir_prueba(sg / "MP Replay v101.103.57257.0 @2026.11.12 131309 (1).aoe2record",
+                       [J(1, "Yo", yo, 2, 0, 8), J(2, "Otro", 333, 3, 1, 4)], mapa="Arena")
+    CB.escribir_prueba(sg / "MP Replay v101.103.57257.0 @2026.11.11 101010 (1).aoe2record", uno,
+                       clasificatoria=False)
+    CB.escribir_prueba(sg / "SP Replay v101.103.57257.0 @2026.11.11 090000.aoe2record", uno)
+    en_curso = sg / "MP Replay v101.103.57257.0 @2026.11.13 090000 (1).aoe2record"
+    CB.escribir_prueba(en_curso, uno)
+    for f in sg.iterdir():
+        if f != en_curso:
+            os.utime(f, (time.time() - 3600, time.time() - 3600))
+    cache = tmp / "clasificatorias.json"
+    regs = R.leer(sg, cache)
+    comprobar([r["mapa"] for r in regs] == ["Arabia", "Arena"],
+              "solo las ranked terminadas (ni la no clasificatoria, ni la de un jugador, ni la que sigue en curso)")
+    comprobar(regs[0]["fecha"] == "2026-11-12T12:13:09" and R.titulo(regs[0]) == "RM 1v1", "fecha y modo")
+    comprobar(R.perfil_comun(regs) == yo and R.rivales(regs[0], yo)[0]["nombre"] == "Rook",
+              "el jugador es el que está en todas; el rival, el otro")
+    llamadas = []
+    original = CB.leer_archivo
+    CB.leer_archivo = lambda ruta: llamadas.append(ruta) or original(ruta)
+    try:
+        comprobar(len(R.leer(sg, cache)) == 2 and not llamadas, "la segunda vez no se vuelve a abrir ninguna")
+    finally:
+        CB.leer_archivo = original
+    comprobar(R.nombre_repeticion(regs[0]) == ranked.removesuffix(".aoe2record"), "nombre sin extensión")
+
+    h = H.historial_de_ejemplo(GUIA, 3)
+    repeticiones.poner_perfil(sg.parent)
+    try:
+        c = HU.ContenidoHistorial(h, lambda: yo)
+        c._ranked_leidas_en = time.monotonic()  # sin hilo: se ponen a mano
+        c._poner_ranked(regs)
+        c.abrir()
+        comprobar(len(c.lista.registros) == 5 and c.barra_filtros.isVisibleTo(c), "Todas: ranked y prácticas juntas")
+        c.filtrar_tipo(HU.RANKED)
+        comprobar(len(c.lista.registros) == 2 and c.vista_ranked.isVisibleTo(c), "Ranked: solo ranked, con su resumen")
+        comprobar(c.conteo_rivales.filas == [("Rook", 1), ("Otro", 1)], "resumen: rivales")
+        c.filtrar_tipo(HU.PRACTICA)
+        comprobar(len(c.lista.registros) == 3 and all(not HU.es_ranked(r) for r in c.lista.registros),
+                  "Práctica: solo prácticas")
+        c.elegir(ranked)
+        comprobar(c.tipo is None and c.vista_partida.isVisibleTo(c) and c.cuerpo_ranked.isVisibleTo(c)
+                  and not c.cuerpo_practica.isVisibleTo(c) and not c.borrar.isVisibleTo(c),
+                  "elegir una ranked desde Práctica vuelve a Todas y muestra sus jugadores (sin Borrar)")
+        c.pulsar_copiar()
+        comprobar(QGuiApplication.clipboard().text() == ranked.removesuffix(".aoe2record")
+                  and c.copiar.text() == "Copiado", "Copiar nombre deja el nombre de la repetición en el portapapeles")
+        c.pulsar_borrar()
+        c.pulsar_borrar()
+        comprobar(c.buscar(ranked) is not None, "una ranked no se borra")
+        c.elegir(h.registros[0]["id"])
+        comprobar(c.cuerpo_practica.isVisibleTo(c) and c.borrar.isVisibleTo(c) and not c.copiar.isEnabled(),
+                  "una práctica sin repetición: Copiar desactivado")
+    finally:
+        repeticiones.poner_perfil(None)
+    app.processEvents()
+
+
 def main():
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
@@ -301,6 +374,7 @@ def main():
         test_archivo_roto(tmp)
         test_lector_y_seguimiento(tmp)
         test_overlay(tmp)
+        test_ranked(tmp)
     print("\nTodo bien.")
 
 

@@ -53,6 +53,7 @@ from estilo import P_TEXTO as TEXTO
 from estilo import cargar_fuentes, color, fuente, titulo
 from historial import (Historial, nombre_hito, pasos_hechos, principal, reloj, resumen_hito, valor_principal,
                        vista_de_guia)
+from clasificatorias import perfil_de_config
 from historial_ui import ContenidoHistorial, InfoPunto, desfase, fecha_corta, junto_a, mapa_corto
 from textos import de, t
 from version import VERSION
@@ -1376,7 +1377,7 @@ class PaginaHistorial(Pagina):
 
     def __init__(self, panel: Panel):
         super().__init__(panel, desplazar=False)
-        self.contenido = ContenidoHistorial(panel.historial)
+        self.contenido = ContenidoHistorial(panel.historial, lambda: perfil_de_config(panel.config))
         self.capa.addWidget(self.contenido, 1)
 
     def refrescar(self):
