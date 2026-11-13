@@ -54,6 +54,7 @@ class Cabecera:
     multijugador: bool
     clasificatoria: bool
     jugadores: list[JugadorCabecera] = field(default_factory=list)
+    velocidad: float = 0.0         # velocidad de la partida (1,7 = normal; 0 si no se sabe)
 
     @property
     def modo(self) -> str | None:
@@ -126,7 +127,9 @@ def leer(datos: bytes) -> Cabecera:
     mapa_id = r.leer("I")                        # mapa resuelto (el aleatorio, si se eligió así)
     r.saltar(4 + 4 + 4 + 4 + 4)                  # revelar mapa, victoria, recursos, edad inicial y final
     tipo = r.leer("I")
-    r.saltar(8 + 4 + 4 + 4)                      # separadores, velocidad, tratado, población
+    r.saltar(8)                                  # separadores
+    velocidad = round(r.leer("f"), 2)
+    r.saltar(4 + 4)                              # tratado, población
     num = r.leer("I")
     if not 1 <= num <= 8:
         raise CabeceraError(f"número de jugadores imposible: {num}")
@@ -167,7 +170,7 @@ def leer(datos: bytes) -> Cabecera:
     m = RE_UBICACION.search(r.d)
     mapa = m.group(1).decode("utf-8", "replace").strip() if m else ""
     return Cabecera(version, tipo, mapa_id, mapa, multijugador, clasificatoria,
-                    sorted(jugadores, key=lambda j: j.numero))
+                    sorted(jugadores, key=lambda j: j.numero), velocidad if 0 < velocidad < 10 else 0.0)
 
 
 def leer_archivo(ruta: Path) -> Cabecera:
@@ -197,7 +200,7 @@ def escribir_prueba(ruta: Path, jugadores: list[JugadorCabecera], clasificatoria
     p = struct.pack
     raw = b"VER 9.4\x00" + p("<fI", -1.0, round(68.9 * (1 << 16)))
     raw += bytes(4 + 4 + 12) + p("<I", 0)                       # build, hora, versiones; sin DLC
-    raw += bytes(12) + p("<I", mapa_id) + bytes(20) + p("<I", tipo) + bytes(20)
+    raw += bytes(12) + p("<I", mapa_id) + bytes(20) + p("<I", tipo) + bytes(8) + p("<f", 1.7) + bytes(8)
     raw += p("<I", len(jugadores)) + bytes(20) + p("<b", 1 if multijugador else 0) + bytes(21)
     por_numero = {j.numero: j for j in jugadores}
     for n in range(1, 9):

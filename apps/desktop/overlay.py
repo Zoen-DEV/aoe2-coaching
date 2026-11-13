@@ -27,6 +27,7 @@ import config as C  # noqa: E402
 import logo  # noqa: E402
 import iconos_juego  # noqa: E402
 import repeticiones  # noqa: E402
+import ritmo as R  # noqa: E402
 import rutas  # noqa: E402
 import textos  # noqa: E402
 import tierlist as TL  # noqa: E402
@@ -180,6 +181,23 @@ def construir_vista(guia: dict, e: Estado, siguientes: int | None = None, aviso_
     return v
 
 
+def vista_ritmo(e: R.EstadoRitmo, siguientes: int | None = None) -> Vista:
+    """La tarjeta de la guía de ritmo (clasificatorias): el paso que toca a esta hora, con
+    su hora objetivo, y los siguientes. Sin condiciones: nada se marca como hecho. La
+    pastilla, si se sabe, cómo va el jugador en el último clic de edad."""
+    guia, pasos = e.guia, e.guia["pasos"]
+    total = len(pasos)
+    paso = min(e.paso, total - 1)  # pasados todos los objetivos, el último sigue un rato
+    r = ritmo(e.diferencia, guia["margen_segundos"]) if e.diferencia is not None else None
+    v = Vista(guia["nombre"], int(e.tiempo), paso, total, min(e.paso, total), r, False)
+    p = pasos[paso]
+    v.titulo, v.texto, v.icono, v.referencia = de(p, "titulo"), de(p, "texto"), p["icono"], e.objetivos[paso].segundos
+    n_siguientes = guia["pasos_siguientes_visibles"] if siguientes is None else siguientes
+    for i in range(paso + 1, min(total, paso + 1 + n_siguientes)):
+        v.siguientes.append((i + 1, de(pasos[i], "titulo"), e.objetivos[i].segundos))
+    return v
+
+
 # --- Dibujo ------------------------------------------------------------------
 
 
@@ -247,10 +265,13 @@ class Pintor:
         y = PAD - 2
 
         # Cabecera: nombre de la guía y reloj de la partida.
-        self.texto(x0, y, w - 60, v.nombre.upper(), fuente(8.5, QFont.Weight.Bold, 1.4), APAGADO)
-        # El reloj deja sitio a la derecha para el botón de menú (otra ventana encima).
-        self.texto(x0, y, w - 2 * BOTON - 16, reloj(v.tiempo), fuente(9.5, QFont.Weight.DemiBold), SECUNDARIO,
-                   Qt.AlignmentFlag.AlignRight)
+        # El reloj deja sitio a la derecha para el botón de menú (otra ventana encima), y el
+        # nombre se corta antes del reloj.
+        f_reloj = fuente(9.5, QFont.Weight.DemiBold)
+        ancho_reloj = QFontMetricsF(f_reloj).horizontalAdvance(reloj(v.tiempo))
+        self.texto(x0, y, w - 2 * BOTON - 16 - ancho_reloj - 10, v.nombre.upper(), fuente(8.5, QFont.Weight.Bold, 1.4),
+                   APAGADO)
+        self.texto(x0, y, w - 2 * BOTON - 16, reloj(v.tiempo), f_reloj, SECUNDARIO, Qt.AlignmentFlag.AlignRight)
         y += 22
 
         # Paso y ritmo.
@@ -685,6 +706,10 @@ class Overlay(QWidget):
         self.ultima_vigilancia = 0.0
         self.ultimo_raise_match = 0.0
         self.perfil_detectado: int | None = None  # lo pone detectar_perfil (en otro hilo)
+        # Guía de ritmo en las clasificatorias (ritmo.py). main pone las guías instaladas y
+        # de dónde salen los clics en Feudal de las ranked terminadas.
+        self.ritmo = R.GuiaRitmo(historial, {}, self.config) if vigilante else None
+        self.en_ritmo = False
         self.atajo: AtajoGlobal | None = None  # lo pone main (poner_atajo)
         if vigilante:
             vigilante.perfil = self.perfil_propio
@@ -817,7 +842,15 @@ class Overlay(QWidget):
         guia, estado, frescura = self.fuente_estado()
         ahora = time.monotonic()
         en_partida = guia is not None and estado is not None and frescura < SIN_DATOS
-        if not en_partida and self.vista is not None and self.opacidad == 0:
+        vista_r = None if en_partida else self.vista_de_ritmo()
+        if vista_r is not None:
+            if not self.en_ritmo or self.vista is None or vista_r.paso != self.vista.paso:
+                self.inicio_entrada = ahora  # el paso nuevo entra con la animación de siempre
+            self.vista, self.guia = vista_r, self.ritmo.guia_elegida()
+            self.paso_anterior = self.aviso_paso = self.fin_desde = self.tierlist_desde = None
+        # Al acabar, la última tarjeta se desvanece y luego se reinicia (abajo).
+        self.en_ritmo = vista_r is not None
+        if not en_partida and not self.en_ritmo and self.vista is not None and self.opacidad == 0:
             self.reiniciar()  # salió de la partida: cuando ya no se ve, vuelve al estado inicial
         if en_partida:
             vista = construir_vista(guia, estado, self.config.get("pasos_siguientes"), self.config.get("aviso_casas", True))
@@ -853,6 +886,8 @@ class Overlay(QWidget):
         # En una clasificatoria (Match Info) la guía no se muestra.
         en_ranked = self.vigilante is not None and self.vigilante.partida is not None
         visible = en_partida and self.vista is not None and self.juego_delante and not en_ranked
+        if self.en_ritmo:
+            visible = self.juego_delante  # la guía de ritmo, en la clasificatoria
         if self.fin_desde is not None and ahora - self.fin_desde > 90 and not (self.vista and self.vista.tierlist):
             visible = False  # el resumen final se queda 90 s; la tierlist, hasta que acabe la partida
         self.opacidad = self.acercar(self.opacidad, 1.0 if visible else 0.0, 0.3)
@@ -968,6 +1003,9 @@ class Overlay(QWidget):
         if ahora - self.ultima_vigilancia >= 1.0:
             self.ultima_vigilancia = ahora
             v.actualizar()
+            if self.ritmo:
+                activa = bool(self.config.get("ritmo", True)) and v.partida is not None
+                self.ritmo.seguir(v.ruta if activa else None, v.cabecera, self.perfil_propio())
             if self.perfil_detectado and self.perfil_detectado != self.config.get("match_perfil_detectado"):
                 self.config["match_perfil_detectado"] = self.perfil_detectado
                 self.guardar_config()
@@ -980,6 +1018,16 @@ class Overlay(QWidget):
         if self.panel_match.isVisible() and ahora - self.ultimo_raise_match > 5:
             self.panel_match.raise_()  # el juego a veces se pone delante
             self.ultimo_raise_match = ahora
+
+    def vista_de_ritmo(self) -> Vista | None:
+        """La tarjeta de la guía de ritmo si hay una clasificatoria en curso con guía (y no
+        se apagó en Ajustes)."""
+        if not self.ritmo or not self.ritmo.activa or not self.config.get("ritmo", True):
+            return None
+        partida = self.vigilante.partida if self.vigilante else None
+        yo = partida.yo if partida else None
+        e = self.ritmo.estado(yo.rating if yo else None)
+        return vista_ritmo(e, self.config.get("pasos_siguientes")) if e else None
 
     def renderizar(self, ahora: float):
         """Dibuja la tarjeta en una imagen guardada y solo la rehace si cambia lo que se ve.
@@ -1053,8 +1101,16 @@ class Overlay(QWidget):
 
     def alto_maximo(self, guia: dict) -> float:
         """La tarjeta más alta posible en esta guía (con aviso de paso y de casas),
-        para fijar su borde superior y que los botones no se muevan."""
-        clave = (guia["nombre"], guia.get("civ_adaptada"), self.config.get("pasos_siguientes"), textos.idioma())
+        para fijar su borde superior y que los botones no se muevan. En la guía de ritmo,
+        la más alta de sus tarjetas (sin condiciones ni avisos: son más bajas)."""
+        clave = (guia["nombre"], guia.get("civ_adaptada"), self.config.get("pasos_siguientes"), textos.idioma(),
+                 self.en_ritmo)
+        if self._alto_max.get(clave) is None and self.en_ritmo:
+            objetivos = [R.O.Objetivo(i, p["referencia"], p["referencia"], R.O.ELO, 0) for i, p in enumerate(guia["pasos"])]
+            self._alto_max[clave] = max(
+                Pintor(None, ANCHO).dibujar(vista_ritmo(R.EstadoRitmo(guia, objetivos, 0, i, diferencia=600),
+                                                        self.config.get("pasos_siguientes")), None, 1.0)
+                for i in range(len(guia["pasos"])))
         if self._alto_max.get(clave) is None:
             altos = []
             for paso in range(len(guia["pasos"]) + 1):
@@ -1412,13 +1468,32 @@ def main():
         carpeta_demo = Path(tempfile.mkdtemp(prefix="aoe2c-demo-match-"))
         repeticion, proveedor, yo = V.simular(carpeta_demo, tipo)
         vigilante = V.Vigilante(lambda: carpeta_demo, Estadisticas(proveedor), lambda: yo)
-        historial, seguimiento = Historial(None), None
+        # Prácticas inventadas con la guía activa, para la guía de ritmo.
+        historial, seguimiento = historial_de_ejemplo(guia_elegida(["--guia", config.get("guia_activa") or ""])), None
         inicio_demo = time.monotonic()
+        demo_juego = {"ms": 0, "clic": False}
+
+        def escribir_juego(s: float):
+            """El "juego" escribe la repetición: el reloj empieza en 4:30 y va a 10x, para ver
+            pasar los pasos; a los 12 s de demo, el clic en Feudal del jugador 1 (el propio)."""
+            import struct
+            import analisis as A
+            objetivo = int((270 + 10 * 1.7 * s) * 1000)
+            trozo = b""
+            while demo_juego["ms"] < objetivo:
+                inc = min(500, objetivo - demo_juego["ms"])
+                trozo += A.sync_prueba(inc)
+                demo_juego["ms"] += inc
+            if s >= 12 and not demo_juego["clic"]:
+                demo_juego["clic"] = True
+                trozo += A.investigar_prueba(1, 101)
+            with open(repeticion, "ab") as f:
+                f.write(trozo + struct.pack("<I", A.OP_VISTA) + bytes(12))
 
         def demo_match():
             s = time.monotonic() - inicio_demo
             if s < 30:
-                os.utime(repeticion)  # el "juego" sigue escribiendo la repetición
+                escribir_juego(s)  # el "juego" sigue escribiendo la repetición
             elif repeticion.exists():
                 repeticion.unlink()  # acabó (y otra partida ya no la toma por nueva)
             if s > 36:
@@ -1427,6 +1502,7 @@ def main():
 
         fuente_estado = demo_match
         config = dict(config)  # lo que se cambie (la posición) no se guarda
+        config["match_perfil"] = yo  # el jugador propio es el de la partida simulada
     else:
         lector = Lector(perfil, instalador.guias())
         historial = Historial()
@@ -1462,6 +1538,10 @@ def main():
         w.detectar_perfil(repeticiones.carpeta())
     if vigilante:
         w.poner_atajo(config.get("match_atajo") or "")
+        w.ritmo.guias = cargar_guias() if demo_match else instalador.guias()
+        if not demo_match:
+            import clasificatorias
+            w.ritmo.clics_ranked = lambda yo: clasificatorias.clics_feudal(clasificatorias.leer(), yo)
     w.crear_bandeja(app)
 
     def ocultado():
@@ -1483,6 +1563,8 @@ def main():
         if "--demo" not in args and not demo_match:
             lector.guias, lector.mapas = guias, mapas_de(guias)
             lector.archivo, lector.mtime = None, 0.0
+            if w.ritmo:
+                w.ritmo.guias = guias
 
     from catalogo import fuente_por_defecto
     from dashboard import Panel

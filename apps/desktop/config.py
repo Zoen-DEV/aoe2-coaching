@@ -33,6 +33,9 @@ DEFECTO = {
     "match_atajo": "Ctrl+Alt+M",    # mostrar u ocultar el panel durante la partida
     "match_perfil": None,           # ID de perfil elegido a mano (None = el deducido)
     "match_perfil_detectado": None, # el deducido de las repeticiones (vigilante.perfil_propio)
+    # Guía de ritmo: la guía según la hora de la partida en las clasificatorias (ritmo.py).
+    "ritmo": True,
+    "ritmo_guia": None,             # id de la guía; None = la activa (guia_activa)
     # Panel.
     "guia_activa": "fast_castle",   # la que cargan los mapas [AoE2C] (aoe2c_guia.xs)
     "idioma": None,                 # es o en; None = el de Windows (la primera vez)

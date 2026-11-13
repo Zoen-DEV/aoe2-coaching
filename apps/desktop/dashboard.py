@@ -1809,6 +1809,16 @@ class PaginaAjustes(Pagina):
         cpos.addWidget(lado_match)
         cpos.addWidget(boton(t("match_centrar"), self._centrar_match))
         self._opcion(match, t("op_match_posicion"), posicion)
+        # Guía de ritmo: la guía según la hora de la partida (ritmo.py).
+        self._opcion(match, t("op_ritmo"), Interruptor(cfg.get("ritmo", True), lambda v: self._poner("ritmo", v)),
+                     info=t("op_ritmo_desc"))
+        guia_ritmo = QComboBox()
+        guia_ritmo.addItem(t("ritmo_la_activa"), None)
+        for id_, g in panel.guias.items():
+            guia_ritmo.addItem(g["nombre"], id_)
+        guia_ritmo.setCurrentIndex(max(0, guia_ritmo.findData(cfg.get("ritmo_guia"))))
+        guia_ritmo.currentIndexChanged.connect(lambda _i: self._poner("ritmo_guia", guia_ritmo.currentData()))
+        self._opcion(match, t("op_ritmo_guia"), guia_ritmo)
 
         # Carpetas (las encuentra rutas.py; aquí se pueden cambiar).
         carpetas = self._seccion(t("ajustes_carpetas"))

@@ -64,45 +64,77 @@ def _inicio_cuerpo(d: bytes) -> int:
     return i
 
 
+FIN = "fin"            # operación de fin de partida (postgame) o desconocida: no se sigue
+MAX_ACCION = 1 << 20   # un comando más largo es que el formato no cuadra
+
+
+def operacion(d: bytes, i: int, fin: int | None = None):
+    """La operación que empieza en i: (tipo, posición de la siguiente, valor).
+
+    - OP_SYNC: valor = milisegundos que avanza el reloj del juego;
+    - OP_ACCION: valor = (jugador, comando, datos), o None si no es del formato de DE;
+    - OP_VISTA, OP_CHAT: valor = None;
+    - FIN: fin de la partida o algo que no se entiende (valor = None).
+
+    None si los bytes aún no llegan al final de la operación (la repetición de una
+    partida en curso se corta en cualquier sitio): se vuelve a intentar con más."""
+    fin = len(d) if fin is None else fin
+    if i + 4 > fin:
+        return None
+    op = struct.unpack_from("<I", d, i)[0]
+    i += 4
+    if op == OP_ACCION:
+        if i + 4 > fin:
+            return None
+        n = struct.unpack_from("<I", d, i)[0]
+        if not 1 <= n <= MAX_ACCION:
+            return FIN, i, None
+        siguiente = i + 4 + n + 4  # largo, comando y datos, número de secuencia
+        if siguiente > fin:
+            return None
+        comando = d[i + 4]
+        datos = d[i + 5:i + 4 + n]
+        valor = None
+        if len(datos) >= 3:
+            jugador, largo = struct.unpack_from("<bh", datos)
+            if largo == len(datos) - 3:  # formato de DE 71094 en adelante
+                valor = (jugador, comando, datos[3:])
+        return OP_ACCION, siguiente, valor
+    if op == OP_SYNC:
+        if i + 8 > fin:
+            return None  # sin la marca no se sabe si la sincronización es corta
+        inc, marca = struct.unpack_from("<II", d, i)
+        if marca:
+            return OP_SYNC, i + 4, inc  # corta: la marca es ya la operación siguiente
+        if i + 8 + 16 > fin:
+            return None
+        _, es_de = struct.unpack_from("<4xI4xI", d, i + 8)
+        siguiente = i + 8 + (LARGO_SYNC_DE + 4 if es_de else 24)
+        return (OP_SYNC, siguiente, inc) if siguiente <= fin else None
+    if op == OP_VISTA:
+        return (OP_VISTA, i + 12, None) if i + 12 <= fin else None
+    if op == OP_CHAT:
+        if i + 8 > fin:
+            return None
+        _, n = struct.unpack_from("<II", d, i)
+        return (OP_CHAT, i + 8 + n, None) if i + 8 + n <= fin else None
+    return FIN, i, None
+
+
 def leer_operaciones(d: bytes):
     """Recorre el cuerpo: (tiempo en ms, jugador, comando, datos) por cada comando y, al
     final, ("fin", tiempo) con la duración. Para en la primera operación que no entiende."""
     i = _inicio_cuerpo(d)
     t = 0
-    fin = len(d)
-    while i + 4 <= fin:
-        op = struct.unpack_from("<I", d, i)[0]
-        i += 4
-        try:
-            if op == OP_ACCION:
-                n = struct.unpack_from("<I", d, i)[0]
-                if n < 1 or i + 4 + n + 4 > fin:
-                    break
-                comando = d[i + 4]
-                datos = d[i + 5:i + 4 + n]
-                i += 4 + n + 4  # largo, comando y datos, número de secuencia
-                if len(datos) >= 3:
-                    jugador, largo = struct.unpack_from("<bh", datos)
-                    if largo == len(datos) - 3:  # formato de DE 71094 en adelante
-                        yield t, jugador, comando, datos[3:]
-            elif op == OP_SYNC:
-                inc, marca = struct.unpack_from("<II", d, i)
-                i += 8
-                if marca:
-                    i -= 4
-                else:
-                    _, es_de = struct.unpack_from("<4xI4xI", d, i)
-                    i += LARGO_SYNC_DE + 4 if es_de else 24
-                t += inc
-            elif op == OP_VISTA:
-                i += 12
-            elif op == OP_CHAT:
-                _, n = struct.unpack_from("<II", d, i)
-                i += 8 + n
-            else:
-                break  # fin de la partida (postgame) o algo desconocido
-        except struct.error:
+    while True:
+        r = operacion(d, i)
+        if r is None or r[0] == FIN:
             break
+        tipo, i, valor = r
+        if tipo == OP_SYNC:
+            t += valor
+        elif tipo == OP_ACCION and valor is not None:
+            yield t, *valor
     yield "fin", t
 
 

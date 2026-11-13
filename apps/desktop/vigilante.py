@@ -115,6 +115,15 @@ class Vigilante:
             return
         self._empezar(ultima, cab)
 
+    @property
+    def ruta(self) -> Path | None:
+        """La repetición de la partida clasificatoria en curso."""
+        return self._ruta
+
+    @property
+    def cabecera(self) -> CB.Cabecera | None:
+        return self._cabecera
+
     def _reciente(self, ruta: Path) -> bool:
         try:
             return self.ahora() - ruta.stat().st_mtime < SIN_ESCRITURA
@@ -207,7 +216,7 @@ class ProveedorDeEjemplo:
 def simular(carpeta: Path, tipo: str = "1v1") -> tuple[Path, ProveedorDeEjemplo, int]:
     """Escribe en carpeta la repetición de una partida clasificatoria de ejemplo. Devuelve
     (repetición, proveedor con su elo, perfil propio). Para que siga «en curso», hay que
-    ir actualizando la fecha del archivo (como hace el juego al escribir)."""
+    ir escribiendo en ella o actualizando su fecha (como hace el juego al escribir)."""
     from partida_en_curso import partida_de_ejemplo
     partida = partida_de_ejemplo(tipo)
     jugadores, n = [], 0
@@ -215,7 +224,10 @@ def simular(carpeta: Path, tipo: str = "1v1") -> tuple[Path, ProveedorDeEjemplo,
         for j in e.jugadores:
             n += 1
             jugadores.append(CB.JugadorCabecera(n, j.nombre, j.perfil, e.id, j.color, j.civ))
-    ruta = CB.escribir_prueba(Path(carpeta) / f"MP Replay simulada {tipo} @{time.strftime('%H%M%S')}.aoe2record",
-                              jugadores, mapa=partida.mapa)
+    from reloj_vivo import EscritorPrueba
+    # Con el principio del cuerpo, como la de una partida que empieza: el reloj en vivo
+    # (reloj_vivo.py) la sigue si se le van añadiendo sincronizaciones.
+    ruta = EscritorPrueba(Path(carpeta) / f"MP Replay simulada {tipo} @{time.strftime('%H%M%S')}.aoe2record",
+                          jugadores, mapa=partida.mapa).ruta
     yo = partida.yo
     return ruta, ProveedorDeEjemplo(partida, retraso=2.0), yo.perfil if yo else 0

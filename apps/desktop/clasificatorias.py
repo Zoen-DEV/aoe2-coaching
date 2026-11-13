@@ -327,6 +327,33 @@ def nombre_repeticion(registro: dict) -> str | None:
     return nombre.removesuffix(".aoe2record") if nombre else None
 
 
+_clics: dict[str, float | None] = {}  # repetición -> clic en Feudal del jugador (lo ya analizado)
+
+
+def clics_feudal(registros: list[dict], yo: int | None, savegame: Path | None = None, n: int = 10) -> list[float]:
+    """El clic en Feudal del jugador en sus últimas n clasificatorias de mapa aleatorio
+    (de la más vieja a la más reciente), sacado de los comandos de sus repeticiones ya
+    terminadas (analisis.py). Solo se mira su jugador."""
+    import analisis as A
+    savegame = savegame or repeticiones.carpeta()
+    if savegame is None or not yo:
+        return []
+    clics = []
+    for reg in [r for r in registros if r.get("modo") == "rm" and yo_en(r, yo)][-n:]:
+        nombre = reg["id"]
+        if nombre not in _clics:
+            numero = yo_en(reg, yo).get("numero")
+            try:
+                datos = A.analizar(savegame / nombre)["jugadores"].get(numero, {})
+                clic = datos.get("edades", {}).get("2")
+                _clics[nombre] = clic[0] if clic else None
+            except A.AnalisisError:
+                _clics[nombre] = None
+        if _clics[nombre]:
+            clics.append(_clics[nombre])
+    return clics
+
+
 def perfil_de_config(config: dict) -> int | None:
     """El ID de perfil propio: el elegido en Ajustes o, si no, el deducido."""
     for clave in ("match_perfil", "match_perfil_detectado"):
