@@ -85,13 +85,14 @@ def test_banderas():
 def test_tamanos_y_orden():
     print("tamaño y orden")
     uno, eq = partida_de_ejemplo("1v1"), partida_de_ejemplo("equipos")
-    comprobar(M.tamano(uno) == (M.ANCHO_1V1, M.PAD * 2 + M.CABECERA + M.ALTO_1V1), "1v1: una franja")
+    comprobar(M.tamano(uno) == (M.ANCHO, 2 * M.PAD + M.CABECERA + 2 * M.FILA + M.DIFERENCIA // 2), "1v1: dos filas")
     w, h = M.tamano(eq)
-    comprobar(w == 2 * M.PAD + 2 * M.ANCHO_COLUMNA + M.SEPARACION and h > M.tamano(uno)[1], "4v4: dos columnas")
+    comprobar(w == M.ANCHO and h == 2 * M.PAD + M.CABECERA + 8 * M.FILA + 2 * M.CAB_EQUIPO,
+              "4v4: el mismo ancho, una fila por jugador y la media de cada equipo")
     invertida = Partida(uno.id, uno.modo, uno.leaderboard, uno.mapa, True, tuple(reversed(uno.equipos)))
-    comprobar(M.equipos_ordenados(invertida)[0].jugadores[0].soy_yo, "el propio va a la izquierda aunque sea el equipo 2")
+    comprobar(M.equipos_ordenados(invertida)[0].jugadores[0].soy_yo, "el propio va primero aunque sea el equipo 2")
     tres = Partida("x", "rm", "rm_team", "Arabia", True, eq.equipos + (Equipo(4, eq.equipos[0].jugadores[:2]),))
-    comprobar(M.tamano(tres)[0] == 2 * M.PAD + 3 * M.ANCHO_COLUMNA + 2 * M.SEPARACION, "tres equipos, tres columnas")
+    comprobar(M.tamano(tres)[1] == M.tamano(eq)[1] + 2 * M.FILA + M.CAB_EQUIPO, "tres equipos, tres bloques")
 
 
 def test_textos_de_jugador():
@@ -117,12 +118,17 @@ def test_textos_de_jugador():
 def test_consejos():
     print("consejos")
     uno = partida_de_ejemplo("1v1")
-    comprobar([c for _, c in pintor(uno).consejos] == ["Elo del rival frente al tuyo"], "la diferencia tiene consejo")
-    comprobar(pintor(uno, diferencia=False).consejos == [], "sin diferencia si se quita en Ajustes")
+    consejos = [c for _, c in pintor(uno).consejos]
+    comprobar(consejos[0] == "Tú\nPersas  ·  51%  ·  #12688", "al pasar el ratón: civilización, winrate y puesto")
+    comprobar(consejos[1].endswith("Elo del rival frente al tuyo: −24"), "el rival, con la diferencia")
+    comprobar(not any("rival" in c for _, c in pintor(uno, diferencia=False).consejos),
+              "sin diferencia si se quita en Ajustes")
     err = pintor(uno, ERROR, "la API respondió 503").consejos
-    comprobar(len(err) == 1 and "503" in err[0][1], "el «!» del error explica el motivo")
-    comprobar(pintor(partida_de_ejemplo("sin_rating")).consejos == [], "sin rating del rival: no hay diferencia")
-    comprobar(pintor(partida_de_ejemplo("equipos")).consejos == [], "por equipos no hay diferencia")
+    comprobar(len(err) == 3 and "503" in err[0][1], "el «!» del error explica el motivo")
+    sin = [c for _, c in pintor(partida_de_ejemplo("sin_rating")).consejos]
+    comprobar(not any("rival" in c for c in sin), "sin rating del rival: no hay diferencia")
+    eq = [c for _, c in pintor(partida_de_ejemplo("equipos")).consejos]
+    comprobar(len(eq) == 8 and not any("rival" in c for c in eq), "por equipos: un consejo por jugador, sin diferencia")
 
 
 def test_ventana():
@@ -132,8 +138,8 @@ def test_ventana():
     panel = M.PanelMatch(config, al_mover=lambda: guardado.append(True))
     panel.poner(partida_de_ejemplo("1v1"))
     s = panel.pantalla()
-    comprobar(abs(panel.x() + panel.width() / 2 - (s.x() + s.width() / 2)) <= 1 and panel.y() < s.y() + s.height() * 0.1,
-              "por defecto, arriba en el centro")
+    comprobar(panel.x() + panel.width() - M.MARGEN == s.x() + s.width()
+              and panel.y() + M.MARGEN == s.y() + int(s.height() * M.ALTURA), "por defecto, pegado al borde derecho")
     flags = panel.windowFlags()
     comprobar(bool(flags & Qt.WindowType.WindowDoesNotAcceptFocus) and bool(flags & Qt.WindowType.WindowStaysOnTopHint)
               and not flags & Qt.WindowType.WindowTransparentForInput, "recibe clics sin quitar el foco, siempre encima")
@@ -147,18 +153,22 @@ def test_ventana():
     panel.mousePressEvent(raton(QMouseEvent.Type.MouseButtonPress, inicio.x() + 50, inicio.y() + 20))
     panel.mouseMoveEvent(raton(QMouseEvent.Type.MouseMove, inicio.x() + 50 - 40, inicio.y() + 20 + 150))
     panel.mouseReleaseEvent(raton(QMouseEvent.Type.MouseButtonRelease, inicio.x() + 50 - 40, inicio.y() + 20 + 150))
-    comprobar(config["match_posicion"] == [inicio.x() - 40, inicio.y() + 150] and guardado,
-              "arrastrar lo mueve y guarda la posición")
+    comprobar(config["match_lado"] == "derecha" and panel.x() == inicio.x() and panel.y() == inicio.y() + 150
+              and guardado, "arrastrar un poco: sigue en el borde y guarda la altura")
     otro = M.PanelMatch(config)
     otro.poner(partida_de_ejemplo("equipos"))
-    comprobar(otro.pos() == QPoint(inicio.x() - 40, inicio.y() + 150), "la posición guardada se respeta")
-    config["match_posicion"] = [s.x() + s.width() + 500, s.y() - 900]
+    comprobar(abs(otro.y() - (inicio.y() + 150)) <= 1, "la altura guardada se respeta")
+    panel.mousePressEvent(raton(QMouseEvent.Type.MouseButtonPress, panel.x() + 50, panel.y() + 20))
+    panel.mouseMoveEvent(raton(QMouseEvent.Type.MouseMove, s.x() + 80, panel.y() + 20))
+    panel.mouseReleaseEvent(raton(QMouseEvent.Type.MouseButtonRelease, s.x() + 80, panel.y() + 20))
+    comprobar(config["match_lado"] == "izquierda" and panel.x() == s.x() - M.MARGEN,
+              "llevarlo al otro lado lo pega al borde izquierdo")
+    config["match_altura"] = 5
     otro.recolocar()
-    comprobar(otro.x() <= s.x() + s.width() - otro.width() + M.MARGEN and otro.y() >= s.y() - M.MARGEN,
-              "una posición fuera de la pantalla vuelve a ella")
-    config["match_posicion"] = "roto"
+    comprobar(otro.y() + M.MARGEN == s.y() + int(s.height() * M.ALTURA), "una altura mal guardada se ignora")
+    config["match_altura"] = 0.999
     otro.recolocar()
-    comprobar(otro.y() < s.y() + s.height() * 0.1, "una posición mal guardada se ignora")
+    comprobar(otro.y() + otro.height() - M.MARGEN <= s.y() + s.height(), "abajo del todo, sin salirse")
     for tipo in ("1v1", "equipos", "sin_rating"):
         for estado in (BUSCANDO, CARGADO, ERROR):
             panel.poner(partida_de_ejemplo(tipo, cargada=estado == CARGADO), estado, "error")
@@ -329,9 +339,11 @@ def test_ajustes():
     perfil.setText("")
     perfil.editingFinished.emit()
     comprobar(config["match_perfil"] is None, "vacío: vuelve a usarse el deducido")
-    config["match_posicion"] = [10, 10]
+    pagina.lado_match.setCurrentIndex(pagina.lado_match.findData("izquierda"))
+    comprobar(config["match_lado"] == "izquierda", "elegir el borde izquierdo")
+    config["match_altura"] = 0.5
     pagina._centrar_match()
-    comprobar(config["match_posicion"] is None, "«Volver arriba al centro»")
+    comprobar(config["match_altura"] is None and config["match_lado"] == "derecha", "«Posición inicial»")
 
 
 def main():

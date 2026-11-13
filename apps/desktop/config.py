@@ -25,7 +25,8 @@ DEFECTO = {
     "abrir_historial_al_terminar": True,
     # Match Info: jugadores y elo en las partidas clasificatorias (match_ui.py).
     "match_info": True,
-    "match_posicion": None,         # [x, y] donde se dejó arrastrado; None = arriba en el centro
+    "match_lado": "derecha",        # borde al que va pegado: derecha o izquierda
+    "match_altura": None,           # fracción de la pantalla desde arriba; None = la de match_ui.ALTURA
     "match_winrate": True,
     "match_elo_max": False,
     "match_diferencia": True,       # en 1v1, elo del rival frente al propio

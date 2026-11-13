@@ -1794,7 +1794,18 @@ class PaginaAjustes(Pagina):
         perfil.setPlaceholderText(str(detectado) if isinstance(detectado, int) else t("match_sin_perfil"))
         perfil.editingFinished.connect(lambda: self._poner("match_perfil", int(perfil.text()) if perfil.text() else None))
         self._opcion(match, t("op_match_perfil"), perfil, info=t("op_match_perfil_desc"))
-        self._opcion(match, t("op_match_posicion"), boton(t("match_centrar"), self._centrar_match))
+        lado_match = QComboBox()
+        lado_match.addItem(t("lado_derecha"), "derecha")
+        lado_match.addItem(t("lado_izquierda"), "izquierda")
+        lado_match.setCurrentIndex(max(0, lado_match.findData(cfg.get("match_lado", "derecha"))))
+        lado_match.currentIndexChanged.connect(lambda _i: self._lado_match(lado_match.currentData()))
+        self.lado_match = lado_match
+        posicion = QWidget()
+        cpos = QHBoxLayout(posicion)
+        cpos.setContentsMargins(0, 0, 0, 0)
+        cpos.addWidget(lado_match)
+        cpos.addWidget(boton(t("match_centrar"), self._centrar_match))
+        self._opcion(match, t("op_match_posicion"), posicion)
 
         # Carpetas (las encuentra rutas.py; aquí se pueden cambiar).
         carpetas = self._seccion(t("ajustes_carpetas"))
@@ -1908,8 +1919,18 @@ class PaginaAjustes(Pagina):
             return
         self._poner("match_atajo", texto)
 
+    def _lado_match(self, lado: str):
+        self._poner("match_lado", lado)
+        self._recolocar_match()
+
     def _centrar_match(self):
-        self._poner("match_posicion", None)
+        """«Posición inicial»: a la derecha, a la altura de siempre."""
+        self.panel.config["match_altura"] = None
+        self.lado_match.setCurrentIndex(self.lado_match.findData("derecha"))  # guarda y recoloca
+        self._poner("match_lado", "derecha")
+        self._recolocar_match()
+
+    def _recolocar_match(self):
         panel_match = getattr(self.panel.overlay, "panel_match", None)
         if panel_match is not None:
             panel_match.recolocar()

@@ -72,7 +72,7 @@ Abrir la app (overlay y panel). Sus preferencias, el historial, los logs y el co
 py apps/desktop/aoe2c.py
 ```
 
-Ver el panel Match Info (jugadores y elo en las partidas clasificatorias) con una partida inventada: pasa cada 4 s por «buscando datos», cargado y error, se puede arrastrar y se cierra con Esc o clic derecho. `equipos` o `sin_rating` en vez de `1v1`:
+Ver el panel Match Info (jugadores y elo en las partidas clasificatorias) con una partida inventada: pasa cada 4 s por «buscando datos», cargado y error, se puede arrastrar (se pega al borde más cercano) y se cierra con Esc o clic derecho. `equipos` o `sin_rating` en vez de `1v1`; `--izquierda` para verlo en el borde izquierdo:
 
 ```bash
 py apps/desktop/match_ui.py --demo 1v1

@@ -1,15 +1,17 @@
-"""Panel Match Info: los jugadores de la partida clasificatoria en curso y su elo, arriba
-en el centro de la pantalla, encima del juego (como los overlays de los streamers).
+"""Panel Match Info: los jugadores de la partida clasificatoria en curso y su elo, en una
+lista estrecha pegada al borde derecho (o izquierdo) de la pantalla, como los overlays
+de los streamers.
 
-- 1v1: el jugador a la izquierda y el rival a la derecha; en el centro, la diferencia de
-  elo del rival frente al propio (+24: el rival tiene más).
-- Por equipos: una columna por equipo (el propio primero), una fila por jugador y el elo
-  medio del equipo arriba.
+- Una fila por jugador: color, bandera, nombre, civilización y elo. Al pasar el ratón,
+  el detalle (winrate, elo máximo y puesto, según Ajustes).
+- 1v1: debajo de su elo, la diferencia del rival frente al propio (+24: tiene más).
+- Por equipos: cada equipo con su elo medio encima (el propio primero).
 - Estados: buscando datos (nombres sin elo), cargado, error (un «!» con el motivo) y,
   por jugador, «Sin rating».
 
-Recibe clics (para arrastrarlo) sin quitarle el foco al juego. Solo dibuja: qué partida
-se muestra y cuándo lo decide el overlay con el vigilante (vigilante.py).
+Se arrastra en vertical y, al soltarlo, se pega al borde más cercano. Recibe clics sin
+quitarle el foco al juego. Solo dibuja: qué partida se muestra y cuándo lo decide el
+overlay con el vigilante (vigilante.py).
 
     py match_ui.py --demo [1v1|equipos|sin_rating]   el panel con una partida inventada
 """
@@ -35,17 +37,16 @@ from vigilante import BUSCANDO, CARGADO, ERROR  # noqa: E402
 # Colores de jugador del juego (0 a 7), un poco aclarados para leerse sobre el fondo oscuro.
 COLORES_JUGADOR = [QColor(64, 120, 255), QColor(236, 56, 56), QColor(40, 190, 70), QColor(250, 214, 30),
                    QColor(40, 214, 220), QColor(196, 84, 255), QColor(170, 170, 176), QColor(255, 146, 30)]
-MARGEN = 14             # sombra alrededor de la tarjeta
-PAD = 14
-CABECERA = 26           # «RM 1v1 en Arabia»
-ANCHO_1V1 = 640
-CENTRO_1V1 = 76         # columna del centro (vs y diferencia)
-ALTO_1V1 = 48
-ANCHO_COLUMNA = 300
-SEPARACION = 18
-FILA = 27
-CAB_COLUMNA = 22
-RANGO = 58              # ancho reservado al «#12345»
+MARGEN = 10             # sombra alrededor de la tarjeta
+ANCHO = 236
+PAD = 6                 # arriba y abajo
+LADO = 12               # a izquierda y derecha
+CABECERA = 18           # «RM 1V1 · ARABIA»
+FILA = 21
+CAB_EQUIPO = 15         # «MEDIA 1302» encima de cada equipo
+DIFERENCIA = 14         # la diferencia, debajo del elo del rival (1v1)
+ALTURA = 0.13           # posición por defecto: a esta fracción de la pantalla desde arriba
+RADIO = 8
 IZQ = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
 DER = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 CEN = Qt.AlignmentFlag.AlignCenter
@@ -69,17 +70,16 @@ def color_jugador(j: Jugador) -> QColor:
 
 
 def equipos_ordenados(partida: Partida) -> list[Equipo]:
-    """El equipo propio primero (a la izquierda); el resto, en su orden."""
+    """El equipo propio primero (arriba); el resto, en su orden."""
     return sorted(partida.equipos, key=lambda e: not any(j.soy_yo for j in e.jugadores))
 
 
 def tamano(partida: Partida) -> tuple[int, int]:
     """Ancho y alto de la tarjeta (sin la sombra)."""
+    alto = PAD + CABECERA + len(partida.jugadores) * FILA + PAD
     if partida.es_1v1:
-        return ANCHO_1V1, PAD + CABECERA + ALTO_1V1 + PAD
-    n = len(partida.equipos)
-    filas = max(len(e.jugadores) for e in partida.equipos)
-    return 2 * PAD + n * ANCHO_COLUMNA + (n - 1) * SEPARACION, PAD + CABECERA + CAB_COLUMNA + filas * FILA + PAD - 4
+        return ANCHO, alto + DIFERENCIA // 2
+    return ANCHO, alto + len(partida.equipos) * CAB_EQUIPO
 
 
 def texto(p: QPainter, r: QRectF, cadena: str, f: QFont, c: QColor, alinear=IZQ) -> float:
@@ -99,61 +99,77 @@ def ancho(cadena: str, f: QFont) -> float:
 
 
 class PintorMatch:
-    """Dibuja la tarjeta y anota las zonas con consejo (el «!» del error, la diferencia)."""
+    """Dibuja la tarjeta y anota las zonas con consejo (el «!» del error, el detalle de
+    cada jugador). derecha: pegada al borde derecho (la franja de color va por fuera)."""
 
-    def __init__(self, p: QPainter, partida: Partida, estado: str, error: str, opciones: Opciones):
+    def __init__(self, p: QPainter, partida: Partida, estado: str, error: str, opciones: Opciones,
+                 derecha: bool = True):
         self.p = p
         self.partida = partida
         self.estado = estado
         self.error = error
         self.op = opciones
+        self.derecha = derecha
         self.ingles = textos.idioma() == "en"
         self.consejos: list[tuple[QRectF, str]] = []
 
     def dibujar(self, w: float, h: float):
         p = self.p
-        tarjeta = QRectF(0, 0, w, h)
+        # Esquinas redondeadas solo hacia el centro de la pantalla: el lado del borde, recto.
         caja = QPainterPath()
-        caja.addRoundedRect(tarjeta, 14, 14)
-        p.fillPath(caja, FONDO)
-        p.setPen(QPen(BORDE, 1))
+        caja.addRoundedRect(QRectF(0, 0, w, h), RADIO, RADIO)
+        recto = QPainterPath()
+        recto.addRect(QRectF(w - RADIO if self.derecha else 0, 0, RADIO, h))
+        caja = caja.united(recto)
+        p.fillPath(caja, color(FONDO, 236))
+        p.setPen(QPen(color(BORDE, 150), 1))
         p.drawPath(caja)
         self._cabecera(w)
-        if self.partida.es_1v1:
-            self._uno_contra_uno(w)
-        else:
-            self._equipos()
+        y = PAD + CABECERA
+        uno = self.partida.es_1v1
+        for i, e in enumerate(equipos_ordenados(self.partida)):
+            if uno:
+                if i:
+                    p.fillRect(QRectF(LADO, y - 0.5, w - 2 * LADO, 1), color(BORDE, 110))
+            else:
+                self._cabecera_equipo(e, w, y)
+                y += CAB_EQUIPO
+            for j in e.jugadores:
+                self._fila(j, w, y)
+                y += FILA
 
-    # Cabecera: «RM 1V1 EN ARABIA» y, si toca, el estado.
+    # Cabecera: «RM 1V1 · ARABIA» y, si toca, el estado.
     def _cabecera(self, w: float):
         pa = self.partida
         titulo = t("mi_en_mapa", modo=pa.titulo, mapa=pa.mapa) if pa.mapa else pa.titulo
-        f = fuente(8.5, QFont.Weight.Bold, 1.4)
-        extra = f"  ·  {t('mi_buscando')}" if self.estado == BUSCANDO else ""
-        total = ancho(titulo.upper() + extra, f) + (22 if self.estado == ERROR else 0)
-        x = (w - total) / 2
-        y = PAD - 3
-        x += texto(self.p, QRectF(x, y, w - x, 18), titulo.upper(), f, APAGADO)
-        if extra:
-            texto(self.p, QRectF(x, y, w - x, 18), extra, fuente(8.5, QFont.Weight.DemiBold), color(APAGADO, 190))
+        y = PAD
+        texto(self.p, QRectF(LADO, y, w - 2 * LADO - 20, CABECERA), titulo.upper(), fuente(7.5, QFont.Weight.Bold, 1.2),
+              APAGADO)
         if self.estado == ERROR:
-            r = QRectF(x + 8, y + 2, 14, 14)
+            r = QRectF(w - LADO - 13, y + (CABECERA - 13) / 2, 13, 13)
             self.p.setPen(Qt.PenStyle.NoPen)
             self.p.setBrush(color(ATENCION, 60))
             self.p.drawEllipse(r)
-            texto(self.p, r, "!", fuente(8, QFont.Weight.Bold), ATENCION, CEN)
+            texto(self.p, r, "!", fuente(7.5, QFont.Weight.Bold), ATENCION, CEN)
             self.consejos.append((r.adjusted(-4, -4, 4, 4), t("mi_error", error=self.error)))
+
+    def _cabecera_equipo(self, e: Equipo, w: float, y: float):
+        media = e.promedio if self.estado == CARGADO else None
+        cadena = t("mi_media", elo=media if media is not None else "—").upper()
+        texto(self.p, QRectF(LADO, y, w - 2 * LADO, CAB_EQUIPO), cadena, fuente(7, QFont.Weight.Bold, 0.8), SECUNDARIO, DER)
+        self.p.fillRect(QRectF(LADO, y + CAB_EQUIPO / 2, w - 2 * LADO - ancho(cadena, fuente(7, QFont.Weight.Bold, 0.8))
+                               - 8, 1), color(BORDE, 110))
 
     # Valores de un jugador.
     def _elo(self, j: Jugador) -> tuple[str, QColor, QFont, bool]:
         """(texto, color, letra, es_numero) del hueco del elo."""
         if self.estado == BUSCANDO:
-            return "···", APAGADO, fuente(13, QFont.Weight.Bold), False
+            return "···", APAGADO, fuente(9.5, QFont.Weight.Bold), False
         if self.estado == ERROR:
-            return "—", APAGADO, fuente(13, QFont.Weight.Bold), False
+            return "—", APAGADO, fuente(9.5, QFont.Weight.Bold), False
         if j.rating is None:
-            return t("mi_sin_rating"), APAGADO, fuente(9, QFont.Weight.DemiBold), False
-        return str(j.rating), TEXTO, fuente(14, QFont.Weight.Bold), True
+            return t("mi_sin_rating"), APAGADO, fuente(7.5, QFont.Weight.DemiBold), False
+        return str(j.rating), TEXTO, fuente(9.5, QFont.Weight.Bold), True
 
     def _detalle(self, j: Jugador) -> str:
         """Civilización y, según Ajustes, winrate y elo máximo."""
@@ -167,109 +183,50 @@ class PintorMatch:
     def _rango(self, j: Jugador) -> str:
         return f"#{j.rango}" if self.estado == CARGADO and j.rating is not None and j.rango else ""
 
-    # 1v1: un bloque a cada lado, en espejo.
-    def _uno_contra_uno(self, w: float):
-        izq, der = (e.jugadores[0] for e in equipos_ordenados(self.partida))
-        y = PAD + CABECERA
-        bloque = (w - 2 * PAD - CENTRO_1V1) / 2
-        self._bloque(izq, QRectF(PAD, y, bloque, ALTO_1V1), espejo=False)
-        self._bloque(der, QRectF(w - PAD - bloque, y, bloque, ALTO_1V1), espejo=True)
-        cx = w / 2
-        texto(self.p, QRectF(cx - 30, y, 60, 22), "vs", fuente(9, QFont.Weight.DemiBold), APAGADO, CEN)
+    def _diferencia(self, j: Jugador) -> tuple[str, QColor] | None:
+        """En 1v1, debajo del elo del rival: +24 (tiene más, ámbar) o −24 (menos, verde)."""
         dif = self.partida.diferencia
-        if self.op.diferencia and self.estado == CARGADO and dif is not None:
-            cadena = f"+{dif}" if dif > 0 else (f"−{-dif}" if dif < 0 else "±0")
-            c = ATENCION if dif > 0 else (BIEN if dif < 0 else APAGADO)
-            f = fuente(9, QFont.Weight.DemiBold)
-            pw = ancho(cadena, f) + 16
-            r = QRectF(cx - pw / 2, y + 25, pw, 20)
-            caja = QPainterPath()
-            caja.addRoundedRect(r, 10, 10)
-            self.p.fillPath(caja, color(c, 36))
-            self.p.setPen(QPen(color(c, 90), 1))
-            self.p.drawPath(caja)
-            texto(self.p, r, cadena, f, c, CEN)
-            self.consejos.append((r, t("mi_diferencia")))
+        if not (self.partida.es_1v1 and not j.soy_yo and self.op.diferencia and self.estado == CARGADO
+                and dif is not None):
+            return None
+        cadena = f"+{dif}" if dif > 0 else (f"−{-dif}" if dif < 0 else "±0")
+        return cadena, ATENCION if dif > 0 else (BIEN if dif < 0 else APAGADO)
 
-    def _bloque(self, j: Jugador, r: QRectF, espejo: bool):
-        """Nombre y civilización por fuera, elo y puesto hacia el centro. espejo: el de la derecha."""
+    def _fila(self, j: Jugador, w: float, y: float):
         p = self.p
-        exterior, interior = (r.right(), r.left()) if espejo else (r.left(), r.right())
-        sentido = -1 if espejo else 1
-        # Franja del color del jugador en el borde exterior.
-        franja = QRectF(exterior - (4 if espejo else 0), r.y() + 2, 4, r.height() - 4)
-        p.fillRect(franja, color_jugador(j))
-        elo, c_elo, f_elo, _ = self._elo(j)
-        w_elo = max(ancho(elo, f_elo), 40)
-        # Línea 1: bandera y nombre | elo.
-        x = exterior + sentido * 14
-        bandera = QRectF(x if not espejo else x - 20, r.y() + 4, 20, 15) if j.pais else None
-        if bandera:
-            banderas.pintar(p, bandera, j.pais)
-            x += sentido * 28
-        libre = abs(interior - x) - w_elo - 12
-        f_nombre = fuente(11.5, QFont.Weight.Bold)
-        nombre_r = QRectF(x if not espejo else x - libre, r.y(), libre, 22)
-        texto(p, nombre_r, j.nombre, f_nombre, TEXTO, DER if espejo else IZQ)
-        elo_r = QRectF(interior - w_elo if not espejo else interior, r.y() - 1, w_elo, 24)
-        texto(p, elo_r, elo, f_elo, c_elo, IZQ if espejo else DER)
-        # Línea 2: civilización (y extras) | puesto.
-        x2 = exterior + sentido * 14
-        rango = self._rango(j)
-        f_rango = fuente(8.5, QFont.Weight.DemiBold)
-        w_rango = ancho(rango, f_rango) if rango else 0
-        libre2 = abs(interior - x2) - w_rango - 12
-        detalle_r = QRectF(x2 if not espejo else x2 - libre2, r.y() + 25, libre2, 18)
-        texto(p, detalle_r, self._detalle(j), fuente(9, QFont.Weight.Medium), SECUNDARIO, DER if espejo else IZQ)
-        if rango:
-            rango_r = QRectF(interior - w_rango if not espejo else interior, r.y() + 25, w_rango, 18)
-            texto(p, rango_r, rango, f_rango, APAGADO, IZQ if espejo else DER)
-
-    # Por equipos: columnas.
-    def _equipos(self):
-        y0 = PAD + CABECERA
-        for i, e in enumerate(equipos_ordenados(self.partida)):
-            x = PAD + i * (ANCHO_COLUMNA + SEPARACION)
-            self._columna(e, x, y0)
-
-    def _columna(self, e: Equipo, x: float, y: float):
-        p = self.p
-        media = e.promedio if self.estado == CARGADO else None
-        cadena = t("mi_media", elo=media if media is not None else "—")
-        f = fuente(8.5, QFont.Weight.Bold, 0.6)
-        texto(p, QRectF(x, y, ANCHO_COLUMNA - RANGO - 6, 18), cadena.upper(), f, SECUNDARIO, DER)
-        p.fillRect(QRectF(x, y + CAB_COLUMNA - 4, ANCHO_COLUMNA, 1), BORDE)
-        y += CAB_COLUMNA
-        for j in e.jugadores:
-            self._fila(j, x, y)
-            y += FILA
-
-    def _fila(self, j: Jugador, x: float, y: float):
-        p = self.p
-        p.fillRect(QRectF(x, y + 5, 3, FILA - 10), color_jugador(j))
-        cx = x + 10
+        fila = QRectF(1, y, w - 2, FILA)
+        if j.soy_yo:
+            p.fillRect(fila, color(TEXTO, 9))
+        # Franja del color del jugador, en el lado del borde de la pantalla.
+        p.fillRect(QRectF(w - 6 if self.derecha else 3, y + 4, 3, FILA - 8), color_jugador(j))
+        cx = LADO
         if j.pais:
-            banderas.pintar(p, QRectF(cx, y + (FILA - 12) / 2, 16, 12), j.pais)
-        cx += 22
-        elo, c_elo, f_elo, numero = self._elo(j)
-        if numero:
-            f_elo = fuente(11, QFont.Weight.Bold)
-        w_elo = max(ancho(elo, f_elo), 34)
-        fin_elo = x + ANCHO_COLUMNA - RANGO - 6
-        libre = fin_elo - w_elo - 10 - cx
-        f_nombre = fuente(10, QFont.Weight.DemiBold)
+            banderas.pintar(p, QRectF(cx, y + (FILA - 11) / 2, 15, 11), j.pais)
+        cx += 21  # el hueco de la bandera siempre, para que los nombres queden alineados
+        elo, c_elo, f_elo, _ = self._elo(j)
+        w_elo = max(ancho(elo, f_elo), 28)
+        fin = w - LADO - 2
+        f_nombre = fuente(8.5, QFont.Weight.DemiBold)
+        libre = fin - w_elo - 8 - cx
         w_nombre = texto(p, QRectF(cx, y, libre, FILA), j.nombre, f_nombre, TEXTO)
-        resto = libre - w_nombre - 8
-        if resto > 30:
-            texto(p, QRectF(cx + w_nombre + 8, y + 1, resto, FILA), self._detalle(j), fuente(8.5), APAGADO)
-        texto(p, QRectF(fin_elo - w_elo, y, w_elo, FILA), elo, f_elo, c_elo, DER)
-        rango = self._rango(j)
-        if rango:
-            texto(p, QRectF(fin_elo + 6, y + 1, RANGO, FILA), rango, fuente(8.5, QFont.Weight.DemiBold), APAGADO)
+        resto = libre - w_nombre - 6
+        if resto > 26:
+            civ = civilizaciones.nombre(j.civ, self.ingles) or "?"
+            texto(p, QRectF(cx + w_nombre + 6, y + 0.5, resto, FILA), civ, fuente(7.5), APAGADO)
+        texto(p, QRectF(fin - w_elo, y, w_elo, FILA), elo, f_elo, c_elo, DER)
+        dif = self._diferencia(j)
+        if dif:
+            cadena, c = dif
+            texto(p, QRectF(fin - 60, y + FILA - 3, 60, DIFERENCIA), cadena, fuente(7.5, QFont.Weight.DemiBold), c, DER)
+        # Al pasar el ratón: el detalle completo.
+        consejo = "  ·  ".join(x for x in (self._detalle(j), self._rango(j)) if x)
+        if dif:
+            consejo += "\n" + t("mi_diferencia") + f": {dif[0]}"
+        self.consejos.append((fila, f"{j.nombre}\n{consejo}"))
 
 
 class PanelMatch(QWidget):
-    """La ventana del panel. config: el diccionario compartido (posición y opciones)."""
+    """La ventana del panel. config: el diccionario compartido (lado, altura y opciones)."""
 
     def __init__(self, config: dict, al_mover=None):
         super().__init__()
@@ -285,8 +242,12 @@ class PanelMatch(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
-        self.setCursor(Qt.CursorShape.SizeAllCursor)
+        self.setCursor(Qt.CursorShape.SizeVerCursor)
         self.setWindowTitle("Match Info")
+
+    @property
+    def derecha(self) -> bool:
+        return self.config.get("match_lado", "derecha") != "izquierda"
 
     def poner(self, partida: Partida | None, estado: str = CARGADO, error: str = ""):
         opciones = Opciones.de(self.config)  # Ajustes puede cambiarlas con el panel a la vista
@@ -297,25 +258,27 @@ class PanelMatch(QWidget):
         w, h = tamano(partida)
         if (self.width(), self.height()) != (w + 2 * MARGEN, h + 2 * MARGEN):
             self.resize(w + 2 * MARGEN, h + 2 * MARGEN)
-            self.recolocar()
+        self.recolocar()
         if cambio:
             self.update()
 
-    # Posición: arriba en el centro, o donde la deje el jugador (siempre dentro de la pantalla).
+    # Posición: pegado a un borde, a la altura que deje el jugador (siempre en la pantalla).
     def pantalla(self):
         return (self.screen() or QGuiApplication.primaryScreen()).geometry()
 
     def recolocar(self):
         s = self.pantalla()
-        guardada = self.config.get("match_posicion")
-        if isinstance(guardada, list) and len(guardada) == 2 and all(isinstance(v, int) for v in guardada):
-            x, y = guardada
-        else:
-            x, y = s.x() + (s.width() - self.width()) // 2, s.y() + int(s.height() * 0.055)
-        x = max(s.x() - MARGEN, min(x, s.x() + s.width() - self.width() + MARGEN))
+        altura = self.config.get("match_altura")
+        if not isinstance(altura, (int, float)) or isinstance(altura, bool) or not 0 <= altura <= 1:
+            altura = ALTURA
+        # La tarjeta toca el borde; la sombra de ese lado queda fuera de la pantalla.
+        x = s.x() + s.width() - self.width() + MARGEN if self.derecha else s.x() - MARGEN
+        y = s.y() + int(s.height() * altura) - MARGEN
         y = max(s.y() - MARGEN, min(y, s.y() + s.height() - self.height() + MARGEN))
         if self.pos() != QPoint(x, y):
             self.move(x, y)
+        if self.isVisible():
+            self.update()  # la franja de color cambia de lado
 
     def mousePressEvent(self, e):
         if e.button() == Qt.MouseButton.LeftButton:
@@ -335,9 +298,12 @@ class PanelMatch(QWidget):
     def mouseReleaseEvent(self, e):
         if e.button() == Qt.MouseButton.LeftButton and self._arrastre is not None:
             self._arrastre = None
-            self.config["match_posicion"] = [self.x(), self.y()]
-            self.recolocar()  # si quedó fuera de la pantalla, vuelve
-            self.config["match_posicion"] = [self.x(), self.y()]
+            s = self.pantalla()
+            centro = self.x() + self.width() / 2
+            self.config["match_lado"] = "derecha" if centro >= s.x() + s.width() / 2 else "izquierda"
+            altura = (self.y() + MARGEN - s.y()) / max(1, s.height())
+            self.config["match_altura"] = round(max(0.0, min(1.0, altura)), 4)
+            self.recolocar()  # se pega al borde más cercano
             if self.al_mover:
                 self.al_mover()
 
@@ -348,12 +314,12 @@ class PanelMatch(QWidget):
         p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
         w, h = tamano(self.partida)
         tarjeta = QRectF(MARGEN, MARGEN, w, h)
-        for i in range(10, 0, -1):  # sombra suave, como la tarjeta de la guía
+        for i in range(8, 0, -1):  # sombra suave
             path = QPainterPath()
-            path.addRoundedRect(tarjeta.adjusted(-i, -i + 3, i, i + 3), 14 + i, 14 + i)
-            p.fillPath(path, QColor(0, 0, 0, int(5 * (11 - i) / 3)))
+            path.addRoundedRect(tarjeta.adjusted(-i, -i + 2, i, i + 2), RADIO + i, RADIO + i)
+            p.fillPath(path, QColor(0, 0, 0, int(5 * (9 - i) / 3)))
         p.translate(MARGEN, MARGEN)
-        pintor = PintorMatch(p, self.partida, self.estado, self.error, Opciones.de(self.config))
+        pintor = PintorMatch(p, self.partida, self.estado, self.error, Opciones.de(self.config), self.derecha)
         pintor.dibujar(w, h)
         self.consejos = pintor.consejos
 
@@ -374,15 +340,17 @@ class PanelMatch(QWidget):
 
 
 def main():
-    """--demo [1v1|equipos|sin_rating]: el panel con una partida inventada. Pasa por los
-    estados (buscando, cargado y error) cada 4 s; se arrastra y se cierra con Esc o clic derecho."""
+    """--demo [1v1|equipos|sin_rating] [--izquierda]: el panel con una partida inventada.
+    Pasa por los estados (buscando, cargado y error) cada 4 s; se arrastra y se cierra con
+    Esc o clic derecho."""
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
     from partida_en_curso import partida_de_ejemplo
     args = sys.argv[1:]
     tipo = next((a for a in args if a in ("1v1", "equipos", "sin_rating")), "1v1")
     app = QApplication(sys.argv)
-    config = {"match_winrate": True, "match_elo_max": "--max" in args, "match_diferencia": True}
+    config = {"match_winrate": True, "match_elo_max": "--max" in args, "match_diferencia": True,
+              "match_lado": "izquierda" if "--izquierda" in args else "derecha"}
     panel = PanelMatch(config)
     pasos = [(partida_de_ejemplo(tipo, cargada=False), BUSCANDO, ""), (partida_de_ejemplo(tipo), CARGADO, ""),
              (partida_de_ejemplo(tipo, cargada=False), ERROR, "la API respondió 503")]
