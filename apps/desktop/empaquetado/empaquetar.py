@@ -3,7 +3,8 @@
     py apps/desktop/empaquetado/empaquetar.py            app + instalador
     py apps/desktop/empaquetado/empaquetar.py --sin-instalador   solo la app
 
-1. Exporta el logo (build/marca/aoe2c.ico) para el .exe y el instalador.
+1. Exporta el logo (build/marca/aoe2c.ico) para el .exe y el instalador, y las imágenes y
+   la letra del instalador (build/marca/instalador, ver marca_instalador.py).
 2. PyInstaller en modo carpeta (no un solo .exe: abre más rápido y los antivirus lo
    marcan menos) -> build/desktop/dist/AoE2Coaching/AoE2Coaching.exe
 3. Inno Setup (ISCC.exe) con aoe2c.iss -> build/instalador/AoE2Coaching-Setup-<versión>.exe
@@ -94,6 +95,9 @@ def exportar_logo() -> None:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     import logo
     logo.exportar(ICONO.parent)
+    sys.path.insert(0, str(AQUI))
+    import marca_instalador
+    marca_instalador.exportar(ICONO.parent)
 
 
 def armar_app() -> Path:
@@ -136,7 +140,8 @@ def armar_instalador() -> Path:
         sys.exit("Falta Inno Setup 6 (ISCC.exe): winget install JRSoftware.InnoSetup, o la variable ISCC")
     INSTALADOR.mkdir(parents=True, exist_ok=True)
     subprocess.run([str(iscc), "/Qp", f"/DVersion={VERSION}", f"/DFuente={APP}", f"/DSalida={INSTALADOR}",
-                    f"/DIcono={ICONO}", str(AQUI / "aoe2c.iss")], check=True)
+                    f"/DIcono={ICONO}", f"/DMarca={ICONO.parent / 'instalador'}", str(AQUI / "aoe2c.iss")],
+                   check=True)
     salida = INSTALADOR / f"{NOMBRE}-Setup-{VERSION}.exe"
     if not salida.is_file():
         sys.exit(f"Inno Setup no generó {salida}")

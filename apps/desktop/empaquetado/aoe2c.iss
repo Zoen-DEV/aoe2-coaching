@@ -1,5 +1,6 @@
 ; Instalador de AoE2 Coaching (Inno Setup 6). Lo compila empaquetar.py:
-;   ISCC /DVersion=1.0.0 /DFuente=<carpeta de PyInstaller> /DSalida=<carpeta> /DIcono=<.ico> aoe2c.iss
+;   ISCC /DVersion=1.0.0 /DFuente=<carpeta de PyInstaller> /DSalida=<carpeta> /DIcono=<.ico>
+;        /DMarca=<imágenes y letra de marca_instalador.py> aoe2c.iss
 ;
 ; - Se instala en %LOCALAPPDATA%\AoE2Coaching, sin permisos de administrador.
 ; - Acceso en el menú Inicio (y en el escritorio, si se elige) y desinstalador.
@@ -22,7 +23,14 @@
 #ifndef Icono
   #define Icono "..\..\..\build\marca\aoe2c.ico"
 #endif
+#ifndef Marca
+  #define Marca "..\..\..\build\marca\instalador"
+#endif
 #define Exe "AoE2Coaching.exe"
+; Los colores del panel (estilo.py).
+#define Fondo "#13110e"
+#define Oro "#e9c992"
+#define Secundario "#c2b7a5"
 #define Repo "https://github.com/Zoen-DEV/aoe2-coaching"
 
 [Setup]
@@ -39,6 +47,8 @@ VersionInfoVersion={#Version}
 VersionInfoProductName=AoE2 Coaching
 DefaultDirName={localappdata}\AoE2Coaching
 DisableDirPage=yes
+; La bienvenida muestra la barra lateral con el escudo (las actualizaciones van en silencio).
+DisableWelcomePage=no
 DefaultGroupName=AoE2 Coaching
 DisableProgramGroupPage=yes
 DisableReadyPage=yes
@@ -50,7 +60,14 @@ UninstallDisplayIcon={app}\{#Exe}
 UninstallDisplayName=AoE2 Coaching
 Compression=lzma2/max
 SolidCompression=yes
-WizardStyle=modern
+; La marca del panel: oscuro siempre, fondo cálido con brillos dorado y granate, la barra
+; lateral con el escudo en la bienvenida y el final, y el escudo en la cabecera. Las
+; imágenes las arma marca_instalador.py en varios tamaños (Setup elige según los DPI).
+WizardStyle=modern dark hidebevels
+WizardBackColor={#Fondo}
+WizardBackImageFile={#Marca}\fondo-*.png
+WizardImageFile={#Marca}\lateral-*.png
+WizardSmallImageFile={#Marca}\cabecera-*.png
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
@@ -92,6 +109,8 @@ Type: filesandordirs; Name: "{app}\_internal"
 
 [Files]
 Source: "{#Fuente}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; La letra de los títulos: solo la usa el asistente, no se instala.
+Source: "{#Marca}\cinzel.ttf"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\AoE2 Coaching"; Filename: "{app}\{#Exe}"
@@ -106,6 +125,44 @@ Type: filesandordirs; Name: "{app}"
 [Code]
 var
   QuitarDelJuego, BorrarDatos: Boolean;
+  ConCinzel: Boolean;
+
+const
+  FR_PRIVATE = $10;
+
+{ Carga una fuente solo para este proceso (no la instala en Windows). }
+function AddFontResourceEx(Archivo: String; Banderas: Cardinal; Reservado: Cardinal): Integer;
+  external 'AddFontResourceExW@gdi32.dll stdcall';
+
+{ Títulos en oro (con Cinzel, como el panel, si cargó) y textos en el gris cálido. }
+procedure Titulo(L: TNewStaticText; Tamano: Integer);
+begin
+  L.StyleElements := L.StyleElements - [seFont];
+  L.Font.Color := StrToColor('{#Oro}');
+  L.Font.Style := [fsBold];
+  if ConCinzel then
+    L.Font.Name := 'Cinzel';
+  if Tamano > 0 then
+    L.Font.Size := Tamano;
+end;
+
+procedure Secundario(L: TNewStaticText);
+begin
+  L.StyleElements := L.StyleElements - [seFont];
+  L.Font.Color := StrToColor('{#Secundario}');
+end;
+
+procedure InitializeWizard();
+begin
+  ExtractTemporaryFile('cinzel.ttf');
+  ConCinzel := AddFontResourceEx(ExpandConstant('{tmp}\cinzel.ttf'), FR_PRIVATE, 0) > 0;
+  Titulo(WizardForm.WelcomeLabel1, 0);
+  Titulo(WizardForm.FinishedHeadingLabel, 0);
+  Titulo(WizardForm.PageNameLabel, 0);
+  Secundario(WizardForm.WelcomeLabel2);
+  Secundario(WizardForm.FinishedLabel);
+  Secundario(WizardForm.PageDescriptionLabel);
+end;
 
 { Antes de copiar archivos: cerrar la copia abierta (la de la bandeja). }
 function PrepareToInstall(var NeedsRestart: Boolean): String;
@@ -121,25 +178,33 @@ end;
 function PreguntarDesinstalacion(): Boolean;
 var
   Ventana: TSetupForm;
-  Texto: TNewStaticText;
+  Cabecera, Texto: TNewStaticText;
   Juego, Datos: TNewCheckBox;
   Seguir, Cancelar: TNewButton;
 begin
   { Inno Setup 6.7: ancho, alto y si se puede estirar a lo ancho / a lo alto. }
-  Ventana := CreateCustomForm(ScaleX(460), ScaleY(150), False, True);
+  Ventana := CreateCustomForm(ScaleX(460), ScaleY(184), False, True);
   try
     Ventana.Caption := CustomMessage('DesTitulo');
+
+    Cabecera := TNewStaticText.Create(Ventana);
+    Cabecera.Parent := Ventana;
+    Cabecera.Left := ScaleX(16);
+    Cabecera.Top := ScaleY(14);
+    Cabecera.Caption := CustomMessage('DesTitulo');
+    Titulo(Cabecera, 12);
 
     Texto := TNewStaticText.Create(Ventana);
     Texto.Parent := Ventana;
     Texto.Left := ScaleX(16);
-    Texto.Top := ScaleY(16);
+    Texto.Top := ScaleY(46);
     Texto.Caption := CustomMessage('DesTexto');
+    Secundario(Texto);
 
     Juego := TNewCheckBox.Create(Ventana);
     Juego.Parent := Ventana;
     Juego.Left := ScaleX(16);
-    Juego.Top := ScaleY(48);
+    Juego.Top := ScaleY(78);
     Juego.Width := Ventana.ClientWidth - ScaleX(32);
     Juego.Height := ScaleY(20);
     Juego.Caption := CustomMessage('DesJuego');
@@ -148,7 +213,7 @@ begin
     Datos := TNewCheckBox.Create(Ventana);
     Datos.Parent := Ventana;
     Datos.Left := ScaleX(16);
-    Datos.Top := ScaleY(76);
+    Datos.Top := ScaleY(106);
     Datos.Width := Ventana.ClientWidth - ScaleX(32);
     Datos.Height := ScaleY(20);
     Datos.Caption := CustomMessage('DesDatos');
