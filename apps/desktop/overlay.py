@@ -628,7 +628,7 @@ class Overlay(QWidget):
         self.idioma = textos.idioma()  # para rehacer los textos fijos si el panel cambia el idioma
         self.pestana_historial = PestanaHistorial(lambda _: self.abrir_historial(), derecha)
         self.historial_abierto = False
-        self.historial_manual = False  # abierto desde el menú de la tarjeta: se ve también en partida
+        self.historial_manual = False  # abierto desde el menú: no se cierra al reanudar (se ve al volver al menú)
         self.opacidad_historial = 0.0
         self.en_partida = False
         self.ultimo_raise = 0.0
@@ -805,7 +805,7 @@ class Overlay(QWidget):
             delante = False if self.panel_activo() else ventana_en_primer_plano_es_aoe()
             if delante is not None:
                 self.juego_delante = delante
-        # En una clasificatoria (Match Info) la guía no se muestra; el historial, sí.
+        # En una clasificatoria (Match Info) la guía no se muestra.
         en_ranked = self.vigilante is not None and self.vigilante.partida is not None
         visible = en_partida and self.vista is not None and self.juego_delante and not en_ranked
         if self.fin_desde is not None and ahora - self.fin_desde > 90 and not (self.vista and self.vista.tierlist):
@@ -843,10 +843,17 @@ class Overlay(QWidget):
         if self.temporizador.interval() != intervalo:
             self.temporizador.setInterval(intervalo)
 
+    def en_juego(self, en_partida: bool) -> bool:
+        """Hay una partida en curso: la de una guía, una clasificatoria o cualquier otra
+        cuya repetición se está escribiendo (el vigilante lo sabe)."""
+        v = self.vigilante
+        return en_partida or (v is not None and (v.partida is not None or v.en_curso))
+
     def tick_historial(self, en_partida: bool):
-        """La ventana del historial solo se ve con el juego delante (fuera del juego, el
-        historial está en el panel). Se abre sola al acabar (o pausar) la partida y se
-        cierra al volver a ella; fuera de partida, la pestaña del borde la abre."""
+        """La ventana del historial solo se ve en el menú principal del juego: con el juego
+        delante y sin ninguna partida en curso (fuera del juego, el historial está en el
+        panel). Al acabar una partida de guía se abre sola en cuanto se vuelve al menú, y
+        se cierra si la partida sigue; en el menú, la pestaña del borde la abre."""
         if not self.ventana_historial:
             return
         if self.seguimiento and self.seguimiento.terminada:
@@ -856,11 +863,12 @@ class Overlay(QWidget):
                 self.abrir_historial(id_, fin_de_partida=True)
         if en_partida and self.historial_abierto and not self.historial_manual:
             self.historial_abierto = False  # se reanudó la partida
-        visible = self.historial_abierto and self.juego_delante
+        en_menu = not self.en_juego(en_partida)
+        visible = self.historial_abierto and self.juego_delante and en_menu
         self.opacidad_historial = self.acercar(self.opacidad_historial, 1.0 if visible else 0.0, 0.3)
         self.mostrar(self.ventana_historial, self.opacidad_historial)
         pestana = (self.config["pestana_historial"] and self.solo_con_juego and self.juego_delante
-                   and not en_partida and not self.historial_abierto)
+                   and en_menu and not self.historial_abierto)
         self.mostrar(self.pestana_historial, 1.0 if pestana else 0.0)
         if pestana:
             pantalla = (self.pestana_historial.screen() or QGuiApplication.primaryScreen()).geometry()

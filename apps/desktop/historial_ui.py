@@ -1,5 +1,5 @@
 """Historial de partidas: el contenido (lo usan la página Historial del panel y la
-ventana flotante) y la ventana flotante, que solo se ve dentro del juego.
+ventana flotante) y la ventana flotante, que solo se ve en el menú principal del juego.
 
 - Arriba, un filtro por guía. Por defecto se ven todas las partidas.
 - A la izquierda, «Resumen» y la lista de partidas.
@@ -1017,8 +1017,9 @@ class ContenidoHistorial(QWidget):
 
 
 class VentanaHistorial(QWidget):
-    """El historial encima del juego, sin quitarle el foco: se abre solo al acabar una
-    partida. Fuera del juego no se ve: ahí el historial está en el panel."""
+    """El historial encima del juego, sin quitarle el foco: solo en el menú principal del
+    juego (nunca durante una partida); se abre solo al volver de una partida de guía.
+    Fuera del juego no se ve: ahí el historial está en el panel."""
 
     ANCHO, ALTO = 1140, 800
 

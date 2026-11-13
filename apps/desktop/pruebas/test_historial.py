@@ -241,6 +241,17 @@ def test_overlay(tmp: Path):
     w.ver_historial()
     ticks()
     comprobar(pedidos == [1] and w.ventana_historial.isVisible(), "y dentro del juego, la ventana flotante")
+    # Con otra partida en curso (clasificatoria o cualquiera), ni ventana ni pestaña: solo en el menú.
+    w.cambiar_pestana_historial(True)
+    w.vigilante = type("V", (), {"partida": None, "en_curso": True})()
+    ticks()
+    comprobar(w.historial_abierto and not w.ventana_historial.isVisible() and not w.pestana_historial.isVisible(),
+              "durante cualquier partida el historial no se ve")
+    w.vigilante.en_curso = False
+    ticks()
+    comprobar(w.ventana_historial.isVisible(), "al volver al menú principal se ve")
+    w.vigilante = None
+    w.cambiar_pestana_historial(False)
     w.cerrar_historial()
     ticks()
     # Elegir y borrar desde la ventana.

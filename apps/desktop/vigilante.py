@@ -78,6 +78,7 @@ class Vigilante:
         self.al_empezar: Callable[[Partida], None] | None = None
         self.al_terminar: Callable[[], None] | None = None
         self.partida: Partida | None = None
+        self.en_curso = False               # hay una partida en curso, de cualquier tipo (no solo clasificatoria)
         self.estado = OCULTO
         self.error = ""
         self._ruta: Path | None = None
@@ -93,6 +94,7 @@ class Vigilante:
         self._recoger_resultado()
         lista = repeticiones(self.carpeta())
         ultima = lista[0] if lista else None
+        self.en_curso = ultima is not None and self._reciente(ultima)
         if self._ruta is not None:
             if ultima is None or ultima != self._ruta or not self._reciente(ultima):
                 self._terminar()
