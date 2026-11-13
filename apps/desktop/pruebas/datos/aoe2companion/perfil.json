@@ -1,0 +1,496 @@
+{
+  "avatarhash": "fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb",
+  "clan": "",
+  "drops": "141",
+  "games": "16488",
+  "hidden": null,
+  "name": "Hera",
+  "profileId": 199325,
+  "steamId": "76561198449406083",
+  "country": "ca",
+  "sharedHistory": null,
+  "platform": "steam",
+  "socialLiquipedia": "Hera",
+  "socialTwitchChannelUrl": "https://www.twitch.tv/hera",
+  "socialTwitchChannel": "hera",
+  "socialDiscordInvitationUrl": "https://discord.gg/Bf3e9Wa6ZT",
+  "socialDiscordInvitation": "Bf3e9Wa6ZT",
+  "socialYoutubeChannelUrl": "https://www.youtube.com/channel/UCeqc9aYVAZcRQq9Ey0x26AQ",
+  "verified": true,
+  "shared": true,
+  "linkedProfiles": [
+    {
+      "avatarhash": "fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb",
+      "clan": "",
+      "drops": "23",
+      "games": "1831",
+      "hidden": null,
+      "name": "eddsfsdfsd",
+      "profileId": 14192577,
+      "steamId": "76561199483208038",
+      "country": "ar",
+      "sharedHistory": null,
+      "platform": 0,
+      "verified": false,
+      "shared": true,
+      "sharedDate": "2026-09-25T00:00:00.000Z"
+    },
+    {
+      "avatarhash": "659f5c0d2bbbad289cca1adc06eb16e6ee292752",
+      "clan": "",
+      "drops": "0",
+      "games": "442",
+      "hidden": null,
+      "name": "Hera (3000 Elo Player)",
+      "profileId": 3209724,
+      "steamId": "76561198410119452",
+      "country": "ca",
+      "sharedHistory": null,
+      "platform": 0,
+      "socialLiquipedia": "Hera",
+      "socialTwitchChannelUrl": "https://www.twitch.tv/hera",
+      "socialTwitchChannel": "hera",
+      "socialDiscordInvitationUrl": "https://discord.gg/Bf3e9Wa6ZT",
+      "socialDiscordInvitation": "Bf3e9Wa6ZT",
+      "socialYoutubeChannelUrl": "https://www.youtube.com/channel/UCeqc9aYVAZcRQq9Ey0x26AQ",
+      "verified": true,
+      "shared": true,
+      "sharedDate": null
+    },
+    {
+      "avatarhash": "1ff34fe70c3d4595fde46d6e17bf55ca9a5301f4",
+      "clan": "",
+      "drops": "0",
+      "games": "40",
+      "hidden": null,
+      "name": "Hera (Alexios Komnenos)",
+      "profileId": 1847121,
+      "steamId": "76561199024467833",
+      "country": "ca",
+      "sharedHistory": null,
+      "platform": 0,
+      "socialLiquipedia": "Hera",
+      "socialTwitchChannelUrl": "https://www.twitch.tv/hera",
+      "socialTwitchChannel": "hera",
+      "socialDiscordInvitationUrl": "https://discord.gg/Bf3e9Wa6ZT",
+      "socialDiscordInvitation": "Bf3e9Wa6ZT",
+      "socialYoutubeChannelUrl": "https://www.youtube.com/channel/UCeqc9aYVAZcRQq9Ey0x26AQ",
+      "verified": true,
+      "shared": false,
+      "sharedDate": null
+    },
+    {
+      "avatarhash": "fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb",
+      "clan": "",
+      "drops": "0",
+      "games": "9",
+      "hidden": null,
+      "name": "Hera (UMP45 Silencer)",
+      "profileId": 4423546,
+      "steamId": "76561198815533225",
+      "country": "ca",
+      "sharedHistory": null,
+      "platform": 0,
+      "socialLiquipedia": "Hera",
+      "socialTwitchChannelUrl": "https://www.twitch.tv/hera",
+      "socialTwitchChannel": "hera",
+      "socialDiscordInvitationUrl": "https://discord.gg/Bf3e9Wa6ZT",
+      "socialDiscordInvitation": "Bf3e9Wa6ZT",
+      "socialYoutubeChannelUrl": "https://www.youtube.com/channel/UCeqc9aYVAZcRQq9Ey0x26AQ",
+      "verified": true,
+      "shared": false,
+      "sharedDate": null
+    },
+    {
+      "avatarhash": "fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb",
+      "clan": "",
+      "drops": "0",
+      "games": "0",
+      "hidden": null,
+      "name": "Hera (RoadTo2K)",
+      "profileId": 12934666,
+      "steamId": "76561199475396417",
+      "country": "ca",
+      "sharedHistory": null,
+      "platform": 0,
+      "socialLiquipedia": "Hera",
+      "socialTwitchChannelUrl": "https://www.twitch.tv/hera",
+      "socialTwitchChannel": "hera",
+      "socialDiscordInvitationUrl": "https://discord.gg/Bf3e9Wa6ZT",
+      "socialDiscordInvitation": "Bf3e9Wa6ZT",
+      "socialYoutubeChannelUrl": "https://www.youtube.com/channel/UCeqc9aYVAZcRQq9Ey0x26AQ",
+      "verified": true,
+      "shared": false,
+      "sharedDate": null
+    }
+  ],
+  "countryIcon": "🇨🇦",
+  "countryName": "Canada",
+  "platformName": "Steam",
+  "leaderboards": [
+    {
+      "leaderboardId": "rm_1v1",
+      "name": "VIT | Hera",
+      "rank": 9,
+      "rating": 2923,
+      "maxRank": 1,
+      "maxRating": 3108,
+      "lastMatchTime": "2026-11-05T23:45:58.000Z",
+      "drops": 57,
+      "losses": 1790,
+      "streak": 8,
+      "wins": 5596,
+      "games": 7386,
+      "updatedAt": "2026-11-05T23:47:46.290Z",
+      "rankCountry": 1,
+      "active": true,
+      "season": -1,
+      "rankLevel": "unknown",
+      "maxRankLevel": 1,
+      "rankLevelName": "[rank_level.unknown]",
+      "rankLevelImageUrl": null,
+      "leaderboardName": "1v1 Random Map",
+      "abbreviation": "RM 1v1",
+      "total": 48031
+    },
+    {
+      "leaderboardId": "rm_team",
+      "name": "VIT | Hera",
+      "rank": 1920,
+      "rating": 1640,
+      "maxRank": 12,
+      "maxRating": 2009,
+      "lastMatchTime": "2026-11-04T07:26:20.000Z",
+      "drops": 17,
+      "losses": 501,
+      "streak": 4,
+      "wins": 1379,
+      "games": 1880,
+      "updatedAt": "2026-11-04T07:26:35.542Z",
+      "rankCountry": 38,
+      "active": true,
+      "season": -1,
+      "rankLevel": "unknown",
+      "maxRankLevel": 1,
+      "rankLevelName": "[rank_level.unknown]",
+      "rankLevelImageUrl": null,
+      "leaderboardName": "Team Random Map",
+      "abbreviation": "RM Team",
+      "total": 72867
+    },
+    {
+      "leaderboardId": "ew_1v1",
+      "name": "VIT | Hera",
+      "rank": null,
+      "rating": 2009,
+      "maxRank": null,
+      "maxRating": 2021,
+      "lastMatchTime": "2024-04-30T16:48:11.000Z",
+      "drops": 0,
+      "losses": 8,
+      "streak": 10,
+      "wins": 25,
+      "games": 33,
+      "updatedAt": "2026-08-02T08:44:53.385Z",
+      "rankCountry": null,
+      "active": false,
+      "season": -1,
+      "rankLevel": "unknown",
+      "maxRankLevel": null,
+      "rankLevelName": "[rank_level.unknown]",
+      "rankLevelImageUrl": null,
+      "leaderboardName": "1v1 Empire Wars",
+      "abbreviation": "EW 1v1",
+      "total": 2505
+    },
+    {
+      "leaderboardId": "ew_team",
+      "name": "VIT | Hera",
+      "rank": null,
+      "rating": 1432,
+      "maxRank": null,
+      "maxRating": 1432,
+      "lastMatchTime": "2023-03-07T01:09:13.000Z",
+      "drops": 0,
+      "losses": 0,
+      "streak": 0,
+      "wins": 0,
+      "games": 0,
+      "updatedAt": "2026-08-02T08:45:40.706Z",
+      "rankCountry": null,
+      "active": false,
+      "season": -1,
+      "rankLevel": "unknown",
+      "maxRankLevel": null,
+      "rankLevelName": "[rank_level.unknown]",
+      "rankLevelImageUrl": null,
+      "leaderboardName": "Team Empire Wars",
+      "abbreviation": "EW Team",
+      "total": 4560
+    },
+    {
+      "leaderboardId": "qp_rm_1v1",
+      "name": "VIT | Hera",
+      "rank": null,
+      "rating": 1048,
+      "maxRank": null,
+      "maxRating": 1048,
+      "lastMatchTime": "2021-03-02T02:44:05.000Z",
+      "drops": 0,
+      "losses": 0,
+      "streak": 1,
+      "wins": 1,
+      "games": 1,
+      "updatedAt": "2026-08-02T08:46:55.945Z",
+      "rankCountry": null,
+      "active": false,
+      "season": -1,
+      "rankLevel": "unknown",
+      "maxRankLevel": null,
+      "rankLevelName": "[rank_level.unknown]",
+      "rankLevelImageUrl": null,
+      "leaderboardName": "Quick Play 1v1 Random Map",
+      "abbreviation": "QP 1v1",
+      "total": 4421
+    },
+    {
+      "leaderboardId": "qp_rm_team",
+      "name": "VIT | Hera",
+      "rank": null,
+      "rating": 1783,
+      "maxRank": null,
+      "maxRating": 1809,
+      "lastMatchTime": "2024-08-05T01:26:28.000Z",
+      "drops": 0,
+      "losses": 1,
+      "streak": 12,
+      "wins": 14,
+      "games": 15,
+      "updatedAt": "2026-08-02T08:47:36.299Z",
+      "rankCountry": null,
+      "active": false,
+      "season": -1,
+      "rankLevel": "unknown",
+      "maxRankLevel": null,
+      "rankLevelName": "[rank_level.unknown]",
+      "rankLevelImageUrl": null,
+      "leaderboardName": "Quick Play Team Random Map",
+      "abbreviation": "QP Team",
+      "total": 7140
+    },
+    {
+      "leaderboardId": "unranked",
+      "name": "VIT | Hera",
+      "rank": 3905,
+      "rating": 1490,
+      "maxRank": null,
+      "maxRating": 1748,
+      "lastMatchTime": "2026-11-06T02:22:15.000Z",
+      "drops": 67,
+      "losses": 2469,
+      "streak": 2,
+      "wins": 4275,
+      "games": 6744,
+      "updatedAt": "2026-11-06T02:23:22.614Z",
+      "rankCountry": 91,
+      "active": true,
+      "season": -1,
+      "rankLevel": "unknown",
+      "maxRankLevel": null,
+      "rankLevelName": "[rank_level.unknown]",
+      "rankLevelImageUrl": null,
+      "leaderboardName": "Unranked",
+      "abbreviation": "UNR",
+      "total": 199861
+    }
+  ],
+  "ratings": [
+    {
+      "leaderboardId": "rm_1v1",
+      "leaderboardName": "1v1 Random Map",
+      "abbreviation": "RM 1v1",
+      "ratings": [
+        {
+          "date": "2026-11-05T23:45:58.000Z",
+          "games": 7386,
+          "rating": 2923,
+          "ratingDiff": 1
+        },
+        {
+          "date": "2026-11-05T23:27:21.000Z",
+          "games": 7385,
+          "rating": 2922,
+          "ratingDiff": 2
+        },
+        {
+          "date": "2026-11-05T23:10:41.000Z",
+          "games": 7384,
+          "rating": 2920,
+          "ratingDiff": 5
+        }
+      ]
+    },
+    {
+      "leaderboardId": "rm_team",
+      "leaderboardName": "Team Random Map",
+      "abbreviation": "RM Team",
+      "ratings": [
+        {
+          "date": "2026-11-04T07:26:20.000Z",
+          "games": 1880,
+          "rating": 1640,
+          "ratingDiff": 8
+        },
+        {
+          "date": "2026-11-04T06:48:27.000Z",
+          "games": 1879,
+          "rating": 1632,
+          "ratingDiff": 8
+        },
+        {
+          "date": "2026-11-04T06:30:27.000Z",
+          "games": 1878,
+          "rating": 1624,
+          "ratingDiff": 10
+        }
+      ]
+    },
+    {
+      "leaderboardId": "ew_1v1",
+      "leaderboardName": "1v1 Empire Wars",
+      "abbreviation": "EW 1v1",
+      "ratings": [
+        {
+          "date": "2024-04-30T16:48:11.000Z",
+          "games": 288,
+          "rating": 2009,
+          "ratingDiff": 5
+        },
+        {
+          "date": "2024-04-30T15:46:20.000Z",
+          "games": 287,
+          "rating": 2004,
+          "ratingDiff": 11
+        },
+        {
+          "date": "2024-04-29T20:48:24.000Z",
+          "games": 286,
+          "rating": 1993,
+          "ratingDiff": 1
+        }
+      ]
+    },
+    {
+      "leaderboardId": "ew_team",
+      "leaderboardName": "Team Empire Wars",
+      "abbreviation": "EW Team",
+      "ratings": [
+        {
+          "date": "2023-03-07T01:09:13.000Z",
+          "games": 52,
+          "rating": 1432,
+          "ratingDiff": null
+        }
+      ]
+    },
+    {
+      "leaderboardId": "qp_rm_1v1",
+      "leaderboardName": "Quick Play 1v1 Random Map",
+      "abbreviation": "QP 1v1",
+      "ratings": [
+        {
+          "date": "2021-03-02T02:44:05.000Z",
+          "games": 1614653045,
+          "rating": 1000,
+          "ratingDiff": 48
+        }
+      ]
+    },
+    {
+      "leaderboardId": "qp_rm_team",
+      "leaderboardName": "Quick Play Team Random Map",
+      "abbreviation": "QP Team",
+      "ratings": [
+        {
+          "date": "2024-08-05T01:26:28.000Z",
+          "games": 1722821188,
+          "rating": 1782,
+          "ratingDiff": 1
+        },
+        {
+          "date": "2022-08-28T02:48:23.000Z",
+          "games": 1661654903,
+          "rating": 1809,
+          "ratingDiff": 2
+        },
+        {
+          "date": "2022-08-22T00:50:57.000Z",
+          "games": 1661129457,
+          "rating": 1787,
+          "ratingDiff": 22
+        }
+      ]
+    },
+    {
+      "leaderboardId": "dm_1v1",
+      "leaderboardName": "1v1 Death Match",
+      "abbreviation": "DM 1v1",
+      "ratings": []
+    },
+    {
+      "leaderboardId": "dm_team",
+      "leaderboardName": "Team Death Match",
+      "abbreviation": "DM Team",
+      "ratings": []
+    },
+    {
+      "leaderboardId": "unranked",
+      "leaderboardName": "Unranked",
+      "abbreviation": "UNR",
+      "ratings": [
+        {
+          "date": "2026-11-06T02:22:15.000Z",
+          "games": 6744,
+          "rating": 1490,
+          "ratingDiff": 7
+        },
+        {
+          "date": "2026-11-06T01:35:16.000Z",
+          "games": 6743,
+          "rating": 1483,
+          "ratingDiff": 7
+        },
+        {
+          "date": "2026-11-06T01:00:22.000Z",
+          "games": 6742,
+          "rating": 1476,
+          "ratingDiff": -28
+        }
+      ]
+    },
+    {
+      "leaderboardId": "rm_1v1_console",
+      "leaderboardName": "1v1 Random Map (Console)",
+      "abbreviation": "RM 1v1 🎮",
+      "ratings": []
+    },
+    {
+      "leaderboardId": "rm_team_console",
+      "leaderboardName": "Team Random Map (Console)",
+      "abbreviation": "RM Team 🎮",
+      "ratings": []
+    },
+    {
+      "leaderboardId": "ew_1v1_console",
+      "leaderboardName": "1v1 Empire Wars (Console)",
+      "abbreviation": "EW 1v1 🎮",
+      "ratings": []
+    },
+    {
+      "leaderboardId": "ew_team_console",
+      "leaderboardName": "Team Empire Wars (Console)",
+      "abbreviation": "EW Team 🎮",
+      "ratings": []
+    }
+  ]
+}

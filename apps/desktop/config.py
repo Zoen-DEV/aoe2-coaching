@@ -23,6 +23,15 @@ DEFECTO = {
     "pasos_siguientes": None,       # pasos de "A continuación"; None = lo que diga la guía
     "aviso_casas": True,
     "abrir_historial_al_terminar": True,
+    # Match Info: jugadores y elo en las partidas clasificatorias (match_ui.py).
+    "match_info": True,
+    "match_posicion": None,         # [x, y] donde se dejó arrastrado; None = arriba en el centro
+    "match_winrate": True,
+    "match_elo_max": False,
+    "match_diferencia": True,       # en 1v1, elo del rival frente al propio
+    "match_atajo": "Ctrl+Alt+M",    # mostrar u ocultar el panel durante la partida
+    "match_perfil": None,           # ID de perfil elegido a mano (None = el deducido)
+    "match_perfil_detectado": None, # el deducido de las repeticiones (vigilante.perfil_propio)
     # Panel.
     "guia_activa": "fast_castle",   # la que cargan los mapas [AoE2C] (aoe2c_guia.xs)
     "idioma": None,                 # es o en; None = el de Windows (la primera vez)

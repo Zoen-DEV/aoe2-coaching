@@ -27,13 +27,15 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QPointF, QRectF, QSize, Qt, QTimer, Signal, Slot
-from PySide6.QtGui import (QBrush, QColor, QFont, QFontMetricsF, QGuiApplication, QIcon, QLinearGradient, QPainter,
+from PySide6.QtGui import (QBrush, QColor, QFont, QFontMetricsF, QGuiApplication, QIcon, QIntValidator, QKeySequence,
+                           QLinearGradient, QPainter,
                            QPainterPath, QPen, QPixmap)
 from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
-                               QHBoxLayout, QLabel, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider,
+                               QHBoxLayout, QKeySequenceEdit, QLabel, QLineEdit, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider,
                                QStackedWidget, QVBoxLayout, QWidget)
 
 import actualizacion as A
+import atajos
 import catalogo as K
 import config as C
 import instalador as I
@@ -107,6 +109,10 @@ QComboBox::drop-down {{ border: none; width: 22px; }}
 QComboBox QAbstractItemView {{ color: {TEXTO.name()}; background: {P_ELEVADA.name()};
                               border: 1px solid {rgba(P_BORDE_FUERTE, 90)};
                               selection-background-color: {rgba(ACENTO, 70)}; outline: none; padding: 4px; }}
+QLineEdit {{ color: {TEXTO.name()}; background: {P_ELEVADA.name()}; border: 1px solid {rgba(P_BORDE_FUERTE, 70)};
+            border-radius: 4px; padding: 6px 10px; font-family: 'Segoe UI'; font-size: 9.5pt;
+            selection-background-color: {rgba(ACENTO, 90)}; }}
+QLineEdit:hover, QLineEdit:focus {{ border-color: {rgba(ACENTO, 160)}; }}
 QSlider::groove:horizontal {{ height: 3px; background: {rgba(TEXTO, 30)}; border-radius: 1px; }}
 QSlider::sub-page:horizontal {{ background: {ACENTO.name()}; border-radius: 1px; }}
 QSlider::handle:horizontal {{ background: {ORO_CLARO.name()}; width: 14px; height: 14px; margin: -6px 0;
@@ -1767,6 +1773,29 @@ class PaginaAjustes(Pagina):
                      Interruptor(cfg.get("pestana_historial", True), lambda v: self._poner("pestana_historial", v)),
                      info=t("op_pestana_desc"))
 
+        # Match Info (partidas clasificatorias).
+        match = self._seccion(t("ajustes_match"))
+        self._opcion(match, t("op_match"), Interruptor(cfg.get("match_info", True), lambda v: self._poner("match_info", v)),
+                     info=t("op_match_desc"))
+        for clave, nombre, defecto in (("match_winrate", "op_match_winrate", True), ("match_elo_max", "op_match_max", False),
+                                       ("match_diferencia", "op_match_diferencia", True)):
+            self._opcion(match, t(nombre), Interruptor(cfg.get(clave, defecto), lambda v, c=clave: self._poner(c, v)))
+        atajo = QKeySequenceEdit(QKeySequence(cfg.get("match_atajo") or ""))
+        atajo.setMaximumSequenceLength(1)
+        atajo.setClearButtonEnabled(True)
+        atajo.setFixedWidth(180)
+        atajo.editingFinished.connect(lambda: self._poner_atajo(atajo))
+        atajo.keySequenceChanged.connect(lambda s: s.isEmpty() and self._poner_atajo(atajo))  # al borrarlo
+        self._opcion(match, t("op_match_atajo"), atajo, info=t("op_match_atajo_desc"))
+        perfil = QLineEdit(str(cfg["match_perfil"]) if isinstance(cfg.get("match_perfil"), int) else "")
+        perfil.setValidator(QIntValidator(1, 2_000_000_000, perfil))
+        perfil.setFixedWidth(180)
+        detectado = cfg.get("match_perfil_detectado")
+        perfil.setPlaceholderText(str(detectado) if isinstance(detectado, int) else t("match_sin_perfil"))
+        perfil.editingFinished.connect(lambda: self._poner("match_perfil", int(perfil.text()) if perfil.text() else None))
+        self._opcion(match, t("op_match_perfil"), perfil, info=t("op_match_perfil_desc"))
+        self._opcion(match, t("op_match_posicion"), boton(t("match_centrar"), self._centrar_match))
+
         # Carpetas (las encuentra rutas.py; aquí se pueden cambiar).
         carpetas = self._seccion(t("ajustes_carpetas"))
         inst = panel.instalador
@@ -1860,6 +1889,30 @@ class PaginaAjustes(Pagina):
     def _poner(self, clave: str, valor):
         self.panel.config[clave] = valor
         self.panel.guardar_config()
+
+    def _poner_atajo(self, campo: "QKeySequenceEdit"):
+        """Guarda el atajo de Match Info y lo registra; si no vale o lo usa otra aplicación,
+        lo dice y vuelve al anterior."""
+        texto = campo.keySequence().toString(QKeySequence.SequenceFormat.PortableText)
+        anterior = self.panel.config.get("match_atajo") or ""
+        if texto == anterior:
+            return
+        poner = getattr(self.panel.overlay, "poner_atajo", None)  # sin overlay (capturas), solo se guarda
+        valido = not texto or atajos.parsear(texto) is not None
+        registrado = valido and (poner is None or poner(texto) or not texto)  # vacío = sin atajo
+        if not registrado:
+            self.panel.avisar(t("atajo_error", atajo=texto), MAL)
+            campo.setKeySequence(QKeySequence(anterior))
+            if poner is not None:
+                poner(anterior)
+            return
+        self._poner("match_atajo", texto)
+
+    def _centrar_match(self):
+        self._poner("match_posicion", None)
+        panel_match = getattr(self.panel.overlay, "panel_match", None)
+        if panel_match is not None:
+            panel_match.recolocar()
 
     def _inicio_windows(self, activo: bool):
         error = I.poner_inicio_con_windows(activo)

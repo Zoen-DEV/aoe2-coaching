@@ -72,6 +72,18 @@ Abrir la app (overlay y panel). Sus preferencias, el historial, los logs y el co
 py apps/desktop/aoe2c.py
 ```
 
+Ver el panel Match Info (jugadores y elo en las partidas clasificatorias) con una partida inventada: pasa cada 4 s por «buscando datos», cargado y error, se puede arrastrar y se cierra con Esc o clic derecho. `equipos` o `sin_rating` en vez de `1v1`:
+
+```bash
+py apps/desktop/match_ui.py --demo 1v1
+```
+
+La app entera con una partida clasificatoria simulada (una repetición inventada en una carpeta temporal y elo de ejemplo, sin red): el panel aparece, a los 2 s carga el elo, `Ctrl+Alt+M` lo oculta y lo muestra, y a los 30 s la partida acaba y el demo se cierra. No guarda nada ni toca el inicio con Windows, y funciona aunque AoE2C esté abierto:
+
+```bash
+py apps/desktop/overlay.py --demo-match 1v1
+```
+
 Correr las pruebas (necesitan el contenido armado en `build/`):
 
 ```bash
@@ -80,6 +92,14 @@ py apps/desktop/pruebas/test_panel.py
 
 ```bash
 py apps/desktop/pruebas/test_historial.py
+```
+
+```bash
+py apps/desktop/pruebas/test_partida.py
+```
+
+```bash
+py apps/desktop/pruebas/test_match_ui.py
 ```
 
 ```bash
@@ -132,6 +152,7 @@ Con etiquetas de git: `desktop-v<versión>` publica el instalador y `contenido-<
 | `tools/inspect_sld.py` | Resumir la estructura de un `.sld` y comprobar que la lectura y la escritura dan el mismo archivo. |
 | `tools/render_sld.py` | Convertir frames de un `.sld` a PNG, con simulación de color de jugador. |
 | `tools/inspect_record.py` | Ver en una repetición (`.aoe2record`) qué mapa se jugó y qué scripts XS se cargaron. Sin argumentos, usa la más reciente. |
+| `tools/banderas.py` | Generar `apps/desktop/banderas_datos.py` (las banderas del panel Match Info) desde el paquete de npm de flag-icons descomprimido. |
 
 ## Referencias del juego
 

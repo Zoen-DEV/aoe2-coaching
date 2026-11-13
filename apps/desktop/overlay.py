@@ -28,6 +28,9 @@ import repeticiones  # noqa: E402
 import rutas  # noqa: E402
 import textos  # noqa: E402
 import tierlist as TL  # noqa: E402
+import vigilante as V  # noqa: E402
+from atajos import AtajoGlobal  # noqa: E402
+from match_ui import PanelMatch  # noqa: E402
 from estilo import (ACENTO, APAGADO, ATENCION, BANDERAS_CLIC, BIEN, BORDE, EMOJI, FONDO, MAL, PISTA,  # noqa: E402
                     SECUNDARIO, TARJETA, TEXTO, color, fuente)
 from historial import Historial, Seguimiento, comparacion_final, historial_de_ejemplo  # noqa: E402
@@ -578,7 +581,8 @@ def cargar_config() -> dict:
 
 class Overlay(QWidget):
     def __init__(self, fuente_estado, solo_con_juego: bool = True, historial: Historial | None = None,
-                 seguimiento: Seguimiento | None = None, config: dict | None = None):
+                 seguimiento: Seguimiento | None = None, config: dict | None = None,
+                 vigilante: V.Vigilante | None = None):
         super().__init__()
         self.historial = historial
         self.seguimiento = seguimiento
@@ -628,6 +632,19 @@ class Overlay(QWidget):
         self.opacidad_historial = 0.0
         self.en_partida = False
         self.ultimo_raise = 0.0
+        # Match Info: jugadores y elo de la partida clasificatoria en curso (vigilante.py).
+        self.vigilante = vigilante
+        self.panel_match = PanelMatch(self.config, al_mover=lambda: self.guardar_config()) if vigilante else None
+        self.opacidad_match = 0.0
+        self.match_oculto = False  # ocultado con el atajo (hasta la partida siguiente)
+        self.ultima_vigilancia = 0.0
+        self.ultimo_raise_match = 0.0
+        self.perfil_detectado: int | None = None  # lo pone detectar_perfil (en otro hilo)
+        self.atajo: AtajoGlobal | None = None  # lo pone main (poner_atajo)
+        if vigilante:
+            vigilante.perfil = self.perfil_propio
+            vigilante.al_empezar = self._match_empieza
+            vigilante.al_terminar = self._match_termina
         self.temporizador = QTimer(self, interval=33, timeout=self.tick)
         self.temporizador.setTimerType(Qt.TimerType.PreciseTimer)  # fotogramas regulares en las animaciones
         self.temporizador.start()
@@ -738,8 +755,9 @@ class Overlay(QWidget):
         self.pestana.setToolTip(t("ov_mostrar_guia"))
         self.pestana_historial.setToolTip(t("ov_ver_historial"))
         self.alto_cache = None
-        for w in (self.pestana, self.pestana_historial):
-            w.update()
+        for w in (self.pestana, self.pestana_historial, self.panel_match):
+            if w:
+                w.update()
         if self.ventana_historial:
             self.ventana_historial.hide()
             self.ventana_historial.deleteLater()
@@ -787,7 +805,9 @@ class Overlay(QWidget):
             delante = False if self.panel_activo() else ventana_en_primer_plano_es_aoe()
             if delante is not None:
                 self.juego_delante = delante
-        visible = en_partida and self.vista is not None and self.juego_delante
+        # En una clasificatoria (Match Info) la guía no se muestra; el historial, sí.
+        en_ranked = self.vigilante is not None and self.vigilante.partida is not None
+        visible = en_partida and self.vista is not None and self.juego_delante and not en_ranked
         if self.fin_desde is not None and ahora - self.fin_desde > 90 and not (self.vista and self.vista.tierlist):
             visible = False  # el resumen final se queda 90 s; la tierlist, hasta que acabe la partida
         self.opacidad = self.acercar(self.opacidad, 1.0 if visible else 0.0, 0.3)
@@ -795,6 +815,7 @@ class Overlay(QWidget):
         self.actualizar_bandeja(guia, estado, frescura)
         self.en_partida = en_partida
         self.tick_historial(en_partida)
+        self.tick_match(ahora)
 
         plegada = self.pliegue > 0.98
         o = self.opacidad * min(1.0, max(0.3, float(self.config.get("opacidad", 1.0))))  # preferencia del panel
@@ -817,7 +838,7 @@ class Overlay(QWidget):
                 self.ultimo_raise = ahora
         # 60 fps solo mientras algo se anima; en reposo basta con 20 comprobaciones por segundo.
         animando = (0 < self.opacidad < 1) or (0 < self.pliegue < 1) or self.aviso_paso is not None \
-            or ahora - self.inicio_entrada < 0.5 or 0 < self.opacidad_historial < 1
+            or ahora - self.inicio_entrada < 0.5 or 0 < self.opacidad_historial < 1 or 0 < self.opacidad_match < 1
         intervalo = 16 if animando else 50
         if self.temporizador.interval() != intervalo:
             self.temporizador.setInterval(intervalo)
@@ -849,6 +870,63 @@ class Overlay(QWidget):
             if self.pestana_historial.pos() != QPoint(x, y):
                 self.pestana_historial.move(x, y)
                 self.pestana_historial.update()
+
+    # Match Info.
+    def perfil_propio(self) -> int | None:
+        """El ID de perfil del jugador: el elegido en Ajustes o, si no, el deducido de sus
+        repeticiones (el último se guarda, para no esperar al abrir la app)."""
+        manual = self.config.get("match_perfil")
+        if isinstance(manual, int) and manual > 0:
+            return manual
+        guardado = self.config.get("match_perfil_detectado")
+        return self.perfil_detectado or (guardado if isinstance(guardado, int) else None)
+
+    def detectar_perfil(self, carpeta: Path | None):
+        """Deduce el perfil propio en segundo plano (lee unas cuantas repeticiones: ~1 s)."""
+        def trabajo():
+            perfil = V.perfil_propio(carpeta)
+            if perfil:
+                self.perfil_detectado = perfil
+        V.en_hilo(trabajo)
+
+    def _match_empieza(self, _partida):
+        self.match_oculto = False
+
+    def _match_termina(self):
+        if self.vigilante:
+            self.detectar_perfil(self.vigilante.carpeta())  # con una partida más, se sabe mejor
+
+    def alternar_match(self):
+        """El atajo: oculta o vuelve a mostrar el panel durante la partida."""
+        if self.vigilante and self.vigilante.partida is not None:
+            self.match_oculto = not self.match_oculto
+
+    def poner_atajo(self, texto: str) -> bool:
+        if self.atajo is None:
+            self.atajo = AtajoGlobal(self.alternar_match)
+        return self.atajo.poner(texto)
+
+    def tick_match(self, ahora: float):
+        """El panel Match Info se ve durante las partidas clasificatorias, con el juego
+        delante, salvo que se apague en Ajustes o se oculte con el atajo."""
+        if not self.vigilante or not self.panel_match:
+            return
+        v = self.vigilante
+        if ahora - self.ultima_vigilancia >= 1.0:
+            self.ultima_vigilancia = ahora
+            v.actualizar()
+            if self.perfil_detectado and self.perfil_detectado != self.config.get("match_perfil_detectado"):
+                self.config["match_perfil_detectado"] = self.perfil_detectado
+                self.guardar_config()
+        if v.partida is not None:
+            self.panel_match.poner(v.partida, v.estado, v.error)
+        visible = (bool(self.config.get("match_info", True)) and v.partida is not None and not self.match_oculto
+                   and self.juego_delante)
+        self.opacidad_match = self.acercar(self.opacidad_match, 1.0 if visible else 0.0, 0.3)
+        self.mostrar(self.panel_match, self.opacidad_match)
+        if self.panel_match.isVisible() and ahora - self.ultimo_raise_match > 5:
+            self.panel_match.raise_()  # el juego a veces se pone delante
+            self.ultimo_raise_match = ahora
 
     def renderizar(self, ahora: float):
         """Dibuja la tarjeta en una imagen guardada y solo la rehace si cambia lo que se ve.
@@ -1150,15 +1228,16 @@ def estado_simulado(guia: dict, paso: int, tiempo: int, avance: float = 0.6) -> 
                   mapa="[AoE2C] Arena")
 
 
-def preparar(config: dict) -> rutas.Entorno:
+def preparar(config: dict, tocar_sistema: bool = True) -> rutas.Entorno:
     """Log, datos en %APPDATA%, inicio con Windows y carpetas del juego y del perfil.
-    Es lo único que toca el sistema al arrancar (las pruebas lo sustituyen)."""
+    Es lo único que toca el sistema al arrancar (las pruebas lo sustituyen).
+    tocar_sistema=False (demo de Match Info): no corrige el inicio con Windows."""
     rutas.configurar_log()
     from soporte import version_windows
     from version import VERSION
     log.info("AoE2C v%s · %s", VERSION, version_windows())
     from instalador import actualizar_inicio_con_windows
-    if actualizar_inicio_con_windows():
+    if tocar_sistema and actualizar_inicio_con_windows():
         log.info("inicio con Windows corregido para apuntar a esta copia")
     entorno = rutas.resolver(config)
     log.info("juego: %s | perfil: %s%s", entorno.juego, entorno.perfil and entorno.perfil.carpeta,
@@ -1229,6 +1308,8 @@ def main():
             v.resize(v.ANCHO + 2 * MARGEN, v.ALTO + 2 * MARGEN)  # tamaño real, sea cual sea la pantalla
             v.grab().save(str(destino / f"{nombre}.png"))
             print(destino / f"{nombre}.png")
+        # El panel Match Info (partidas clasificatorias), con partidas inventadas.
+        capturar_match(destino)
         # El panel: cada página, con datos inventados y sin tocar config.json.
         capturar_panel(destino, guias, ejemplo, args)
         return
@@ -1236,7 +1317,7 @@ def main():
     # Datos de la versión anterior (junto al código) -> %APPDATA%\AoE2Coaching\, antes de leerlos.
     copiados = rutas.preparar_datos() if CONFIG == rutas.CONFIG else []
     config = cargar_config()
-    entorno = preparar(config)
+    entorno = preparar(config, tocar_sistema=False) if "--demo-match" in args else preparar(config)
     if copiados:
         log.info("datos copiados de la versión anterior: %s", ", ".join(copiados))
     perfil = entorno.perfil.carpeta if entorno.perfil else None
@@ -1266,6 +1347,32 @@ def main():
             return guia, estado, frescura
 
         fuente_estado = demo
+        vigilante = None
+    elif "--demo-match" in args:
+        # Partida clasificatoria simulada (sin el juego ni la red): una repetición inventada
+        # en una carpeta temporal, el vigilante y el panel de verdad. Dura 30 s; luego la
+        # "partida" acaba, el panel se oculta y el demo se cierra. Nada se guarda en disco.
+        import tempfile
+        from estadisticas import Estadisticas
+        tipo = next((a for a in args if a in ("1v1", "equipos", "sin_rating")), "1v1")
+        carpeta_demo = Path(tempfile.mkdtemp(prefix="aoe2c-demo-match-"))
+        repeticion, proveedor, yo = V.simular(carpeta_demo, tipo)
+        vigilante = V.Vigilante(lambda: carpeta_demo, Estadisticas(proveedor), lambda: yo)
+        historial, seguimiento = Historial(None), None
+        inicio_demo = time.monotonic()
+
+        def demo_match():
+            s = time.monotonic() - inicio_demo
+            if s < 30:
+                os.utime(repeticion)  # el "juego" sigue escribiendo la repetición
+            elif repeticion.exists():
+                repeticion.unlink()  # acabó (y otra partida ya no la toma por nueva)
+            if s > 36:
+                app.quit()
+            return None, None, 99.0
+
+        fuente_estado = demo_match
+        config = dict(config)  # lo que se cambie (la posición) no se guarda
     else:
         lector = Lector(perfil, instalador.guias())
         historial = Historial()
@@ -1279,15 +1386,28 @@ def main():
             return lector.guia, lector.estado, frescura
 
         fuente_estado = real
+        from estadisticas import ApiOficial, Estadisticas
+        vigilante = V.Vigilante(repeticiones.carpeta, Estadisticas(ApiOficial()), lambda: None)
 
     # Una sola copia del programa: si ya hay una abierta, se le pide que muestre su panel.
-    servidor = instancia_unica(lambda: panel.mostrar(), app.quit)
-    if servidor is None:
-        return
+    # (El demo de Match Info no cuenta: se puede probar con AoE2C abierto.)
+    if "--demo-match" not in args:
+        servidor = instancia_unica(lambda: panel.mostrar(), app.quit)
+        if servidor is None:
+            return
 
     textos.poner_idioma(config.get("idioma", "es"))
-    w = Overlay(fuente_estado, solo_con_juego="--demo" not in args, historial=historial, seguimiento=seguimiento,
-                config=config)
+    demo_match = "--demo-match" in args
+    w = Overlay(fuente_estado, solo_con_juego="--demo" not in args and not demo_match, historial=historial,
+                seguimiento=seguimiento, config=config, vigilante=vigilante)
+    if demo_match:
+        import shutil
+        w.guardar_config = lambda: None
+        app.aboutToQuit.connect(lambda: shutil.rmtree(carpeta_demo, ignore_errors=True))
+    elif "--demo" not in args:
+        w.detectar_perfil(repeticiones.carpeta())
+    if vigilante:
+        w.poner_atajo(config.get("match_atajo") or "")
     w.crear_bandeja(app)
 
     def ocultado():
@@ -1297,12 +1417,16 @@ def main():
 
     def perfil_cambiado(carpeta: Path | None):
         repeticiones.poner_perfil(carpeta)
-        if "--demo" not in args:
+        if "--demo" not in args and not demo_match:
             lector.perfil, lector.archivo, lector.mtime = carpeta, None, 0.0
+            # Otro perfil del juego puede ser otra cuenta: se vuelve a deducir el ID.
+            w.perfil_detectado = None
+            config["match_perfil_detectado"] = None
+            w.detectar_perfil(repeticiones.carpeta())
 
     def guias_cambiadas(guias: dict):
         # Se instaló, actualizó o quitó una guía: el lector reconoce sus partidas desde ya.
-        if "--demo" not in args:
+        if "--demo" not in args and not demo_match:
             lector.guias, lector.mapas = guias, mapas_de(guias)
             lector.archivo, lector.mtime = None, 0.0
 
@@ -1332,7 +1456,7 @@ def main():
     def tras_bienvenida():
         # El panel se abre al acabar la animación, salvo que haya una partida en curso
         # (para no taparla ni quitarle el foco al juego). Si hay que elegir perfil, siempre.
-        if (config.get("abrir_panel_al_iniciar", True) or entorno.preguntar) and not w.en_partida:
+        if (config.get("abrir_panel_al_iniciar", True) or entorno.preguntar) and not w.en_partida and not demo_match:
             panel.mostrar()
 
     QTimer.singleShot(int(bienvenida.duracion() * 1000), tras_bienvenida)
@@ -1406,6 +1530,22 @@ def guia_elegida(args: list[str]) -> dict:
     if "--guia" in args and args.index("--guia") + 1 < len(args):
         return guias.get(args[args.index("--guia") + 1]) or next(iter(guias.values()))
     return next(iter(guias.values()))
+
+
+def capturar_match(destino: Path):
+    """match_<caso>.png: el panel Match Info en 1v1, por equipos y en cada estado."""
+    from match_ui import PanelMatch
+    from partida_en_curso import partida_de_ejemplo
+    from vigilante import BUSCANDO, CARGADO, ERROR
+    casos = [("1v1", partida_de_ejemplo("1v1"), CARGADO), ("equipos", partida_de_ejemplo("equipos"), CARGADO),
+             ("sin_rating", partida_de_ejemplo("sin_rating"), CARGADO),
+             ("buscando", partida_de_ejemplo("1v1", cargada=False), BUSCANDO),
+             ("error", partida_de_ejemplo("1v1", cargada=False), ERROR)]
+    for nombre, partida, estado in casos:
+        panel = PanelMatch(C.cargar(Path(os.devnull)))
+        panel.poner(partida, estado, "la API respondió 503" if estado == ERROR else "")
+        panel.imagen().save(str(destino / f"match_{nombre}.png"))
+        print(destino / f"match_{nombre}.png")
 
 
 def capturar_panel(destino: Path, guias: dict, ejemplo: Historial, args: list[str]):

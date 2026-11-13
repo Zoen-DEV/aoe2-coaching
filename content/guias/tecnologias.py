@@ -25,6 +25,7 @@ sys.path.insert(0, str(RAIZ / "apps" / "desktop"))
 import rutas  # noqa: E402
 
 SALIDA = HERE / "tecnologias.json"
+CIVILIZACIONES_APP = RAIZ / "apps" / "desktop" / "civilizaciones.py"  # los nombres, para la app
 
 # clave: ID de la tecnología (la que se pasa a xsGetTechState). Las mejoras de unidad
 # (ballestero, caballería ligera...) usan la tecnología que hace la mejora.
@@ -148,11 +149,32 @@ def generar(juego: Path) -> dict:
             "tecnologias": tecnologias, "civilizaciones": civilizaciones}
 
 
+def escribir_civilizaciones(datos: dict) -> None:
+    """Los nombres de las civilizaciones para la app (panel de la partida en curso). Van en
+    un módulo de Python porque la app empaquetada no lleva archivos de datos sueltos."""
+    filas = "".join(f"    {int(i)}: ({c['nombre']!r}, {c['nombre_en']!r}),\n"
+                    for i, c in sorted(datos["civilizaciones"].items(), key=lambda x: int(x[0])))
+    CIVILIZACIONES_APP.write_text(
+        '"""Nombres de las civilizaciones por ID (el del juego), en español e inglés.\n\n'
+        'Generado por content/guias/tecnologias.py (no editar a mano)."""\n\n'
+        f"NOMBRES = {{\n{filas}}}\n\n\n"
+        "def nombre(civ: int, ingles: bool = False) -> str:\n"
+        '    """Nombre de la civilización, o "" si no se conoce."""\n'
+        "    par = NOMBRES.get(civ)\n"
+        "    return (par[1] if ingles else par[0]) if par else \"\"\n",
+        encoding="utf-8", newline="\n")
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
+    if "--solo-app" in sys.argv[1:]:  # sin el juego: rehace civilizaciones.py desde tecnologias.json
+        escribir_civilizaciones(json.loads(SALIDA.read_text(encoding="utf-8")))
+        print(f"-> {CIVILIZACIONES_APP}")
+        return
     juego, _ = rutas.para_scripts()
     datos = generar(Path(juego))
     SALIDA.write_text(json.dumps(datos, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    escribir_civilizaciones(datos)
     print(f"{len(datos['tecnologias'])} tecnologías y {len(datos['civilizaciones'])} civilizaciones -> {SALIDA}")
 
 
