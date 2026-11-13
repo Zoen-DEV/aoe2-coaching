@@ -278,7 +278,8 @@ TEXTOS = {
         "hi_racha": "Racha: {n}",
         "hi_partida": "Partida",
         "hi_partida_nota": "Tiempo de juego. Aldeanos: los puestos en cola. eAPM: comandos por minuto. La llegada "
-                           "a cada edad es estimada (clic + lo que tarda, sin bonificaciones de civilización).",
+                           "a cada edad es estimada (clic + lo que tarda, sin bonificaciones de civilización). "
+                           "Rueda: acercar o alejar. Arrastrar o Mayús + rueda: moverse. Doble clic: ver toda.",
         "hi_f_aldeanos": "Aldeanos",
         "hi_f_apm": "eAPM",
         "hi_f_edades": "Edades",
@@ -289,7 +290,6 @@ TEXTOS = {
         "hi_edad_3": "Castillos",
         "hi_edad_4": "Imperial",
         "hi_llegada": "{edad} · clic {clic} · llega ~{llegada}",
-        "hi_build_order": "Build order",
         "hi_leyendo": "Leyendo la repetición…",
         "hi_sin_analisis": "No se pudo leer la repetición",
         # Bandeja y menús.
@@ -588,7 +588,8 @@ TEXTOS = {
         "hi_racha": "Streak: {n}",
         "hi_partida": "Game",
         "hi_partida_nota": "Game time. Villagers: the ones queued. eAPM: commands per minute. Reaching each age "
-                           "is estimated (click + research time, without civilization bonuses).",
+                           "is estimated (click + research time, without civilization bonuses). "
+                           "Wheel: zoom in or out. Drag or Shift + wheel: pan. Double-click: show all.",
         "hi_f_aldeanos": "Villagers",
         "hi_f_apm": "eAPM",
         "hi_f_edades": "Ages",
@@ -599,7 +600,6 @@ TEXTOS = {
         "hi_edad_3": "Castle",
         "hi_edad_4": "Imperial",
         "hi_llegada": "{edad} · click {clic} · reached ~{llegada}",
-        "hi_build_order": "Build order",
         "hi_leyendo": "Reading the replay…",
         "hi_sin_analisis": "Couldn't read the replay",
         "menu_abrir_panel": "Open the AoE2C dashboard",

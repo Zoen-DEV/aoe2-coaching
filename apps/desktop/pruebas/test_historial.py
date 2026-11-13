@@ -436,13 +436,15 @@ def test_ranked(tmp: Path):
         comprobar(c.analisis.get(ranked) is not None and c.guia_detalle.text().endswith("1:15"),
                   f"la repetición se lee aparte y el detalle da la duración («{c.guia_detalle.text()}»)")
         lienzo = c.grafico_partida.lienzo
-        comprobar([j["numero"] for j in lienzo.jugadores] == [1, 2] and c.panel_build_order.isVisibleTo(c),
-                  "gráfico y build order con los dos jugadores, el propio primero")
-        comprobar([len(e) for _, e in c.build_order.columnas] == [4, 1], "build order: edificios, edades e investigaciones")
+        comprobar([j["numero"] for j in lienzo.jugadores] == [1, 2], "gráfico con los dos jugadores, el propio primero")
         boton_unidades = [b for b in c.grafico_partida.findChildren(QPushButton) if b.text() == "Unidades"][0]
         boton_unidades.setChecked(True)
-        comprobar([len(e) for _, e in c.build_order.columnas] == [4, 2] and A.UNIDAD in lienzo.tipos,
-                  "el filtro de unidades las añade al gráfico y al build order")
+        comprobar(A.UNIDAD in lienzo.tipos, "el filtro de unidades las añade al gráfico")
+        c.resize(1300, 900)
+        lienzo._poner_vista(10, 40)
+        comprobar(lienzo.vista == (10, 70), f"el zoom deja al menos un minuto ({lienzo.vista})")
+        lienzo._poner_vista(-5, 200)
+        comprobar(lienzo.vista is None, "con la partida entera a la vista no hay zoom")
         c.grafico_partida._metrica("apm")
         comprobar(lienzo.metrica == "apm" and lienzo._valor(2, 70) == 3, "eAPM en el gráfico")
         c.resize(1300, 900)

@@ -10,8 +10,8 @@ ventana flotante) y la ventana flotante, que solo se ve en el menú principal de
 - Con una partida elegida: sus hitos frente a la media de su guía, su lugar en la
   evolución, el paso a paso y la carpeta de su repetición (ver repeticiones.py). Si es
   ranked, sus jugadores (con victorias, derrotas y últimas partidas, de la API), la
-  duración, el gráfico de la partida con sus filtros y el build order (de los comandos de
-  la repetición, ver analisis.py). Las dos con «Copiar nombre» (el de la repetición,
+  duración y el gráfico de la partida con sus filtros (de los comandos de la repetición,
+  ver analisis.py; la rueda del ratón acerca o aleja el tiempo). Las dos con «Copiar nombre» (el de la repetición,
   para buscarla en el juego).
 
 Los textos que explican algo van en puntos de información (InfoPunto), no a la vista.
@@ -827,7 +827,7 @@ TIPOS_EVENTO = ((A.EDAD, "hi_f_edades"), (A.EDIFICIO, "hi_f_edificios"), (A.TECN
                 (A.UNIDAD, "hi_f_unidades"))
 TIPOS_DEFECTO = {A.EDAD, A.EDIFICIO, A.TECNOLOGIA}
 AGRUPAR = 20  # segundos: lo mismo repetido dentro de este margen va en una fila («Casa ×3»)
-MAX_COLUMNAS = 4  # jugadores en el build order
+ZOOM_MINIMO = 60.0  # segundos: lo menos que se ve del gráfico de la partida con zoom
 
 
 def nombre_evento(tipo: str, id_: int) -> str:
@@ -915,10 +915,14 @@ class LienzoPartida(QWidget):
         self.mensaje = ""
         self.raton: QPointF | None = None
         self.puntos: list[tuple[QPointF, str, str, QColor]] = []  # marcas de los carriles, para el ratón
+        self.vista: tuple[float, float] | None = None  # (inicio, fin) en segundos con zoom; None = toda
+        self._arrastre: tuple[float, tuple[float, float]] | None = None  # (x del clic, vista al pulsar)
         self.setMouseTracking(True)
         self._alto()
 
     def poner(self, analisis: dict | None, jugadores: list[dict], metrica: str, tipos: set, mensaje: str = ""):
+        if analisis is not self.analisis:
+            self.vista = None
         self.analisis, self.jugadores, self.metrica, self.tipos, self.mensaje = (analisis, jugadores, metrica,
                                                                                  tipos, mensaje)
         self._alto()
@@ -934,8 +938,62 @@ class LienzoPartida(QWidget):
     def _duracion(self) -> float:
         return max(60.0, float(self.analisis["duracion"])) if self.analisis else 60.0
 
+    def _ventana(self) -> tuple[float, float]:
+        return self.vista or (0.0, self._duracion())
+
     def _x(self, t: float, z: QRectF) -> float:
-        return z.left() + min(max(t, 0), self._duracion()) / self._duracion() * z.width()
+        ini, fin = self._ventana()
+        return z.left() + (min(max(t, 0), self._duracion()) - ini) / (fin - ini) * z.width()
+
+    def _t(self, x: float, z: QRectF) -> float:
+        ini, fin = self._ventana()
+        return ini + (x - z.left()) / z.width() * (fin - ini)
+
+    def _poner_vista(self, ini: float, fin: float):
+        """Encaja la ventana en la partida (mínimo un minuto); toda la partida = sin zoom."""
+        dur = self._duracion()
+        ancho = min(max(fin - ini, ZOOM_MINIMO), dur)
+        ini = min(max(ini, 0.0), dur - ancho)
+        self.vista = None if ancho >= dur else (ini, ini + ancho)
+        self.update()
+
+    def wheelEvent(self, e):
+        """Rueda: acerca o aleja el tiempo alrededor del ratón. Rueda horizontal o con
+        Mayús: mueve la ventana."""
+        if not self.analisis:
+            e.ignore()
+            return
+        z = self._zona()
+        ini, fin = self._ventana()
+        d = e.angleDelta()
+        horizontal = d.x() if d.x() else (d.y() if e.modifiers() & Qt.KeyboardModifier.ShiftModifier else 0)
+        if horizontal:
+            if self.vista is None:
+                e.ignore()
+                return
+            desplazar = -horizontal / 120 * (fin - ini) * 0.15
+            self._poner_vista(ini + desplazar, fin + desplazar)
+        elif d.y():
+            factor = 0.8 ** (d.y() / 120)
+            if self.vista is None and factor > 1:
+                e.ignore()  # ya se ve toda: la rueda mueve la página
+                return
+            ancla = min(max(self._t(e.position().x(), z), ini), fin)
+            self._poner_vista(ancla - (ancla - ini) * factor, ancla + (fin - ancla) * factor)
+        e.accept()
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.MouseButton.LeftButton and self.vista is not None:
+            self._arrastre = (e.position().x(), self.vista)
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+
+    def mouseReleaseEvent(self, _):
+        self._arrastre = None
+        self.unsetCursor()
+
+    def mouseDoubleClickEvent(self, _):
+        self.vista = None
+        self.update()
 
     def _serie(self, numero: int) -> list[tuple[float, float]]:
         datos = self.analisis["jugadores"][numero]
@@ -962,7 +1020,6 @@ class LienzoPartida(QWidget):
                   CEN)
             p.end()
             return
-        dur = self._duracion()
         series = {j["numero"]: self._serie(j["numero"]) for j in self.jugadores}
         maximo = max((v for s in series.values() for _, v in s), default=0)
         tope, paso_y = escala(max(maximo, 1))
@@ -970,9 +1027,10 @@ class LienzoPartida(QWidget):
         f_eje = fuente(7.5, QFont.Weight.Medium)
         abajo = self.height() - 22
         # Rejilla: minutos en vertical (también en los carriles) y valores en horizontal.
-        paso_x = 300 if dur <= 2400 else 600
-        t = 0
-        while t <= dur:
+        ini, fin = self._ventana()
+        paso_x = next((s for s in (15, 30, 60, 120, 300, 600) if (fin - ini) / s <= 9), 1200)
+        t = -(-ini // paso_x) * paso_x
+        while t <= fin + 0.5:
             x = self._x(t, z)
             p.setPen(QPen(color(TEXTO, 12), 1))
             p.drawLine(QPointF(x, z.top()), QPointF(x, abajo))
@@ -984,6 +1042,9 @@ class LienzoPartida(QWidget):
             p.drawLine(QPointF(z.left(), y(v)), QPointF(z.right(), y(v)))
             texto(p, QRectF(0, y(v) - 8, z.left() - 8, 16), str(int(v)), f_eje, APAGADO, DER)
             v += paso_y
+        # Con zoom, lo de fuera de la ventana no se pinta.
+        p.save()
+        p.setClipRect(QRectF(z.left() - 6, 0, z.width() + 12, self.height()))
         # Edades: barra del clic a la llegada arriba y línea discontinua en la llegada.
         if A.EDAD in self.tipos:
             for k, j in enumerate(self.jugadores):
@@ -996,6 +1057,7 @@ class LienzoPartida(QWidget):
                     caja(p, QRectF(self._x(clic, z), yb, max(2.0, xl - self._x(clic, z)), 3), 1.5, color(c, 200))
                     texto(p, QRectF(xl + 3, yb - 5, 60, 14), nombre_edad(edad)[0], fuente(7.5, QFont.Weight.Bold), c)
         # Líneas.
+        p.setClipRect(QRectF(z.left(), 0, z.width(), self.height()))
         for j in self.jugadores:
             s = series[j["numero"]]
             if len(s) < 2:
@@ -1007,6 +1069,7 @@ class LienzoPartida(QWidget):
             p.setPen(QPen(color_jugador(j), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
                           Qt.PenJoinStyle.RoundJoin))
             p.drawPath(path)
+        p.restore()
         # Carriles.
         self.puntos = []
         if self.tipos:
@@ -1017,6 +1080,8 @@ class LienzoPartida(QWidget):
                 p.setPen(QPen(color(TEXTO, 10), 1))
                 p.drawLine(QPointF(z.left(), yc + self.CARRIL / 2), QPointF(z.right(), yc + self.CARRIL / 2))
                 for t_, tipo, id_, n in agrupar(self.analisis["jugadores"][j["numero"]]["eventos"], self.tipos):
+                    if not ini <= t_ <= fin:
+                        continue
                     centro = QPointF(self._x(t_, z), yc + self.CARRIL / 2)
                     marca(p, centro, tipo, c)
                     self.puntos.append((centro, f"{reloj(t_)} · {texto_evento(tipo, id_, n)}", tipo, c))
@@ -1029,7 +1094,7 @@ class LienzoPartida(QWidget):
             return
         lineas: list[tuple[str, QColor | None]] = []
         if z.adjusted(0, 0, 0, 6).contains(self.raton):
-            t = (self.raton.x() - z.left()) / z.width() * self._duracion()
+            t = self._t(self.raton.x(), z)
             x = self._x(t, z)
             p.setPen(QPen(color(TEXTO, 60), 1))
             p.drawLine(QPointF(x, z.top()), QPointF(x, z.bottom()))
@@ -1061,6 +1126,10 @@ class LienzoPartida(QWidget):
 
     def mouseMoveEvent(self, e):
         self.raton = e.position()
+        if self._arrastre is not None:
+            x0, (ini, fin) = self._arrastre
+            desplazar = -(e.position().x() - x0) / self._zona().width() * (fin - ini)
+            self._poner_vista(ini + desplazar, fin + desplazar)
         self.update()
 
     def leaveEvent(self, _):
@@ -1069,17 +1138,15 @@ class LienzoPartida(QWidget):
 
 
 class GraficoPartida(QWidget):
-    """El lienzo con sus filtros: aldeanos o eAPM, y qué eventos se ven (también en el
-    build order, por `al_cambiar`)."""
+    """El lienzo con sus filtros: aldeanos o eAPM, y qué eventos se ven."""
 
     def paintEvent(self, _):
         p = pintor(self)
         caja(p, QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), RADIO, TARJETA, BORDE)
         p.end()
 
-    def __init__(self, al_cambiar):
+    def __init__(self):
         super().__init__()
-        self.al_cambiar = al_cambiar
         self.metrica = "aldeanos"
         self.tipos: set = set(TIPOS_DEFECTO)
         lay = QVBoxLayout(self)
@@ -1124,7 +1191,6 @@ class GraficoPartida(QWidget):
         else:
             self.tipos.discard(clave)
         self._repintar()
-        self.al_cambiar()
 
     def poner(self, analisis: dict | None, jugadores: list[dict], mensaje: str = ""):
         self._datos = (analisis, jugadores, mensaje)
@@ -1133,49 +1199,6 @@ class GraficoPartida(QWidget):
     def _repintar(self):
         analisis, jugadores, mensaje = self._datos
         self.lienzo.poner(analisis, jugadores, self.metrica, set(self.tipos), mensaje)
-
-
-class TablaBuildOrder(QWidget):
-    """Una columna por jugador (el propio primero) con lo que hizo y cuándo: edificios,
-    investigaciones, unidades y edades, según los filtros del gráfico."""
-
-    CAB, FILA = 30, 22
-
-    def __init__(self):
-        super().__init__()
-        self.columnas: list[tuple[dict, list[list]]] = []
-
-    def poner(self, analisis: dict | None, jugadores: list[dict], tipos: set):
-        self.columnas = [(j, agrupar(analisis["jugadores"][j["numero"]]["eventos"], tipos))
-                         for j in jugadores[:MAX_COLUMNAS]] if analisis else []
-        filas = max((len(e) for _, e in self.columnas), default=0)
-        self.setFixedHeight(self.CAB + self.FILA * filas + 6)
-        self.update()
-
-    def paintEvent(self, _):
-        p = pintor(self)
-        if not self.columnas:
-            p.end()
-            return
-        ancho = (self.width() - 8) / len(self.columnas)
-        f_t = fuente(8.5, QFont.Weight.DemiBold)
-        f_n = fuente(9, QFont.Weight.Medium)
-        for k, (j, eventos) in enumerate(self.columnas):
-            x = 4 + k * ancho
-            c = color_jugador(j)
-            p.fillRect(QRectF(x + 4, 8, 3, 14), c)
-            texto(p, QRectF(x + 14, 4, ancho - 24, 22), j["nombre"], fuente(9.5, QFont.Weight.Bold), TEXTO)
-            y = self.CAB
-            for t, tipo, id_, n in eventos:
-                texto(p, QRectF(x + 4, y, 40, self.FILA), reloj(t), f_t, APAGADO, DER)
-                marca(p, QPointF(x + 56, y + self.FILA / 2), tipo, c, 3.2)
-                texto(p, QRectF(x + 68, y, ancho - 80, self.FILA), texto_evento(tipo, id_, n), f_n,
-                      TEXTO if tipo == A.EDAD else SECUNDARIO)
-                y += self.FILA
-            if k:
-                p.setPen(QPen(color(BORDE, 40), 1))
-                p.drawLine(QPointF(x - 2, 6), QPointF(x - 2, self.height() - 6))
-        p.end()
 
 
 class Conteo(QWidget):
@@ -1440,22 +1463,16 @@ class ContenidoHistorial(QWidget):
             b.clicked.connect(al_pulsar)
             fila.addWidget(b)
         vp.addLayout(fila)
-        # Ranked: sus jugadores, el gráfico de la partida y el build order.
+        # Ranked: sus jugadores y el gráfico de la partida.
         self.cuerpo_ranked = QWidget()
         lr = QVBoxLayout(self.cuerpo_ranked)
         lr.setContentsMargins(0, 0, 0, 0)
         lr.setSpacing(12)
         self.jugadores = TablaJugadores()
         lr.addWidget(self.jugadores)
-        self.grafico_partida = GraficoPartida(self._poner_build_order)
+        self.grafico_partida = GraficoPartida()
         lr.addWidget(self.grafico_partida)
-        self.panel_build_order = Panel()
-        lb = QVBoxLayout(self.panel_build_order)
-        lb.setContentsMargins(12, 10, 6, 8)
-        lb.addWidget(etiqueta(tx("hi_build_order"), 10.5, QFont.Weight.Bold))
-        self.build_order = TablaBuildOrder()
-        lb.addWidget(desplazable(self.build_order), 1)
-        lr.addWidget(self.panel_build_order, 1)
+        lr.addStretch(1)
         vp.addWidget(self.cuerpo_ranked, 1)
         # Práctica: el resto.
         self.cuerpo_practica = QWidget()
@@ -1739,14 +1756,6 @@ class ContenidoHistorial(QWidget):
         jugadores = jugadores_analisis(sel, analisis, yo)
         mensaje = tx("hi_leyendo") if id_ not in self.analisis else tx("hi_sin_analisis")
         self.grafico_partida.poner(analisis, jugadores, mensaje)
-        self.panel_build_order.setVisible(bool(analisis))
-        self._poner_build_order()
-
-    def _poner_build_order(self):
-        sel = self.buscar(self.seleccion)
-        analisis = self.analisis.get(sel["id"]) if es_ranked(sel) else None
-        jugadores = jugadores_analisis(sel, analisis, self.yo()) if analisis else []
-        self.build_order.poner(analisis, jugadores, self.grafico_partida.tipos)
 
     def _pedir_analisis(self, id_: str):
         carpeta = repeticiones.carpeta()
