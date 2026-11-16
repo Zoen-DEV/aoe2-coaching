@@ -508,6 +508,38 @@ def test_ranked(tmp: Path):
     app.processEvents()
 
 
+def test_cu_parado(tmp: Path):
+    """El centro urbano parado, simulado con los clics de la repetición."""
+    import analisis as A
+    import cabecera as CB
+    sin_edades: dict = {}
+    # Dos aldeanos a los 10 s (el segundo espera casa: 4 de población con 5 de sitio), la
+    # casa se pone a los 40 (lista a los 65) y otro aldeano a los 100. La partida dura 200.
+    trabajos = [(10.0, (5,), None, 2), (100.0, (5,), None, 1)]
+    paradas = A.paradas_cu(trabajos, [(40.0, A.CASA)], [], sin_edades, 1, 200)
+    comprobar(paradas == [[0.0, 10.0, A.COLA], [35.0, 65.0, A.CASAS], [90.0, 100.0, A.COLA],
+                          [125.0, 200.0, A.COLA]], f"sin cola, esperando casa y hasta el final ({paradas})")
+    datos = {"cu_paradas": paradas, "edades": sin_edades}
+    comprobar(A.cu_parado(datos, 200) == {"total": 125, "casas": 30, "edades": {1: 125}}, "total y por casas")
+    comprobar(A.cu_parado(datos, 50)["total"] == 25, "solo hasta el momento marcado")
+    comprobar(A.paradas_cu(trabajos, [], [], sin_edades, A.HUNOS, 200)[1] == [60.0, 100.0, A.COLA],
+              "los hunos no necesitan casas")
+    persas = A.paradas_cu([(0.0, (5,), None, 1)], [], [], sin_edades, A.PERSAS, 100)
+    comprobar(persas == [[23.8, 100.0, A.COLA]], f"el centro urbano persa trabaja más rápido ({persas})")
+    # Otro centro urbano: sin contar antes de su primer trabajo ni después del último.
+    dos = A.paradas_cu([(0.0, (5,), None, 1), (50.0, (6,), None, 1), (90.0, (6,), None, 1)],
+                       [(0.0, A.CASA)], [], sin_edades, 1, 200)
+    comprobar(dos == [[25.0, 200.0, A.COLA], [75.0, 90.0, A.COLA]], f"dos centros urbanos ({dos})")
+    comprobar(A.paradas_cu([(0.0, (5,), 101, 1), (0.0, (5,), 101, 1)], [], [], {"2": [0.0, 130.0]}, 1, 300)
+              == [[130.0, 300.0, A.COLA]], "la edad, una sola vez y ocupando el centro urbano")
+    # Desde una repetición: aldeano, telar detrás y nada más.
+    J = CB.JugadorCabecera
+    ruta = A.escribir_prueba(tmp / "cu.aoe2record", [J(1, "Yo", 1, 2, 0, 1), J(2, "Otro", 2, 3, 1, 1)], b"".join([
+        A.sync_prueba(2_000), A.cola_prueba(1, A.ALDEANO), A.investigar_prueba(1, 22), A.sync_prueba(98_000)]))
+    cu = A.estado_en(A.analizar(ruta)["jugadores"][1], 100, 100)["cu"]
+    comprobar(cu == {"total": 50, "casas": 0, "edades": {1: 50}}, f"desde la repetición ({cu})")
+
+
 def main():
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
@@ -521,6 +553,7 @@ def main():
         test_lector_y_seguimiento(tmp)
         test_overlay(tmp)
         test_ranked(tmp)
+        test_cu_parado(tmp)
     print("\nTodo bien.")
 
 

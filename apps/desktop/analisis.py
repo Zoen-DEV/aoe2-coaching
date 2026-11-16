@@ -8,7 +8,8 @@ y sincronizaciones que hacen avanzar el reloj del juego. Con ellas sale:
 - la subida de edad: el clic en Feudal, Castillos o Imperial y la llegada estimada
   (clic + lo que tarda la investigación sin bonificaciones de civilización);
 - las acciones por minuto (los comandos que llegan a la repetición, eAPM);
-- los aldeanos puestos en cola a lo largo de la partida.
+- los aldeanos puestos en cola a lo largo de la partida;
+- los ratos con el centro urbano parado (estimados, ver paradas_cu).
 
 Los tiempos son de juego (los del reloj del juego), en segundos. El formato sigue al de
 mgz (github.com/happyleavesaoc/aoc-mgz, licencia MIT, mgz/fast), comprobado con
@@ -35,6 +36,24 @@ LARGO_SYNC_DE = 4 * 8 * 11  # valores por jugador de las sincronizaciones de DE
 
 # Tipos de evento del build order.
 EDIFICIO, TECNOLOGIA, UNIDAD, EDAD = "edificio", "tecnologia", "unidad", "edad"
+
+# --- Centro urbano -------------------------------------------------------------
+CENTRO_URBANO = 109
+CU_UNIDAD = 25  # segundos que tarda un aldeano (y lo demás que sale del centro urbano)
+# Tecnologías del centro urbano -> segundos: telar, carretilla, carro de mano, vigilancia,
+# patrulla y las tres edades.
+CU_TECNOLOGIAS = {22: 25, 213: 75, 249: 55, 8: 25, 280: 40, **DURACION_EDAD}
+PERSAS = 8
+RAPIDEZ_PERSAS = {1: 1.05, 2: 1.10, 3: 1.15, 4: 1.20}  # el centro urbano trabaja más rápido
+HUNOS, CHINOS, MAYAS = 17, 6, 16
+# Edificios que dan población: (población, segundos de construcción con un aldeano).
+CASA, CASTILLO = 70, 82
+DA_POBLACION = {CASA: (5, 25), CENTRO_URBANO: (5, 150), CASTILLO: (20, 200)}
+POBLACION_MAX = 200
+# Las casas solo se miran hasta el clic en Castillos (y como mucho 20 minutos): sin las
+# bajas, que no salen en la repetición, la población estimada se aleja de la real.
+CASAS_HASTA = 1200
+COLA, CASAS = "cola", "casas"  # por qué estuvo parado
 
 
 class AnalisisError(Exception):
@@ -143,8 +162,11 @@ def analizar_bytes(d: bytes) -> dict:
     "acciones": [por minuto], "aldeanos": [[t, total]], "edades": {edad: [clic, llegada]}}}}"""
     jugadores: dict[int, dict] = {}
     duracion = 0
+    # Lo que hace falta para el centro urbano, por jugador: [trabajos, edificios, militares].
+    cu: dict[int, list] = {}
 
     def de(n: int) -> dict:
+        cu.setdefault(n, [[], [], []])
         return jugadores.setdefault(n, {"eventos": [], "acciones": [], "aldeanos": [], "edades": {}})
 
     for paso in leer_operaciones(d):
@@ -165,8 +187,12 @@ def analizar_bytes(d: bytes) -> dict:
             if comando == A_CONSTRUIR:
                 _, _, _, edificio = struct.unpack_from("<h2xffI", datos)
                 j["eventos"].append([t, EDIFICIO, edificio, 1])
+                if edificio in DA_POBLACION:
+                    cu[jugador][1].append((t, edificio))
             elif comando == A_INVESTIGAR:
-                _, _, tech = struct.unpack_from("<Ihh", datos)
+                objeto, _, tech = struct.unpack_from("<Ihh", datos)
+                if tech in CU_TECNOLOGIAS:
+                    cu[jugador][0].append((t, (objeto,), tech, 1))
                 if tech in EDADES:
                     edad = EDADES[tech]
                     if str(edad) not in j["edades"]:
@@ -175,9 +201,13 @@ def analizar_bytes(d: bytes) -> dict:
                 else:
                     j["eventos"].append([t, TECNOLOGIA, tech, 1])
             elif comando == A_COLA:
-                _, _, unidad, cantidad = struct.unpack_from("<h4xhhh", datos)
+                n, tipo, unidad, cantidad = struct.unpack_from("<h4xhhh", datos)
                 if cantidad <= 0:
                     continue
+                if tipo == CENTRO_URBANO and n > 0:
+                    cu[jugador][0].append((t, struct.unpack_from(f"<{n}I", datos, 16), None, cantidad))
+                elif unidad != ALDEANO:
+                    cu[jugador][2].extend([t] * cantidad)
                 if unidad == ALDEANO:
                     total = (j["aldeanos"][-1][1] if j["aldeanos"] else 0) + cantidad
                     j["aldeanos"].append([t, total])
@@ -187,7 +217,111 @@ def analizar_bytes(d: bytes) -> dict:
             continue
     if not jugadores and duracion <= 0:
         raise AnalisisError("la repetición no tiene comandos")
+    try:
+        civs = {j.numero: j.civ for j in CB.leer(d).jugadores}
+    except CB.CabeceraError:
+        civs = {}
+    for numero, j in jugadores.items():
+        trabajos, edificios, militares = cu[numero]
+        j["cu_paradas"] = paradas_cu(trabajos, edificios, militares, j["edades"], civs.get(numero, 0), duracion)
     return {"duracion": round(duracion), "jugadores": jugadores}
+
+
+def _edad_en(edades: dict, t: float) -> int:
+    """La edad en el segundo t, según la llegada estimada a cada una."""
+    return 1 + sum(1 for e in ("2", "3", "4") if e in edades and edades[e][1] <= t)
+
+
+def paradas_cu(trabajos: list, edificios: list, militares: list, edades: dict, civ: int,
+               duracion: float) -> list[list]:
+    """Los ratos con algún centro urbano parado: [[inicio, fin, motivo]], motivo COLA (no
+    tenía nada en cola) o CASAS (tenía un aldeano esperando por falta de población).
+
+    Es una estimación: la repetición solo guarda los clics. Se simula la cola de cada
+    centro urbano (cada orden trae el suyo) con lo que tarda cada aldeano o tecnología,
+    sin las bonificaciones de civilización salvo la de los persas. La población se cuenta
+    con lo puesto en cola (las bajas no se saben) y los edificios que la dan, terminados
+    a lo que tarda un aldeano en construirlos; por eso solo se mira hasta el clic en
+    Castillos. Del primer centro urbano cuenta desde el inicio hasta el final; de los
+    demás, solo entre un trabajo y el siguiente (no se sabe cuándo se terminan ni si los
+    destruyen)."""
+    colas: dict[int, list] = {}        # centro urbano -> [(clic, duración, es unidad)]
+    previsto: dict[int, float] = {}    # centro urbano -> cuándo acabaría lo que tiene (para repartir)
+    vistas: set[int] = set()
+    for t, objetos, tech, n in sorted(trabajos, key=lambda x: x[0]):
+        if tech in vistas:  # una tecnología se investiga una sola vez
+            continue
+        if tech is not None:
+            vistas.add(tech)
+        dur = CU_UNIDAD if tech is None else CU_TECNOLOGIAS[tech]
+        for _ in range(n):
+            # Con varios centros urbanos elegidos, al que antes queda libre.
+            o = min(objetos, key=lambda o: (max(previsto.get(o, 0.0), t), o))
+            colas.setdefault(o, []).append((t, dur, tech is None))
+            previsto[o] = max(previsto.get(o, 0.0), t) + dur
+    if not colas:
+        return []
+    primero = min(colas, key=lambda o: colas[o][0][0])
+    # Población: lo que da cada edificio al terminarse, y la de partida.
+    huecos = sorted((t + DA_POBLACION[e][1], 15 if e == CENTRO_URBANO and civ == CHINOS else DA_POBLACION[e][0])
+                    for t, e in edificios)
+    capacidad_inicial = 15 if civ == CHINOS else 5
+    poblacion = {CHINOS: 7, MAYAS: 5}.get(civ, 4)
+    clic_castillos = edades.get("3", [CASAS_HASTA])[0]
+    casas_hasta = -1.0 if civ == HUNOS else min(CASAS_HASTA, clic_castillos)
+    militares = sorted(militares)
+    m = 0
+
+    def capacidad(t: float) -> int:
+        return min(POBLACION_MAX, capacidad_inicial + sum(p for fin, p in huecos if fin <= t))
+
+    paradas: list[list] = []
+    libre = {o: (0.0 if o == primero else colas[o][0][0]) for o in colas}
+    while True:
+        pendientes = [o for o in colas if colas[o]]
+        if not pendientes:
+            break
+        o = min(pendientes, key=lambda o: (max(libre[o], colas[o][0][0]), o))
+        clic, dur, es_unidad = colas[o].pop(0)
+        if clic > libre[o]:
+            paradas.append([libre[o], clic, COLA])
+        inicio = max(libre[o], clic)
+        while m < len(militares) and militares[m] <= inicio:
+            m += 1
+            poblacion += 1
+        if es_unidad and inicio < casas_hasta and poblacion >= capacidad(inicio):
+            # Espera a la primera casa que deje sitio (si no llega, hasta dejar de mirar).
+            espera = next((fin for fin, _ in huecos if fin > inicio and capacidad(fin) > poblacion), None)
+            fin_espera = casas_hasta if espera is None else min(espera, casas_hasta)
+            if fin_espera > inicio:
+                paradas.append([inicio, fin_espera, CASAS])
+                inicio = fin_espera
+        if es_unidad:
+            poblacion += 1
+        libre[o] = inicio + dur / RAPIDEZ_PERSAS[_edad_en(edades, inicio)] if civ == PERSAS else inicio + dur
+    if libre[primero] < duracion:
+        paradas.append([libre[primero], duracion, COLA])
+    return [[round(a, 1), round(b, 1), motivo] for a, b, motivo in sorted(paradas) if b - a >= 0.05]
+
+
+def cu_parado(datos: dict, t: float) -> dict:
+    """El tiempo con el centro urbano parado hasta el segundo t: {"total": s, "casas": s
+    (la parte por falta de población), "edades": {edad: s}} (ver paradas_cu)."""
+    total = casas = 0.0
+    por_edad: dict[int, float] = {}
+    cortes = [0.0] + [datos["edades"][e][1] for e in ("2", "3", "4") if e in datos["edades"]] + [float("inf")]
+    for a, b, motivo in datos.get("cu_paradas", []):
+        b = min(b, t)
+        if b <= a:
+            continue
+        total += b - a
+        if motivo == CASAS:
+            casas += b - a
+        for k in range(len(cortes) - 1):  # el rato, repartido por edades
+            tramo = min(b, cortes[k + 1]) - max(a, cortes[k])
+            if tramo > 0:
+                por_edad[k + 1] = por_edad.get(k + 1, 0.0) + tramo
+    return {"total": round(total), "casas": round(casas), "edades": {e: round(s) for e, s in por_edad.items()}}
 
 
 def analizar(ruta: Path) -> dict:
@@ -213,7 +347,7 @@ NO_MILITARES = {ALDEANO, 13, 17, 128, 545, 2148}  # pesquero, barca y carreta me
 def estado_en(datos: dict, t: float, duracion: float) -> dict:
     """Lo de un jugador hasta el segundo t (todo lo que mandó hacer hasta entonces):
     {"aldeanos": n, "militares": {unidad: n} (de más a menos), "apm": eAPM medio,
-    "tecnologias": [[t, id]], "edades": [[edad, clic, llegada]]}."""
+    "tecnologias": [[t, id]], "edades": [[edad, clic, llegada]], "cu": cu_parado}."""
     t = min(max(t, 0.0), float(duracion))
     militares: dict[int, int] = {}
     tecnologias: list[list] = []
@@ -235,7 +369,7 @@ def estado_en(datos: dict, t: float, duracion: float) -> dict:
     return {"aldeanos": aldeanos_en(datos["aldeanos"], t),
             "militares": dict(sorted(militares.items(), key=lambda kv: -kv[1])),
             "apm": round(total / (t / 60)) if t >= 1 else 0,
-            "tecnologias": tecnologias, "edades": edades}
+            "tecnologias": tecnologias, "edades": edades, "cu": cu_parado(datos, t)}
 
 
 # --- Repeticiones de prueba ----------------------------------------------------
@@ -261,7 +395,8 @@ def investigar_prueba(jugador: int, tech: int) -> bytes:
 
 
 def cola_prueba(jugador: int, unidad: int, cantidad: int = 1) -> bytes:
-    return accion_prueba(jugador, A_COLA, struct.pack("<h4xhhh4x", 1, 109, unidad, cantidad) + bytes(4))
+    # El edificio es el objeto 1, el mismo en el que investiga investigar_prueba.
+    return accion_prueba(jugador, A_COLA, struct.pack("<h4xhhh4xI", 1, 109, unidad, cantidad, 1))
 
 
 def escribir_prueba(ruta: Path, jugadores: list, operaciones: bytes, **kw) -> Path:

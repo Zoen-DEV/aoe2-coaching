@@ -1288,8 +1288,8 @@ TECH_EDAD = {edad: tech for tech, edad in A.EDADES.items()}
 
 class ComparativaPartida(QWidget):
     """Debajo del gráfico, el propio jugador a la izquierda y el rival a la derecha (VS en
-    medio): aldeanos, militares (y cada tipo de unidad), eAPM medio, tecnologías (con su
-    icono del juego) y edades, hasta el momento marcado en el gráfico o, sin marca, hasta
+    medio): aldeanos, centro urbano parado (estimado, analisis.paradas_cu), militares (y
+    cada tipo de unidad), eAPM medio, tecnologías (con su icono del juego) y edades, hasta el momento marcado en el gráfico o, sin marca, hasta
     el final. Todo es lo que cada uno mandó hacer, como en el gráfico."""
 
     PAD, CENTRO = 16, 130
@@ -1297,7 +1297,7 @@ class ComparativaPartida(QWidget):
     FILA, SUB = 34, 26
     ICONO, HUECO = 30, 5  # iconos de las tecnologías
     MINI = 20  # iconos de las listas
-    BLOQUES = ("aldeanos", "militares", "apm", "tecnologias", "edades")
+    BLOQUES = ("aldeanos", "cu", "militares", "apm", "tecnologias", "edades")
 
     iconos_listos = Signal()
 
@@ -1420,6 +1420,8 @@ class ComparativaPartida(QWidget):
             texto(p, QRectF(xc, y, self.CENTRO, self.FILA), tx(f"hi_vs_{clave}").upper(), f_rotulo, APAGADO, CEN)
             if clave in ("aldeanos", "apm"):
                 self._numeros(p, y, a[clave], b[clave])
+            elif clave == "cu":
+                self._cu(p, y)
             elif clave == "militares":
                 self._numeros(p, y, sum(a["militares"].values()), sum(b["militares"].values()))
                 for k, e in enumerate(self.estados):
@@ -1450,6 +1452,25 @@ class ComparativaPartida(QWidget):
             zona = QRectF(self.PAD, y, lado, self.FILA) if k == 0 else \
                 QRectF(self.width() - self.PAD - lado, y, lado, self.FILA)
             texto(p, zona, str(v), f, c, IZQ if k == 0 else DER)
+
+    def _cu(self, p: QPainter, y: float):
+        """El tiempo con el centro urbano parado (menos es mejor); el reparto por edad y
+        lo que fue por casas, al pasar el ratón."""
+        f = fuente(13, QFont.Weight.Bold)
+        lado = self._lado()
+        a, b = (e["cu"]["total"] for e in self.estados)
+        for k, e in enumerate(self.estados):
+            cu = e["cu"]
+            otro = b if k == 0 else a
+            zona = QRectF(self.PAD, y, lado, self.FILA) if k == 0 else                 QRectF(self.width() - self.PAD - lado, y, lado, self.FILA)
+            texto(p, zona, reloj(cu["total"]), f, TEXTO if cu["total"] <= otro else SECUNDARIO, IZQ if k == 0 else DER)
+            partes = [f"{nombre_edad(edad)} {reloj(s)}" for edad, s in sorted(cu["edades"].items())]
+            if cu["casas"]:
+                partes.append(f"{tx('hi_vs_cu_casas')} {reloj(cu['casas'])}")
+            if partes:
+                ancho = QFontMetricsF(f).horizontalAdvance(reloj(cu["total"])) + 8
+                x = zona.left() if k == 0 else zona.right() - ancho
+                self.consejos.append((QRectF(x, y, ancho, self.FILA), " · ".join(partes)))
 
     def _vacio(self, p: QPainter, k: int, y: float):
         lado = self._lado()

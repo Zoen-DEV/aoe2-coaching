@@ -291,15 +291,19 @@ TEXTOS = {
         "hi_vs_nota": "Lo que cada uno mandó hacer hasta el final de la partida o hasta el momento marcado "
                       "en el gráfico (clic para marcar, clic derecho para quitar la marca). Militares: unidades "
                       "puestas en cola. eAPM: la media hasta ese momento. Tecnologías y edades: desde el clic; "
-                      "la llegada a cada edad es estimada.",
+                      "la llegada a cada edad es estimada. CU parado: estimado con los clics (sin nada en cola "
+                      "o esperando casas); las cancelaciones y las bajas no salen en la repetición.",
         "hi_vs_final": "Final · {t}",
         "hi_vs_hasta": "Hasta el {t}",
         "hi_vs_aldeanos": "Aldeanos",
         "hi_vs_militares": "Militares",
         "hi_vs_apm": "eAPM",
+        "hi_vs_cu": "CU parado",
+        "hi_vs_cu_casas": "Por casas",
         "hi_vs_tecnologias": "Tecnologías",
         "hi_vs_edades": "Edades",
         "hi_vs_edad_consejo": "Clic {clic} · llegada {llegada}",
+        "hi_edad_1": "Alta Edad Media",
         "hi_edad_2": "Feudal",
         "hi_edad_3": "Castillos",
         "hi_edad_4": "Imperial",
@@ -619,15 +623,19 @@ TEXTOS = {
         "hi_vs_nota": "What each player ordered up to the end of the game or up to the moment marked on the "
                       "chart (click to mark, right-click to clear the mark). Military: units queued. eAPM: the "
                       "average up to that moment. Research and ages: from the click; reaching each age is "
-                      "estimated.",
+                      "estimated. Idle TC: estimated from the clicks (nothing queued or waiting for houses); "
+                      "cancellations and losses are not in the replay.",
         "hi_vs_final": "End · {t}",
         "hi_vs_hasta": "Up to {t}",
         "hi_vs_aldeanos": "Villagers",
         "hi_vs_militares": "Military",
         "hi_vs_apm": "eAPM",
+        "hi_vs_cu": "Idle TC",
+        "hi_vs_cu_casas": "Housed",
         "hi_vs_tecnologias": "Research",
         "hi_vs_edades": "Ages",
         "hi_vs_edad_consejo": "Click {clic} · arrival {llegada}",
+        "hi_edad_1": "Dark Age",
         "hi_edad_2": "Feudal",
         "hi_edad_3": "Castle",
         "hi_edad_4": "Imperial",
