@@ -19,7 +19,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, QTimer
 from PySide6.QtGui import (QAction, QColor, QFont, QFontMetricsF, QGuiApplication, QIcon, QImage, QPainter,
-                           QPainterPath, QPen, QPixmap)
+                           QBrush, QLinearGradient, QPainterPath, QPen, QPixmap, QRadialGradient)
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon, QWidget
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -36,6 +36,8 @@ from atajos import AtajoGlobal  # noqa: E402
 from match_ui import PanelMatch  # noqa: E402
 from estilo import (ACENTO, APAGADO, ATENCION, BANDERAS_CLIC, BIEN, BORDE, EMOJI, FONDO, MAL, PISTA,  # noqa: E402
                     SECUNDARIO, TARJETA, TEXTO, color, fuente)
+from estilo import (ORO, ORO_CLARO, P_BORDE_FUERTE, P_FONDO, P_SECUNDARIO, P_TARJETA,  # noqa: E402
+                    cargar_fuentes, titulo as fuente_titulo)
 from historial import Historial, Seguimiento, comparacion_final, historial_de_ejemplo  # noqa: E402
 from historial_ui import VentanaHistorial  # noqa: E402
 from lector import Estado, Lector, cargar_guias, mapas_de  # noqa: E402
@@ -1264,6 +1266,8 @@ class Bienvenida(QWidget):
         p.end()
 
     def pintar(self, p: QPainter, segundo: float):
+        # Con la marca del panel: negro cálido, oro del logo y títulos en Cinzel.
+        cargar_fuentes()
         opacidad, escala, linea = self.fotograma(segundo)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
@@ -1273,36 +1277,63 @@ class Bienvenida(QWidget):
         p.scale(escala, escala)
         p.translate(-c)
         tarjeta = QRectF(self.SOMBRA, self.SOMBRA, self.W, self.H)
+        radio = 14
         for i in range(12, 0, -1):  # sombra suave
             path = QPainterPath()
-            path.addRoundedRect(tarjeta.adjusted(-i, -i + 4, i, i + 4), 20 + i, 20 + i)
+            path.addRoundedRect(tarjeta.adjusted(-i, -i + 4, i, i + 4), radio + i, radio + i)
             p.fillPath(path, QColor(0, 0, 0, int(4 * (13 - i) / 3)))
         path = QPainterPath()
-        path.addRoundedRect(tarjeta, 20, 20)
-        p.fillPath(path, FONDO)
-        p.setPen(QPen(BORDE, 1))
+        path.addRoundedRect(tarjeta, radio, radio)
+        fondo = QLinearGradient(tarjeta.topLeft(), tarjeta.bottomLeft())
+        fondo.setColorAt(0, P_TARJETA)
+        fondo.setColorAt(1, P_FONDO)
+        p.fillPath(path, fondo)
+        p.setPen(QPen(P_BORDE_FUERTE, 1))
         p.drawPath(path)
+        # Filo dorado arriba, que se abre desde el centro al entrar.
+        cx = tarjeta.center().x()
+        filo = (self.W - 2 * radio) / 2 * linea
+        if filo > 1:
+            brillo = QLinearGradient(cx - filo, 0, cx + filo, 0)
+            brillo.setColorAt(0, color(ORO, 0))
+            brillo.setColorAt(0.5, color(ORO_CLARO, 200))
+            brillo.setColorAt(1, color(ORO, 0))
+            p.setPen(QPen(QBrush(brillo), 1.2))
+            p.drawLine(QPointF(cx - filo, tarjeta.top() + 0.5), QPointF(cx + filo, tarjeta.top() + 0.5))
 
-        # Icono con un halo azul que se abre al entrar.
-        lado = 68
-        ic = QRectF(tarjeta.center().x() - lado / 2, tarjeta.top() + 22, lado, lado)
-        halo = 34 + 10 * linea
+        # Escudo con un resplandor dorado que se abre al entrar.
+        lado = 64
+        ic = QRectF(cx - lado / 2, tarjeta.top() + 24, lado, lado)
+        halo = 30 + 16 * linea
+        resplandor = QRadialGradient(ic.center(), halo)
+        resplandor.setColorAt(0, color(ORO, int(70 * linea)))
+        resplandor.setColorAt(1, color(ORO, 0))
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(color(ACENTO, int(38 * linea)))
+        p.setBrush(QBrush(resplandor))
         p.drawEllipse(ic.center(), halo, halo)
         p.drawPixmap(ic.toRect(), icono_app().pixmap(256, 256))
 
         y = ic.bottom() + 12
-        p.setFont(fuente(15, QFont.Weight.DemiBold))
-        p.setPen(TEXTO)
+        p.setFont(fuente_titulo(15, 0.8))
+        p.setPen(ORO_CLARO)
         p.drawText(QRectF(tarjeta.left(), y, self.W, 28), Qt.AlignmentFlag.AlignCenter, "AoE2 Coaching")
-        # Línea de acento que crece desde el centro.
-        ancho = 56 * linea
-        p.setPen(QPen(ACENTO, 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-        p.drawLine(QPointF(tarjeta.center().x() - ancho / 2, y + 34), QPointF(tarjeta.center().x() + ancho / 2, y + 34))
+        # Separador con un rombo en medio; las alas crecen desde el centro.
+        ys = y + 36
+        ala = 46 * linea
+        p.setPen(QPen(color(ORO, 150), 1))
+        p.drawLine(QPointF(cx - 8 - ala, ys), QPointF(cx - 8, ys))
+        p.drawLine(QPointF(cx + 8, ys), QPointF(cx + 8 + ala, ys))
+        rombo = QPainterPath()
+        d = 3.5
+        rombo.moveTo(cx, ys - d)
+        rombo.lineTo(cx + d, ys)
+        rombo.lineTo(cx, ys + d)
+        rombo.lineTo(cx - d, ys)
+        rombo.closeSubpath()
+        p.fillPath(rombo, ORO)
         p.setFont(fuente(9.5))
-        p.setPen(SECUNDARIO)
-        p.drawText(QRectF(tarjeta.left() + 24, y + 44, self.W - 48, 36),
+        p.setPen(P_SECUNDARIO)
+        p.drawText(QRectF(tarjeta.left() + 24, ys + 10, self.W - 48, 36),
                    Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap,
                    t("ov_bienvenida"))
 
