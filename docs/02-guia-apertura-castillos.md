@@ -336,7 +336,7 @@ Iconos: `casa`, `molino`, `campamento_maderero`, `campamento_minero`, `granja`, 
 
 **Tierlist** (opcional, `tierlist`): `{"S": [...], "A": [...], "B": [...], "C": [...]}` con claves de `tecnologias.json` (`carretilla`, `collera`, `forja`, `barda_escamas`, `ballestero`, `linea_sangre`…), cada una una sola vez. Es la de la guía en general; `tierlist.json` la ajusta por mapa y civilización. Al cambiar `tierlist.json`, sube la `version` de las guías.
 
-**Pasos por civilización:** el script mira la civilización del jugador (`xsGetPlayerCivilization`) en cada paso, y la app usa la que trae el `.xsdat` (`adaptar_a_civ` en `lector.py`). Una guía con `civs` genera un manifiesto de versión 4, que pide la app 1.7.0 o posterior (`APP_MINIMA_GUIA` en `content/catalogo.py`). Las guías Arqueros 22 y Hombres de armas + arqueros se adaptan a tres civilizaciones:
+**Pasos por civilización:** el script mira la civilización del jugador (`xsGetPlayerCivilization`) en cada paso, y la app usa la que trae el `.xsdat` (`adaptar_a_civ` en `lector.py`). Una guía con `civs` genera un manifiesto de versión 4, que pide la app 1.7.0 o posterior (`APP_MINIMA_GUIA` en `content/catalogo.py`). Las guías Arqueros 22, Hombres de armas + arqueros y Scouts 21 se adaptan a tres civilizaciones (en Scouts, los francos llevan además un aviso de la vida extra de sus exploradores, +20 % en la caballería):
 
 | Civilización | Bonus del juego | Cambios |
 |---|---|---|
@@ -393,7 +393,7 @@ Para añadir edificios, tareas o tecnologías, se amplían las tablas del princi
 - **Probar el historial en una partida:** que se abra al salir, que la pestaña del menú no tape ningún botón del juego y que los tiempos de Feudal y Castillos cuadren con la pantalla de puntuación.
 - **Civilización en el historial:** el `.xsdat` ya la incluye (versión 3, para la tierlist); falta guardarla en el historial.
 - **Probar la tierlist en una partida:** que `xsGetPlayerCivilization` da la civilización correcta, que `xsGetTechState` devuelve "desactivada" (-1) con las tecnologías que la civilización no tiene y "terminada" con las que da gratis (carretilla de los vikingos, herrería de los magiares). Los niveles son una primera estimación, igual que los tiempos de referencia.
-- **Probar los pasos por civilización en una partida** (Arqueros 22 con britanos, francos y persas): que el script y el overlay muestren la variante y que los números y las referencias sean razonables. Siguientes candidatas: las civilizaciones con un inicio distinto (chinos, mayas, hunos…), y Scouts, Fast Castle y Drush FC.
+- **Probar los pasos por civilización en una partida** (Arqueros 22 con britanos, francos y persas): que el script y el overlay muestren la variante y que los números y las referencias sean razonables. Siguientes candidatas: las civilizaciones con un inicio distinto (chinos, mayas, hunos…), y Fast Castle y Drush FC. Scouts 21 ya las tiene, sin probar en partida.
 - **Tierlist: tecnología única de Castillos** de cada civilización (en `civilizations.json`, `unique_tech_id_1`): no está, porque cada una necesita su propio nivel.
 
 - **Probar en una partida** que al salir de la partida se reinicia y que la animación de plegado va fluida.

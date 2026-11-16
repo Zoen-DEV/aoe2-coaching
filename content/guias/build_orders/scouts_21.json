@@ -1,6 +1,6 @@
 {
   "id": "scouts",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "nombre": "Scouts 21",
   "descripcion": "Exploradores en la Edad Feudal: 21 de población al pulsar Feudal, establo nada más llegar y exploradores sin parar para molestar a los aldeanos enemigos.",
   "descripcion_en": "Feudal Age Scouts: 21 population when you click Feudal, a stable as soon as you arrive and non-stop scouts to harass enemy villagers.",
@@ -37,7 +37,14 @@
       "referencia": "0:35",
       "condiciones": [
         {"edificio": "casa", "min": 2}
-      ]
+      ],
+      "civs": {
+        "persians": {
+          "texto": "Empiezas con 50 de madera y 50 de comida de más. Pon a los 3 aldeanos iniciales a construir 2 casas y crea aldeanos sin parar: tu centro urbano trabaja más rápido.",
+          "texto_en": "You start with 50 extra wood and 50 extra food. Put the 3 starting villagers on 2 houses and make villagers non-stop: your Town Center works faster.",
+          "referencia": "0:33"
+        }
+      }
     },
     {
       "titulo": "6 pastores",
@@ -48,7 +55,14 @@
       "referencia": "1:20",
       "condiciones": [
         {"aldeanos": "pastores", "min": 6}
-      ]
+      ],
+      "civs": {
+        "britons": {
+          "texto": "Manda a los aldeanos al ganado, bajo el centro urbano, hasta tener 6 pastores. Tus pastores trabajan un cuarto más rápido: aprovecha bien cada oveja.",
+          "texto_en": "Send villagers to the sheep under the Town Center until you have 6 shepherds. Your shepherds work 25% faster: make the most of every sheep."
+        },
+        "persians": {"referencia": "1:16"}
+      }
     },
     {
       "titulo": "Campamento y 4 leñadores",
@@ -60,7 +74,10 @@
       "condiciones": [
         {"edificio": "campamento_maderero", "min": 1},
         {"aldeanos": "lenadores", "min": 4}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "3:01"}
+      }
     },
     {
       "titulo": "Primer jabalí",
@@ -71,7 +88,10 @@
       "referencia": "3:30",
       "condiciones": [
         {"aldeanos": "cazadores", "min": 1}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "3:20"}
+      }
     },
     {
       "titulo": "Casa, molino y 4 en bayas",
@@ -84,7 +104,21 @@
         {"edificio": "casa", "min": 3},
         {"edificio": "molino", "min": 1},
         {"aldeanos": "recolectores", "min": 4}
-      ]
+      ],
+      "civs": {
+        "franks": {
+          "titulo": "Casa, molino y 5 en bayas",
+          "titulo_en": "House, mill and 5 on berries",
+          "texto": "Con el aldeano 12, construye una casa y un molino junto a las bayas. Tus recolectores son más rápidos: los aldeanos 12 a 16 van a las bayas.",
+          "texto_en": "With villager 12, build a house and a mill next to the berries. Your foragers are faster: villagers 12 to 16 gather berries.",
+          "condiciones": [
+            {"edificio": "casa", "min": 3},
+            {"edificio": "molino", "min": 1},
+            {"aldeanos": "recolectores", "min": 5}
+          ]
+        },
+        "persians": {"referencia": "4:59"}
+      }
     },
     {
       "titulo": "Segundo jabalí, 13 en comida",
@@ -96,7 +130,24 @@
       "condiciones": [
         {"edificio": "casa", "min": 4},
         {"aldeanos": "comida", "min": 13}
-      ]
+      ],
+      "civs": {
+        "britons": {
+          "titulo": "Segundo jabalí, 12 en comida",
+          "titulo_en": "Second boar, 12 on food",
+          "texto": "Atrae el segundo jabalí con el aldeano 16 y manda el 17 a la madera: con tus pastores rápidos bastan 12 en comida. Construye otra casa.",
+          "texto_en": "Lure the second boar with villager 16 and send villager 17 to wood: with your fast shepherds 12 on food is enough. Build another house.",
+          "condiciones": [
+            {"edificio": "casa", "min": 4},
+            {"aldeanos": "comida", "min": 12}
+          ]
+        },
+        "franks": {
+          "texto": "Atrae el segundo jabalí con el aldeano 17 (el 16 ya está en las bayas). Construye otra casa.",
+          "texto_en": "Lure the second boar with villager 17 (villager 16 is already on berries). Build another house."
+        },
+        "persians": {"referencia": "5:42"}
+      }
     },
     {
       "titulo": "Cuartel y 6 leñadores",
@@ -108,7 +159,20 @@
       "condiciones": [
         {"edificio": "cuartel", "min": 1},
         {"aldeanos": "lenadores", "min": 6}
-      ]
+      ],
+      "civs": {
+        "britons": {
+          "titulo": "Cuartel y 7 leñadores",
+          "titulo_en": "Barracks and 7 on wood",
+          "texto": "Con el aldeano 18, construye un cuartel y luego ponlo a talar. Los aldeanos 19 y 20 también van a la madera: 7 leñadores.",
+          "texto_en": "With villager 18, build a Barracks, then send it to wood. Villagers 19 and 20 also go to wood: 7 lumberjacks.",
+          "condiciones": [
+            {"edificio": "cuartel", "min": 1},
+            {"aldeanos": "lenadores", "min": 7}
+          ]
+        },
+        "persians": {"referencia": "6:58"}
+      }
     },
     {
       "titulo": "Telar",
@@ -119,7 +183,10 @@
       "referencia": "7:30",
       "condiciones": [
         {"tecnologia": "telar", "estado": "terminada"}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "7:08"}
+      }
     },
     {
       "titulo": "Clic en Edad Feudal",
@@ -130,7 +197,10 @@
       "referencia": "7:35",
       "condiciones": [
         {"tecnologia": "edad_feudal", "estado": "iniciada"}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "7:12"}
+      }
     },
     {
       "titulo": "Edad Feudal",
@@ -141,7 +211,10 @@
       "referencia": "9:45",
       "condiciones": [
         {"edad": "feudal"}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "9:15"}
+      }
     },
     {
       "titulo": "Establo",
@@ -152,7 +225,10 @@
       "referencia": "10:20",
       "condiciones": [
         {"edificio": "establo", "min": 1}
-      ]
+      ],
+      "civs": {
+        "persians": {"referencia": "9:50"}
+      }
     },
     {
       "titulo": "3 exploradores",
@@ -163,7 +239,14 @@
       "referencia": "11:20",
       "condiciones": [
         {"unidades": "exploradores", "min": 3}
-      ]
+      ],
+      "civs": {
+        "franks": {
+          "texto": "Crea exploradores sin parar (cuenta el inicial): los tuyos tienen una quinta parte más de vida. Ataca a los aldeanos de la madera y el oro, no a sus soldados.",
+          "texto_en": "Make scouts non-stop (the starting one counts): yours have 20% more HP. Hit the villagers on wood and gold, not their soldiers."
+        },
+        "persians": {"referencia": "10:50"}
+      }
     },
     {
       "titulo": "4 granjas y 24 aldeanos",
@@ -175,7 +258,14 @@
       "condiciones": [
         {"edificio": "granja", "min": 4},
         {"aldeanos": "todos", "min": 24}
-      ]
+      ],
+      "civs": {
+        "franks": {
+          "texto": "No dejes parado el centro urbano: aldeanos sin parar y granjas cuando se acabe la comida de caza. La Collera te la dan gratis.",
+          "texto_en": "Keep the Town Center busy: non-stop villagers, and farms when the hunt runs out. You get Horse Collar for free."
+        },
+        "persians": {"referencia": "11:10"}
+      }
     },
     {
       "titulo": "6 exploradores",
@@ -186,7 +276,14 @@
       "referencia": "12:50",
       "condiciones": [
         {"unidades": "exploradores", "min": 6}
-      ]
+      ],
+      "civs": {
+        "franks": {
+          "texto": "Sigue con el establo sin parar hasta 6 exploradores. Con su vida extra aguantan más: entra y sal sin perderlos.",
+          "texto_en": "Keep the Stable producing up to 6 scouts. Their extra HP lets them last longer: hit and run without losing them."
+        },
+        "persians": {"referencia": "12:20"}
+      }
     }
   ]
 }
